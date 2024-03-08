@@ -6,15 +6,16 @@ plt.style.use('science')
 import os
 from matplotlib.ticker import ScalarFormatter
 import numpy as np
-from core.config import *
+
+plt.rcParams['text.usetex'] = False
 
 
-ROOT_PATH = "%s/mininettestbed/nooffload/results_fairness_intra_rtt_async/fifo" % HOME_DIR
-PROTOCOLS = ['cubic', 'orca', 'aurora']
+ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_fairness_intra_rtt_async/fifo" 
+PROTOCOLS = ['cubic', 'bbr', 'bbr1']
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 QMULTS = [0.2, 1 ,4]
-RUNS = [1, 2, 3, 4, 5]
+RUNS = [1, 2]
 LOSSES=[0]
 
 
@@ -23,7 +24,7 @@ def export_legend(legend, bbox=None, filename="legend.png"):
    fig.canvas.draw()
    if not bbox:
       bbox = legend.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-   fig.savefig(filename, dpi=720, bbox_inches=bbox)
+   fig.savefig(filename, dpi=1080, bbox_inches=bbox)
 
 
 for mult in QMULTS:
@@ -48,6 +49,7 @@ for mult in QMULTS:
                  receiver1_total = pd.read_csv(PATH + '/csvs/x1.csv').reset_index(drop=True)
                  receiver2_total = pd.read_csv(PATH + '/csvs/x2.csv').reset_index(drop=True)
 
+                 print(receiver1_total['time'])
                  receiver1_total['time'] = receiver1_total['time'].apply(lambda x: int(float(x)))
                  receiver2_total['time'] = receiver2_total['time'].apply(lambda x: int(float(x)))
 
@@ -57,7 +59,6 @@ for mult in QMULTS:
 
                  receiver1_total = receiver1_total.drop_duplicates('time')
                  receiver2_total = receiver2_total.drop_duplicates('time')
-
                  receiver1 = receiver1_total[receiver1_total['time'] >= end_time - keep_last_seconds].reset_index(drop=True)
                  receiver2 = receiver2_total[receiver2_total['time'] >= end_time - keep_last_seconds].reset_index(drop=True)
 
@@ -94,9 +95,9 @@ for mult in QMULTS:
                               columns=['protocol', 'bandwidth', 'delay', 'delay_ratio','qmult', 'goodput_ratio_20_mean',
                                        'goodput_ratio_20_std', 'goodput_ratio_total_mean', 'goodput_ratio_total_std'])
 
-   orca_data = summary_data[summary_data['protocol'] == 'orca'].set_index('delay')
+   bbr_data = summary_data[summary_data['protocol'] == 'bbr'].set_index('delay')
    cubic_data = summary_data[summary_data['protocol'] == 'cubic'].set_index('delay')
-   aurora_data = summary_data[summary_data['protocol'] == 'aurora'].set_index('delay')
+   bbr1_data = summary_data[summary_data['protocol'] == 'bbr1'].set_index('delay')
 
    LINEWIDTH = 0.15
    ELINEWIDTH = 0.75
@@ -111,10 +112,10 @@ for mult in QMULTS:
    markers, caps, bars = ax.errorbar(cubic_data.index*2, cubic_data['goodput_ratio_20_mean'], yerr=cubic_data['goodput_ratio_20_std'],marker='x',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='cubic')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(orca_data.index*2,orca_data['goodput_ratio_20_mean'], yerr=orca_data['goodput_ratio_20_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
+   markers, caps, bars = ax.errorbar(bbr_data.index*2,bbr_data['goodput_ratio_20_mean'], yerr=bbr_data['goodput_ratio_20_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr3')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(aurora_data.index*2,aurora_data['goodput_ratio_20_mean'], yerr=aurora_data['goodput_ratio_20_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='aurora')
+   markers, caps, bars = ax.errorbar(bbr1_data.index*2,bbr1_data['goodput_ratio_20_mean'], yerr=bbr1_data['goodput_ratio_20_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr1')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
 
@@ -130,6 +131,6 @@ for mult in QMULTS:
    legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.08),columnspacing=0.8,handletextpad=0.5)
    # ax.grid()
 
-   for format in ['png', 'pdf']:
-      plt.savefig('goodput_ratio_async_intra_20_%s.%s' % (mult, format), dpi=720)
+   for format in ['pdf']:
+      plt.savefig('goodput_ratio_async_intra_20_%s.%s' % (mult, format), dpi=1080)
 

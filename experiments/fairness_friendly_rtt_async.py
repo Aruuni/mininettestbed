@@ -22,8 +22,11 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
 
-    duration = int((2*delay*1000)/1000)
 
+
+    #### Set duration of the experiment
+    duration = int((2*delay*1000)/1000)
+    print('Duration is %s' % duration)
     
     net = Mininet(topo=topo)
     path = "%s/mininettestbed/nooffload/results_friendly_intra_rtt_async/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)

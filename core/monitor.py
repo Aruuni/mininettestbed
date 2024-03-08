@@ -1,11 +1,11 @@
 from subprocess import Popen, PIPE
-from parsers import *
+from core.parsers import *
 from multiprocessing import Process
 from time import sleep, time
 import subprocess
 import os
 import re
-from utils import *
+from core.utils import *
 
 
 
@@ -22,6 +22,7 @@ def monitor_qlen(iface, interval_sec = 1, path = default_dir):
         p = Popen(cmd, shell=True, stdout=PIPE)
         output = p.stdout.read()
         tmp = ''
+        output = output.decode('utf-8')
         matches_queued = pat_queued.findall(output)
         matches_dropped = pat_dropped.findall(output)
         if len(matches_queued) != len(matches_dropped):
@@ -78,12 +79,15 @@ def monitor_devs_ng(fname="%s/txrate.txt" % default_dir, interval_sec=1):
     Popen(cmd, shell=True).wait()
 
 def start_tcpprobe(path,outfile="cwnd.txt"):
-    os.system("rmmod tcp_probe; modprobe tcp_probe full=1;")
-    Popen("cat /proc/net/tcpprobe > %s/%s" % (path, outfile),
+    os.system("echo 1 > /sys/kernel/debug/tracing/events/tcp/tcp_probe/enable")
+    Popen("cat /sys/kernel/debug/tracing/trace > %s/%s" % (path, outfile),
           shell=True)
 
 def stop_tcpprobe():
+    os.system("echo 0 > /sys/kernel/debug/tracing/events/tcp/tcp_probe/enable")
+    print("Stopping cat")
     Popen("killall -9 cat", shell=True).wait()
+    print("Killed cat")
 
 def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
     monitor = Process(target=monitor_qlen,

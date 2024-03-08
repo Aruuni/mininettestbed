@@ -1,7 +1,7 @@
-from utils import *
-from monitor import *
+from core.utils import *
+from core.monitor import *
 from multiprocessing import Process
-from config import *
+from core.config import *
 import time
 import json
 
@@ -153,15 +153,25 @@ class Emulation:
                 command = self.start_iperf_client
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
             
-            elif protocol == 'aurora':
+            elif protocol == 'bbr':
                 # Create server start up call
-                params = (destination, duration)
-                command = self.start_aurora_server
+                params = (destination,)
+                command = self.start_iperf_server
                 self.call_first.append(Command(command, params, None))
 
                 # Create client start up call
-                params = (source_node,destination,duration,"%s/mininettestbed/saved_models/icml_paper_model" % HOME_DIR)
-                command = self.start_aurora_client
+                params = (source_node,destination,duration)
+                command = self.start_iperf_client
+                self.call_second.append(Command(command, params, start_time - previous_start_time))
+            elif protocol == 'bbr1':
+                # Create server start up call
+                params = (destination,)
+                command = self.start_iperf_server
+                self.call_first.append(Command(command, params, None))
+
+                # Create client start up call
+                params = (source_node,destination,duration)
+                command = self.start_iperf_client
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
             elif protocol == 'tbf' or protocol == 'netem':
                 # Change the tbf rate to the value provided

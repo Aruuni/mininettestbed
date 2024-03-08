@@ -84,7 +84,6 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                             flows = []
                             retr_flows = []
                             delay_flows = []
-                            flow1 = False
                             for n in range(4):
                                 if os.path.exists(PATH + '/csvs/x%s.csv' % (n + 1)):
                                     receiver_total = pd.read_csv(PATH + '/csvs/x%s.csv' % (n + 1)).reset_index(drop=True)
@@ -104,21 +103,17 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                     bandwidth_mean = None
                                     bandwidth_std = None
 
-                                if os.path.exists(PATH + '/csvs/c%s_probe.csv' % (n + 1)):
+                                if os.path.exists(PATH + '/csvs/c%s.csv' % (n + 1)):
                                     # Compute the avg and std rtt across all samples of both flows
-                                    sender = pd.read_csv(PATH + '/csvs/c%s_probe.csv' % (n + 1)).reset_index(drop=True)
+                                    sender = pd.read_csv(PATH + '/csvs/c%s.csv' % (n + 1)).reset_index(drop=True)
                                     #sendder_columns = [sender['time'], sender['srtt']]
-                                    sender = sender[['time', 'srtt']]
+                                    sender = sender[['time', 'rtt']]
                                     # Assuming the starting time is the first entry in the 'time' column
 
                                     # Convert all time stamps to seconds
                                     #sender['srtt'] = sender['srtt'] / 1000
-                                    #start_time = sender['time'].min()
-                                    #sender['time'] -= start_time    
-                                    if not flow1:
 
-                                        print(sender[0:100])
-                                        flow1 = True
+
                                     sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
                                     print('start time %s' % (start_time + n * 25))
                                     print('end time %s' % (end_time+ n * 25))
@@ -317,7 +312,6 @@ def get_aqm_data(aqm, delay, qmult):
             for n in range(4):
                 if protocol != 'aurora':
                     if os.path.exists(PATH + '/csvs/c%s_probe.csv' % (n+1)) :
-                        print("time from probe")
                         # Compute the avg and std rtt across all samples of both flows
                         sender = pd.read_csv(PATH + '/csvs/c%s_probe.csv' % (n+1)).reset_index(drop=True)
                         sender = sender[['time', 'srtt']]
@@ -451,10 +445,10 @@ def plot_data(data, filename, ylim=None):
 
 if __name__ == "__main__":
     ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_fairness_aqm"
-    PROTOCOLS = ['bbr1'] # aurora is bbr 1
-    DELAYS = [5]
-    RUNS = [1]
-    QMULTS = [0.2]
+    PROTOCOLS = ['cubic', 'bbr', 'bbr1'] # aurora is bbr 1
+    DELAYS = [10,100]
+    RUNS = [1, 2, 3, 4, 5]
+    QMULTS = [0.2,1,4]
 
     AQM_LIST = ['fifo']
     df1,df2 = data_to_df(ROOT_PATH, DELAYS, [100], QMULTS, AQM_LIST, PROTOCOLS)
@@ -466,10 +460,13 @@ if __name__ == "__main__":
     data = df.groupby(['min_delay','qmult','protocol']).mean()
 
 
-    COLOR_MAP = {           'bbr1': 'orange'}
-    MARKER_MAP = {5: '^'}
+    COLOR_MAP = {'cubic': 'blue',
+                 'bbr': 'green',
+                 'bbr1': 'orange'}
+    MARKER_MAP = {10: '^',
+                 100: '*'}
 
-    for CONTROL_VAR in [0.2]:
+    for CONTROL_VAR in [0.2,1,4]:
 
         fig, axes = plt.subplots(figsize=(3,1.5))
         for protocol in PROTOCOLS:
@@ -480,7 +477,7 @@ if __name__ == "__main__":
                 y = subset['util_mean'].values/100
                 x = subset['delay_mean'].values/(delay*2)
 
-                #confidence_ellipse(x, y, axes, facecolor=COLOR_MAP[protocol], edgecolor='none', alpha=0.25)
+                confidence_ellipse(x, y, axes, facecolor=COLOR_MAP[protocol], edgecolor='none', alpha=0.25)
 
         handles, labels = axes.get_legend_handles_labels()
         legend = fig.legend(handles, labels, ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.2), columnspacing=0.001,

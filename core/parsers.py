@@ -41,23 +41,34 @@ def parse_tc_show_output(output):
 
 def parse_tcp_probe_output(file, address, key='source'):
     # Define the column names for the DataFrame
-    columns = ['time', 'source', 'destination', 'packet_length', 'sequence_number', 'ack_number', 'cwnd', 'ssthresh', 'snd_wnd' ,'srtt', 'rcv_wnd']
-
+    columns = ['y', 'z','w','time', 'x', 'family','source', 'destination', 'mark', 'packet_length', 'sequence_number', 'ack_number', 'cwnd', 'ssthresh', 'snd_wnd' ,'srtt', 'rcv_wnd', 'sock_cookie']
+    print(len(columns))
     # Read the tcp_probe output file into a list of lines
     with open(file, 'r') as f:
         lines = f.readlines()
 
-
     # Split each line by whitespace and create a list of lists
+    # [print(line.strip().split()) for line in lines]
     data = [line.strip().split() for line in lines]
+    data = [row for row in data if len(row) == 18]
+    # Remove 'varname=' from numerical values in each row
+    #print(data[344])
+    for row in data:
+        for i in range(len(row)):
+            if '=' in row[i]:
+                row[i] = row[i].split('=')[1]
+    for row in data:
+        row[3] = float(row[3][:-1])
 
+    
+    #print(data[344])
     # Convert the list of lists into a pandas DataFrame
     df = pd.DataFrame(data, columns=columns)
-
+    
     # Convert the data types of the columns as needed
     df['time'] = df['time'].astype(float)
-    df['sequence_number'] = df['sequence_number'].apply(lambda x: int(x,0))
-    df['ack_number'] = df['ack_number'].apply(lambda x: int(x,0))
+    df['sequence_number'] = df['sequence_number'].apply(lambda x: int(x.split('=')[1], 0) if '=' in x else int(x, 0))
+    df['ack_number'] = df['ack_number'].apply(lambda x: int(x.split('=')[1], 0) if '=' in x else int(x, 0))
     df['cwnd'] = df['cwnd'].astype(int)
     df['ssthresh'] = df['ssthresh'].astype(int)
     df['snd_wnd'] = df['snd_wnd'].astype(int)

@@ -1,0 +1,2 @@
+aqm,qmult,min_delay,bandwidth,protocol,run,delay_mean,efficiency_mean,efficiency_std,fairness_mean,fairness_std,retr_mean,retr_std,efficiency1_mean,efficiency1_std,efficiency2_mean,efficiency2_std,util_mean,util_std
+fifo,0.2,5,100,bbr1,1,10.63643686868687,39.83868534444557,21.31559620166342,1.0,0.0,0.11893457441187616,0.5655243839715596,0.375764536525971,0.21156897885347448,0.3746122451804476,0.2110384663573491,95.23270833333335,1.8001873532319592
