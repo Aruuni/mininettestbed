@@ -194,6 +194,7 @@ if __name__ == "__main__":
                          data[protocol][n+1].index = pd.concat(receivers[n+1], axis=1).index
 
             for i,protocol in enumerate(PROTOCOLS):
+               #remove index for single plot
                ax = axes[i]
 
                for n in range(FLOWS):
