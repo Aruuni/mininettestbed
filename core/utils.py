@@ -50,8 +50,8 @@ def tcp_buffers_setup(target_bdp_bytes, multiplier=3):
     # the tcp buffere is not the bottleneck.
 
     if multiplier:
-        os.system('sysctl -w net.ipv4.tcp_rmem=\'10240 87380 %s\'' % (multiplier*(target_bdp_bytes)))
-        os.system('sysctl -w net.ipv4.tcp_wmem=\'10240 87380 %s\'' % (multiplier*(target_bdp_bytes)))
+        os.system('sudo sysctl -w net.ipv4.tcp_rmem=\'10240 87380 %s\'' % (multiplier*(target_bdp_bytes)))
+        os.system('sudo sysctl -w net.ipv4.tcp_wmem=\'10240 87380 %s\'' % (multiplier*(target_bdp_bytes)))
 
 def disable_offload(net):
     for node_name, node in net.items():

@@ -78,15 +78,20 @@ def monitor_devs_ng(fname="%s/txrate.txt" % default_dir, interval_sec=1):
            (interval_sec, fname))
     Popen(cmd, shell=True).wait()
 
-def start_tcpprobe(path,outfile="cwnd.txt"):
+def start_tcpprobe():
+    #starts the tcp probe
     os.system("echo 1 > /sys/kernel/debug/tracing/events/tcp/tcp_probe/enable")
-    Popen("cat /sys/kernel/debug/tracing/trace > %s/%s" % (path, outfile),
-          shell=True)
+    #cleats the old trace
+    os.system("sudo sh -c 'echo "" > /sys/kernel/debug/tracing/trace'")
 
-def stop_tcpprobe():
+
+def stop_tcpprobe(path,outfile="cwnd.txt"):
     os.system("echo 0 > /sys/kernel/debug/tracing/events/tcp/tcp_probe/enable")
     print("Stopping cat")
-    Popen("killall -9 cat", shell=True).wait()
+    #Popen("killall -9 cat", shell=True).wait()
+    #takes the contents of the trace and writes it to a file
+    Popen("cat /sys/kernel/debug/tracing/trace > %s/%s" % (path, outfile),shell=True)
+
     print("Killed cat")
 
 def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
@@ -103,7 +108,7 @@ def start_sysstat(interval, count, folder, node=None):
         os.system(cmd)
     else:
         cmd = "sudo /usr/lib/sysstat/sadc -S SNMP %s %s %s/sysstat/datafile_%s.log &" % (interval, count, folder, node.name )
-        print("Sending command %s to node %s" % (cmd, node.name))
+        print("\033[38;2;165;42;42mSending command %s to node %s\033[0m" % (cmd, node.name))
         node.popen(cmd,shell=True)
 
 
