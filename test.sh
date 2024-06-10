@@ -1,9 +1,14 @@
- PROTOCOLS="cubic bbr"
- BANDWIDTHS="100"
- DELAYS="10"
- RUNS="1"
- QMULTS="1"
- FLOWS="2"
+sudo fuser -k 6653/tcp
+sudo modprobe tcp_bbr
+sudo modprobe tcp_cubic
+sudo mn -c
+
+PROTOCOLS="aurora"
+BANDWIDTHS="100"
+DELAYS="10"
+RUNS="1"
+QMULTS="1"
+FLOWS="4"
 
 for bw in $BANDWIDTHS
 do
@@ -17,7 +22,7 @@ do
     do
         for run in $RUNS
         do
-            sudo python3 experiments/fairness_friendly_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
+            time sudo python3 experiments/fairness_aqm.py $del $bw $qmult $protocol $run fifo 0 $flow
         done
     done
     done
