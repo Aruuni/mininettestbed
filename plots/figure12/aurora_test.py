@@ -36,6 +36,11 @@ def get_aqm_data(BW,aqm, delay, qmult):
                 {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  2: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  3: pd.DataFrame([], columns=['time', 'mean', 'std']),
+                 4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
+            'aurora':
+                {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
+                 2: pd.DataFrame([], columns=['time', 'mean', 'std']),
+                 3: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  4: pd.DataFrame([], columns=['time', 'mean', 'std'])}
              }
 
@@ -100,8 +105,13 @@ def get_aqm_data(BW,aqm, delay, qmult):
                         {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
                          2: pd.DataFrame([], columns=['time', 'mean', 'std']),
                          3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         4: pd.DataFrame([], columns=['time', 'mean', 'std'])}
-                    }
+                         4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
+                  'aurora':
+                      {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
+                       2: pd.DataFrame([], columns=['time', 'mean', 'std']),
+                       3: pd.DataFrame([], columns=['time', 'mean', 'std']),
+                       4: pd.DataFrame([], columns=['time', 'mean', 'std'])}
+                  }
 
     start_time = 0
     end_time = 100
@@ -172,6 +182,11 @@ def get_aqm_data(BW,aqm, delay, qmult):
                       {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
                        2: pd.DataFrame([], columns=['time', 'mean', 'std']),
                        3: pd.DataFrame([], columns=['time', 'mean', 'std']),
+                       4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
+                  'aurora':
+                      {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
+                       2: pd.DataFrame([], columns=['time', 'mean', 'std']),
+                       3: pd.DataFrame([], columns=['time', 'mean', 'std']),
                        4: pd.DataFrame([], columns=['time', 'mean', 'std'])}
                   }
 
@@ -235,9 +250,10 @@ def plot_data(data, filename, ylim=None):
              'bbr': '#00B945',
              'bbr-1sec': '#FF0000',
              'bbr-7sec': '#7E2F8E',
-             'bbr1': '#FF9500'}
+             'bbr1': '#FF9500',
+             'aurora': '#FF2366'}
     LINEWIDTH = 1
-    fig, axes = plt.subplots(nrows=5, ncols=1, figsize=(4, 3), sharex=True, sharey=True)
+    fig, axes = plt.subplots(nrows=6, ncols=1, figsize=(4, 3), sharex=True, sharey=True)
 
     for i, protocol in enumerate(PROTOCOLS):
         ax = axes[i]
@@ -264,7 +280,7 @@ def plot_data(data, filename, ylim=None):
         ax.grid()
 
     # fig.suptitle("%s Mbps, %s RTT, %sxBDP" % (BW, 2*DELAY, QMULTS))
-    plt.subplots_adjust(top=0.95)
+
     plt.savefig(filename, dpi=720)
 
 
@@ -274,8 +290,8 @@ if __name__ == "__main__":
     PROTOCOLS = ['cubic', 'bbr', 'bbr-1sec', 'bbr-7sec','bbr1']
     BW = 100
     DELAY = 10
-    RUNS = [1, 2, 3, 4, 5]
-    QMULTS = [0.2,1,4]
+    RUNS = [1]
+    QMULTS = [1]
     AQM = 'fifo'
     #AQM_LIST = ['fifo', 'fq', 'codel']
     AQM_LIST = ['fifo']

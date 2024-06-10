@@ -8,16 +8,17 @@ import matplotlib as mpl
 pd.set_option('display.max_rows', None)
 import numpy as np
 from matplotlib.pyplot import figure
+import sys
 mpl.rcParams.update({'font.size': 12})
-from core.config import *
+
+plt.rcParams['text.usetex'] = False
 
 
-
-PROTOCOLS = ['cubic', 'orca', 'aurora']
+PROTOCOLS = ['cubic', 'bbr', 'bbr1']
 BW = 50
 DELAY = 50
 QMULT = 1
-RUN = 16
+RUN = sys.argv[1]
 BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
 BDP_IN_PKTS = BDP_IN_BYTES / 1500
 start_time = 100
@@ -33,7 +34,7 @@ final_handles = []
 final_labels = []
 
 
-ROOT_PATH = "%s/mininettestbed/nooffload/results_responsiveness_bw_rtt/fifo" % HOME_DIR
+ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_responsiveness_bw_rtt/fifo"
 for protocol in PROTOCOLS:
     PATH = ROOT_PATH + '/Dumbell_%smbit_%sms_%spkts_0loss_1flows_22tcpbuf_%s/run%s' % (BW, DELAY, int(QMULT * BDP_IN_PKTS), protocol, RUN)
     # Compute the average optimal throughput
@@ -83,7 +84,7 @@ for handle, label in zip(handles,labels):
 protocol_data = {}
 ax = axes[1]
 ax2 = ax.twinx()
-ROOT_PATH = "%s/mininettestbed/nooffload/results_responsiveness_loss/fifo" % HOME_DIR
+ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_responsiveness_loss/fifo"
 for protocol in PROTOCOLS:
     PATH = ROOT_PATH + '/Dumbell_%smbit_%sms_%spkts_0loss_1flows_22tcpbuf_%s/run%s' % (
     BW, DELAY, int(QMULT * BDP_IN_PKTS), protocol, RUN)
@@ -135,5 +136,5 @@ ax.set(xlabel="time (s)")
 fig.text(-0.05,0.5,"Sending Rate (Mbps)", rotation='vertical', va='center', ha='center')
 ax2.yaxis.set_label_coords(1.15, 0.5)
 fig.legend(final_handles, final_labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.19),columnspacing=0.5,handletextpad=0.5, handlelength=1)
-for format in ['pdf', 'png']:
-    fig.savefig("joined_sending_rate.%s" % format, dpi=720)
+for format in ['pdf']:
+    fig.savefig("joined_sending_rate.%s" % format, dpi=1080)

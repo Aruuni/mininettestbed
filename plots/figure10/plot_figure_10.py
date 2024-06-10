@@ -9,8 +9,8 @@ pd.set_option('display.max_rows', None)
 import numpy as np
 from matplotlib.pyplot import figure
 import statistics
-from core.config import *
 
+plt.rcParams['text.usetex'] = False
 
 
 def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
@@ -85,17 +85,17 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
     return pd.DataFrame(data, columns=COLUMNS)
 
 COLOR = {'cubic': '#0C5DA5',
-             'orca': '#00B945',
-             'aurora': '#FF9500'}
+             'bbr': '#00B945',
+             'bbr1': '#FF9500'}
 
-PROTOCOLS = ['cubic', 'orca', 'aurora']
+PROTOCOLS = ['cubic', 'bbr', 'bbr1']
 BW = 50
 DELAY = 50
 QMULT = 1
 RUNS = list(range(1,51))
 
-bw_rtt_data = get_df("%s/mininettestbed/nooffload/results_responsiveness_bw_rtt/fifo" % HOME_DIR, PROTOCOLS, RUNS, BW, DELAY, QMULT)
-loss_data =  get_df("%s/mininettestbed/nooffload/results_responsiveness_loss/fifo" % HOME_DIR, PROTOCOLS, RUNS, BW, DELAY, QMULT)
+bw_rtt_data = get_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_bw_rtt/fifo", PROTOCOLS, RUNS, BW, DELAY, QMULT)
+loss_data =  get_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_loss/fifo",  PROTOCOLS, RUNS, BW, DELAY, QMULT)
 
 BINS = 50
 fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.5))
@@ -120,5 +120,5 @@ for protocol in PROTOCOLS:
 ax.set(xlabel="Average Retr. Rate (Mbps)", ylabel="Percentage of Trials (\%)")
 
 fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.19),columnspacing=0.5,handletextpad=0.5, handlelength=1)
-for format in ['pdf', 'png']:
+for format in ['pdf']:
     fig.savefig("joined_retr_cdf.%s" % format, dpi=720)

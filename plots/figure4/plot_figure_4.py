@@ -10,8 +10,8 @@ import numpy as np
 plt.rcParams['text.usetex'] = False
 
 
-ROOT_PATH = "/home/mihai//mininettestbed/nooffload/results_fairness_bw_async/fifo" 
-PROTOCOLS = ['cubic', 'bbr', 'bbr1'] # aurora is bbr1
+ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_fairness_bw_async/fifo" 
+PROTOCOLS = ['cubic', 'bbr', 'bbr1'] 
 BWS = [10,20,30,40,50,60,70,80,90,100]
 DELAYS = [20]
 QMULTS = [0.2,1,4]

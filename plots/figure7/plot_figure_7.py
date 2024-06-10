@@ -1,5 +1,4 @@
 import pandas as pd
-from IPython.display import display
 import matplotlib.pyplot as plt
 import scienceplots
 plt.style.use('science')
@@ -13,6 +12,7 @@ from matplotlib.patches import Ellipse
 import matplotlib.transforms as transforms
 
 plt.rcParams['text.usetex'] = False
+
 
 def confidence_ellipse(x, y, ax, n_std=1.0, facecolor='none', **kwargs):
     """
@@ -84,7 +84,6 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                             flows = []
                             retr_flows = []
                             delay_flows = []
-                            flow1 = False
                             for n in range(4):
                                 if os.path.exists(PATH + '/csvs/x%s.csv' % (n + 1)):
                                     receiver_total = pd.read_csv(PATH + '/csvs/x%s.csv' % (n + 1)).reset_index(drop=True)
@@ -104,62 +103,90 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                     bandwidth_mean = None
                                     bandwidth_std = None
 
-                                if os.path.exists(PATH + '/csvs/c%s_probe.csv' % (n + 1)):
-                                    # Compute the avg and std rtt across all samples of both flows
-                                    sender = pd.read_csv(PATH + '/csvs/c%s_probe.csv' % (n + 1)).reset_index(drop=True)
-                                    #sendder_columns = [sender['time'], sender['srtt']]
-                                    sender = sender[['time', 'srtt']]
-                                    # Assuming the starting time is the first entry in the 'time' column
+                                if protocol != 'aurora':
+                                    if os.path.exists(PATH + '/csvs/c%s_probe.csv' % (n + 1)):
+                                        # Compute the avg and std rtt across all samples of both flows
+                                        sender = pd.read_csv(PATH + '/csvs/c%s_probe.csv' % (n + 1)).reset_index(
+                                            drop=True)
+                                        sender = sender[['time', 'srtt']]
+                                        sender['srtt'] = sender['srtt'] / 1000
+                                        sender = sender[(sender['time'] >= (start_time + n * 25)) & (
+                                                    sender['time'] <= (end_time + n * 25))]
 
-                                    # Convert all time stamps to seconds
-                                    #sender['srtt'] = sender['srtt'] / 1000
-                                    #start_time = sender['time'].min()
-                                    #sender['time'] -= start_time    
-                                    if not flow1:
+                                        # We need to resample this data to 1 Hz frequency: Truncate time value to seconds, groupby.mean()
+                                        sender['time'] = sender['time'].apply(lambda x: int(x))
+                                        sender = sender.groupby('time').mean()
+                                        if len(sender) > 0:
+                                            delay_flows.append(sender)
+                                        delay_mean = sender.mean().values[0]
+                                        delay_std = sender.std().values[0]
+                                    else:
+                                        sender = None
+                                        delay_mean = None
+                                        delay_std = None
 
-                                        print(sender[0:100])
-                                        flow1 = True
-                                    sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
-                                    print('start time %s' % (start_time + n * 25))
-                                    print('end time %s' % (end_time+ n * 25))
-                                    # We need to resample this data to 1 Hz frequency: Truncate time value to seconds, groupby.mean()
-                                    sender['time'] = sender['time'].apply(lambda x: int(x))
-                                    sender = sender.groupby('time').mean()
-                                    if len(sender) > 0:
-                                        delay_flows.append(sender)
-                                    delay_mean = sender.mean().values[0]
-                                    delay_std = sender.std().values[0]
-                                else:
-                                    print("Folder %s not found" % PATH)
-                                    sender = None
-                                    delay_mean = None
-                                    delay_std = None
+                                    if os.path.exists(PATH + '/sysstat/etcp_c%s.log' % (n + 1)):
+                                        systat = pd.read_csv(PATH + '/sysstat/etcp_c%s.log' % (n + 1), sep=';').rename(
+                                            columns={"# hostname": "hostname"})
+                                        retr = systat[['timestamp', 'retrans/s']]
 
-                                if os.path.exists(PATH + '/sysstat/etcp_c%s.log' % (n + 1)):
-                                    systat = pd.read_csv(PATH + '/sysstat/etcp_c%s.log' % (n + 1), sep=';').rename(columns={"# hostname": "hostname"})
-                                    retr = systat[['timestamp', 'retrans/s']]
+                                        if n == 0:
+                                            start_timestamp = retr['timestamp'].iloc[0]
 
-                                    if n == 0:
-                                        start_timestamp = retr['timestamp'].iloc[0]
+                                        retr['timestamp'] = retr['timestamp'] - start_timestamp + 1
 
-                                    retr.loc[:, 'timestamp']= retr['timestamp'] - start_timestamp + 1
+                                        retr = retr.rename(columns={'timestamp': 'time'})
+                                        retr['time'] = retr['time'].apply(lambda x: int(float(x)))
+                                        retr = retr[(retr['time'] >= (start_time + n * 25)) & (
+                                                    retr['time'] <= (end_time + n * 25))]
+                                        retr = retr.drop_duplicates('time')
 
-                                    retr = retr.rename(columns={'timestamp': 'time'})
-                                    retr['time'] = retr['time'].apply(lambda x: int(float(x)))
-                                    retr = retr[(retr['time'] >= (start_time + n * 25)) & (
-                                                retr['time'] <= (end_time + n * 25))]
-                                    retr = retr.drop_duplicates('time')
+                                        retr = retr.set_index('time')
+                                        retr_flows.append(retr*1500*8/(1024*1024))
+                                        retr_mean = retr.mean().values[0]
+                                        retr_std = retr.std().values[0]
 
-                                    retr = retr.set_index('time')
-                                    retr_flows.append(retr*1500*8/(1024*1024))
-                                    retr_mean = retr.mean().values[0]
-                                    retr_std = retr.std().values[0]
+                                    else:
+                                        print("Folder %s not found" % (PATH))
+                                        retr = None
+                                        retr_mean = None
+                                        retr_std = None
 
                                 else:
-                                    print("Folder %s not found" % (PATH))
-                                    retr = None
-                                    retr_mean = None
-                                    retr_std = None
+                                    if os.path.exists(PATH + '/csvs/c%s.csv' % (n + 1)):
+                                        sender = pd.read_csv(PATH + '/csvs/c%s.csv' % (n + 1)).reset_index(drop=True)
+                                        sender = sender[['time', 'rtt']]
+                                        sender = sender.rename(columns={'rtt': 'srtt'})
+                                        sender = sender[(sender['time'] >= (start_time + n * 25)) & (
+                                                    sender['time'] <= (end_time + n * 25))]
+                                        sender['time'] = sender['time'].apply(lambda x: int(x))
+                                        sender = sender.drop_duplicates('time')
+                                        sender = sender.set_index('time')
+                                        if len(sender) > 0:
+                                            delay_flows.append(sender)
+                                        delay_mean = sender.mean().values[0]
+                                        delay_std = sender.std().values[0]
+                                    else:
+                                        sender = None
+                                        delay_mean = None
+                                        delay_std = None
+
+                                    if os.path.exists(PATH + '/csvs/c%s.csv' % (n + 1)):
+                                        systat = pd.read_csv(PATH + '/csvs/c%s.csv' % (n + 1)).rename(
+                                            columns={"retr": "retrans/s"})
+                                        retr = systat[['time', 'retrans/s']]
+                                        retr['time'] = retr['time'].apply(lambda x: int(float(x)))
+                                        retr = retr[
+                                            (retr['time'] >= (start_time + n * 25)) & (retr['time'] <= (end_time + n * 25))]
+                                        retr = retr.drop_duplicates('time')
+                                        retr = retr.set_index('time')
+                                        retr_flows.append(retr*1500*8/(1024*1024))
+                                        retr_mean = retr.mean().values[0]
+                                        retr_std = retr.std().values[0]
+                                    else:
+                                        retr = None
+                                        retr_mean = None
+                                        retr_std = None
 
                                 if os.path.exists(PATH + '/sysstat/dev_root.log'):
                                     systat = pd.read_csv(PATH + '/sysstat/dev_root.log', sep=';').rename(
@@ -168,7 +195,7 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
 
                                     start_timestamp = util['timestamp'].iloc[0]
 
-                                    util.loc[:, 'timestamp'] = util['timestamp'] - start_timestamp + 1
+                                    util['timestamp'] = util['timestamp'] - start_timestamp + 1
 
                                     util = util.rename(columns={'timestamp': 'time'})
                                     util['time'] = util['time'].apply(lambda x: int(float(x)))
@@ -194,7 +221,7 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
 
                                     start_timestamp = util['timestamp'].iloc[0]
 
-                                    util.loc[:, 'timestamp'] = util['timestamp'] - start_timestamp + 1
+                                    util['timestamp'] = util['timestamp'] - start_timestamp + 1
 
                                     util = util.rename(columns={'timestamp': 'time'})
                                     util['time'] = util['time'].apply(lambda x: int(float(x)))
@@ -207,16 +234,18 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                 else:
                                     util_mean = None
                                     util_std = None
-                                                            # Merge individual flow DataFrames
 
-                                df_merged = pd.concat(flows).reset_index(drop=True)                               
+                                #df_merged = reduce(lambda left, right: pd.merge(left, right, on=['time'],how='inner'), flows)
+                                df_merged = pd.concat(flows).reset_index(drop=True)     
                                 df_merged_sum = df_merged.sum(axis=1)
                                 df_merged_ratio = df_merged.min(axis=1) / df_merged.max(axis=1)
 
-                                df_retr_merged = pd.concat(retr_flows).reset_index(drop=True) 
-                                df_retr_merged_sum = df_retr_merged.sum(axis=1)
+                                #df_retr_merged = reduce(lambda left, right: pd.merge(left, right, on=['time'],how='inner'), retr_flows)
 
-                                df_delay_merged = pd.concat(delay_flows).reset_index(drop=True) 
+                                df_retr_merged = pd.concat(retr_flows).reset_index(drop=True)
+                                df_retr_merged_sum = df_retr_merged.sum(axis=1)
+                                #df_delay_merged = reduce(lambda left, right: pd.merge(left, right, on=['time'],how='inner'), delay_flows)
+                                df_delay_merged = pd.concat(delay_flows).reset_index(drop=True)  
                                 df_delay_merged_mean = df_delay_merged.mean(axis=1)
 
                                 efficiency_metric1 = (df_merged_sum/BW) / (
@@ -238,12 +267,12 @@ def get_aqm_data(aqm, delay, qmult):
                  2: pd.DataFrame([], columns=['time','mean', 'std']),
                  3: pd.DataFrame([], columns=['time','mean', 'std']),
                  4: pd.DataFrame([], columns=['time','mean', 'std'])},
-             'bbr1':
+             'bbr':
                 {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  2: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  3: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-             'bbr':
+             'bbr1':
                 {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  2: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  3: pd.DataFrame([], columns=['time', 'mean', 'std']),
@@ -317,7 +346,6 @@ def get_aqm_data(aqm, delay, qmult):
             for n in range(4):
                 if protocol != 'aurora':
                     if os.path.exists(PATH + '/csvs/c%s_probe.csv' % (n+1)) :
-                        print("time from probe")
                         # Compute the avg and std rtt across all samples of both flows
                         sender = pd.read_csv(PATH + '/csvs/c%s_probe.csv' % (n+1)).reset_index(drop=True)
                         sender = sender[['time', 'srtt']]
@@ -379,26 +407,36 @@ def get_aqm_data(aqm, delay, qmult):
                 aqm, BW, delay, int(qmult * BDP_IN_PKTS), 4, protocol, run)
             start_timestamp = 0
             for n in range(4):
-                if os.path.exists(PATH + '/sysstat/etcp_c%s.log' % (n+1)):
-                    systat = pd.read_csv(PATH + '/sysstat/etcp_c%s.log' % (n+1), sep=';').rename(
-                        columns={"# hostname": "hostname"})
-                    retr = systat[['timestamp', 'retrans/s']]
+                if protocol != 'aurora':
+                    if os.path.exists(PATH + '/sysstat/etcp_c%s.log' % (n+1)):
+                        systat = pd.read_csv(PATH + '/sysstat/etcp_c%s.log' % (n+1), sep=';').rename(
+                            columns={"# hostname": "hostname"})
+                        retr = systat[['timestamp', 'retrans/s']]
 
-                    if n == 0:
-                        start_timestamp =  retr['timestamp'].iloc[0]
+                        if n == 0:
+                            start_timestamp =  retr['timestamp'].iloc[0]
 
-                    retr['timestamp'] = retr['timestamp'] - start_timestamp + 1
+                        retr['timestamp'] = retr['timestamp'] - start_timestamp + 1
 
-                    retr = retr.rename(columns={'timestamp': 'time'})
-                    retr['time'] = retr['time'].apply(lambda x: int(float(x)))
-                    retr = retr[(retr['time'] >= (start_time + n * 25)) & (retr['time'] <= (end_time + n * 25))]
-                    retr = retr.drop_duplicates('time')
-                    retr = retr.set_index('time')
-                    senders[n + 1].append(retr)
+                        retr = retr.rename(columns={'timestamp': 'time'})
+                        retr['time'] = retr['time'].apply(lambda x: int(float(x)))
+                        retr = retr[(retr['time'] >= (start_time + n * 25)) & (retr['time'] <= (end_time + n * 25))]
+                        retr = retr.drop_duplicates('time')
+                        retr = retr.set_index('time')
+                        senders[n + 1].append(retr)
 
+                    else:
+                        print("Folder %s not found" % (PATH))
                 else:
-                    print("Folder %s not found" % (PATH))
-   
+                    if os.path.exists(PATH + '/csvs/c%s.csv' % (n+1)):
+                        systat = pd.read_csv(PATH + '/csvs/c%s.csv' % (n+1)).rename(
+                            columns={"retr": "retrans/s"})
+                        retr = systat[['time', 'retrans/s']]
+                        retr['time'] = retr['time'].apply(lambda x: int(float(x)))
+                        retr = retr[(retr['time'] >= (start_time + n * 25)) & (retr['time'] <= (end_time + n * 25))]
+                        retr = retr.drop_duplicates('time')
+                        retr = retr.set_index('time')
+                        senders[n + 1].append(retr)
 
 
         # For each flow, receivers contains a list of dataframes with a time and bandwidth column. These dataframes SHOULD have
@@ -451,11 +489,12 @@ def plot_data(data, filename, ylim=None):
 
 if __name__ == "__main__":
     ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_fairness_aqm"
-    PROTOCOLS = ['bbr1'] # aurora is bbr 1
-    DELAYS = [5]
-    RUNS = [1]
-    QMULTS = [0.2]
+    PROTOCOLS = ['cubic', 'bbr', 'bbr1']
+    DELAYS = [10,100]
+    RUNS = [1, 2, 3, 4, 5]
+    QMULTS = [0.2,1,4]
 
+    #AQM_LIST = ['fifo', 'codel', 'fq']
     AQM_LIST = ['fifo']
     df1,df2 = data_to_df(ROOT_PATH, DELAYS, [100], QMULTS, AQM_LIST, PROTOCOLS)
     df1.to_csv('aqm_data.csv', index=False)
@@ -466,21 +505,25 @@ if __name__ == "__main__":
     data = df.groupby(['min_delay','qmult','protocol']).mean()
 
 
-    COLOR_MAP = {           'bbr1': 'orange'}
-    MARKER_MAP = {5: '^'}
+    COLOR_MAP = {'cubic': 'blue',
+                 'bbr': 'green',
+                 'bbr1': 'orange'}
+    MARKER_MAP = {10: '^',
+                 100: '*'}
 
-    for CONTROL_VAR in [0.2]:
+    for CONTROL_VAR in [0.2,1,4]:
 
         fig, axes = plt.subplots(figsize=(3,1.5))
         for protocol in PROTOCOLS:
             for delay in DELAYS:
-                axes.scatter(data.loc[delay,CONTROL_VAR, protocol]['delay_mean']/ (delay*2), data.loc[delay,CONTROL_VAR, protocol]['util_mean']/100 - data.loc[delay,CONTROL_VAR, protocol]['retr_mean']/100, edgecolors=COLOR_MAP[protocol], marker=MARKER_MAP[delay], facecolors='none', alpha=0.25)
-                axes.scatter(data.loc[delay,CONTROL_VAR, protocol]['delay_mean']/ (delay*2), data.loc[delay,CONTROL_VAR, protocol]['util_mean']/100, edgecolors=COLOR_MAP[protocol], marker=MARKER_MAP[delay], facecolors='none', label='%s-%s' % (protocol, 2*delay))
-                subset = df[(df['protocol'] == protocol) & (df['qmult'] == CONTROL_VAR)  & (df['min_delay'] == delay)]
-                y = subset['util_mean'].values/100
-                x = subset['delay_mean'].values/(delay*2)
+                if not (delay == 100 and protocol == 'aurora' and CONTROL_VAR == 4):
+                    axes.scatter(data.loc[delay,CONTROL_VAR, protocol]['delay_mean']/ (delay*2), data.loc[delay,CONTROL_VAR, protocol]['util_mean']/100 - data.loc[delay,CONTROL_VAR, protocol]['retr_mean']/100, edgecolors=COLOR_MAP[protocol], marker=MARKER_MAP[delay], facecolors='none', alpha=0.25)
+                    axes.scatter(data.loc[delay,CONTROL_VAR, protocol]['delay_mean']/ (delay*2), data.loc[delay,CONTROL_VAR, protocol]['util_mean']/100, edgecolors=COLOR_MAP[protocol], marker=MARKER_MAP[delay], facecolors='none', label='%s-%s' % (protocol, 2*delay))
+                    subset = df[(df['protocol'] == protocol) & (df['qmult'] == CONTROL_VAR)  & (df['min_delay'] == delay)]
+                    y = subset['util_mean'].values/100
+                    x = subset['delay_mean'].values/(delay*2)
 
-                #confidence_ellipse(x, y, axes, facecolor=COLOR_MAP[protocol], edgecolor='none', alpha=0.25)
+                    confidence_ellipse(x, y, axes, facecolor=COLOR_MAP[protocol], edgecolor='none', alpha=0.25)
 
         handles, labels = axes.get_legend_handles_labels()
         legend = fig.legend(handles, labels, ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.2), columnspacing=0.001,
@@ -489,17 +532,3 @@ if __name__ == "__main__":
         axes.invert_xaxis()
         for format in ['pdf']:
             plt.savefig('%sqmult_scatter1_and_2.%s' % (CONTROL_VAR,format), dpi=720)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
