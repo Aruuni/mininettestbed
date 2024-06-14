@@ -31,8 +31,8 @@ def process_raw_outputs(path):
             df = parse_orca_output(path+"/%s_output.txt" % receiver, start_time)
             df.to_csv("%s/%s.csv" %  (csv_path, receiver),index=False)
 
-
-            probe_df = parse_tcp_probe_output(path + "/tcp_probe.txt", '%s:%s' % (sender_ip, port),  key='source')
+            #TODO: something about this, might be useful to convert to SS for better compatibility???? who can tell 
+            #probe_df = parse_tcp_probe_output(path + "/tcp_probe.txt", '%s:%s' % (sender_ip, port),  key='source')
             probe_df.to_csv("%s/%s_probe.csv" % (csv_path, sender),index=False)
 
         elif flow[-2] == 'aurora':

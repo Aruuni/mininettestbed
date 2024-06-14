@@ -188,7 +188,7 @@ def parse_orca_output(file, offset):
     # Extract the relevant information
     data = [line.split(",") for line in lines[1:]]
     columns = ["time", "bandwidth", "bytes"] if len(data[0]) == 3 else ["time", "bandwidth", "bytes", "totalgoodput"]
-    
+
     # Create a pandas DataFrame
     df = pd.DataFrame(data, columns=columns)
     # Convert columns to appropriate types
