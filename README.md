@@ -24,7 +24,7 @@ All kernel configuration parameters can be found in *sysctl.txt*, although they 
 ## Installation
 
 Download and install [Mininet](http://mininet.org/).
-Download [Orca](https://github.com/giacomoni/Orca) and follow the repo's instruction to install it.
+Download [Orca](https://github.com/Aruuni/Orca) and follow the repo's instruction to install it.
 Download [PCC-Uspace](https://github.com/giacomoni/PCC-Uspace) and [PCC-RL](https://github.com/giacomoni/PCC-RL) and follow the repo's instruction to install Aurora.
 
 
