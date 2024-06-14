@@ -37,7 +37,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     net.start()
 
     # Disable segmentation offloading
-    disable_offload(net)
+    #disable_offload(net)
 
     # Network links configuration
     network_config = [NetworkConf('s1', 's2', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),

@@ -7,8 +7,9 @@ results*
 .idea
 nooffload
 parkinglottest
-plots/*.pdf
+plots/
 aurora_analysis/*
 tcp_tracing/*
 *.png
 *.pdf
+Python*

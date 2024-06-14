@@ -208,8 +208,10 @@ class Emulation:
 
         for node_name in self.waitoutput:
             host = self.network.get(node_name)
-            output = host.waitOutput()
             
+            print(host)
+            output = host.waitOutput()
+
             mkdirp(self.path)
             with open( '%s/%s_output.txt' % (self.path, node_name), 'w') as fout:
                 fout.write(output)
@@ -234,12 +236,12 @@ class Emulation:
             self.sysstat = True
             monitors.remove("sysstat")
 
-        for monitor in monitors:
-            node, interface = monitor.split('-')
-            if 's' in node:
-                iface = '%s-%s' % (node, interface)
-                monitor = Process(target=monitor_qlen, args=(iface, interval_sec,'%s/queues' % (self.path)))
-                self.qmonitors.append(monitor)
+        # for monitor in monitors:
+        #     node, interface = monitor.split('-')
+        #     if 's' in node:
+        #         iface = '%s-%s' % (node, interface)
+        #         monitor = Process(target=monitor_qlen, args=(iface, interval_sec,'%s/queues' % (self.path)))
+        #         self.qmonitors.append(monitor)
                 
 
     def start_iperf_server(self, node_name, port=5201, monitor_interval=1):

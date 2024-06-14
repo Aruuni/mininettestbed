@@ -1,9 +1,12 @@
- PROTOCOLS="cubic bbr"
- BANDWIDTHS="100"
- DELAYS="10"
- RUNS="1"
- QMULTS="1"
- FLOWS="2"
+bash setup.sh
+PROTOCOLS="orca"
+BANDWIDTHS="100"
+DELAYS="10"
+RUNS="1"  
+QMULTS="0.2"
+AQMS='fifo'
+FLOWS='4'
+
 
 for bw in $BANDWIDTHS
 do
@@ -13,14 +16,17 @@ for qmult in $QMULTS
 do
 for flow in $FLOWS
 do
-    for protocol in $PROTOCOLS
-    do
-        for run in $RUNS
-        do
-            sudo python3 experiments/fairness_friendly_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
-        done
-    done
-    done
-    done
-    done
-    done
+   for protocol in $PROTOCOLS
+   do
+   for aqm in $AQMS
+   do
+       for run in $RUNS
+       do
+           time sudo python3.7 experiments/fairness_aqm.py $del $bw $qmult $protocol $run $aqm 0 $flow
+       done
+   done
+   done
+   done
+   done
+   done
+done

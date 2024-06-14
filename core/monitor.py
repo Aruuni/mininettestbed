@@ -79,15 +79,12 @@ def monitor_devs_ng(fname="%s/txrate.txt" % default_dir, interval_sec=1):
     Popen(cmd, shell=True).wait()
 
 def start_tcpprobe(path,outfile="cwnd.txt"):
-    os.system("echo 1 > /sys/kernel/debug/tracing/events/tcp/tcp_probe/enable")
-    Popen("cat /sys/kernel/debug/tracing/trace > %s/%s" % (path, outfile),
+    os.system("rmmod tcp_probe; modprobe tcp_probe full=1;")
+    Popen("cat /proc/net/tcpprobe > %s/%s" % (path, outfile),
           shell=True)
 
 def stop_tcpprobe():
-    os.system("echo 0 > /sys/kernel/debug/tracing/events/tcp/tcp_probe/enable")
-    print("Stopping cat")
     Popen("killall -9 cat", shell=True).wait()
-    print("Killed cat")
 
 def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
     monitor = Process(target=monitor_qlen,
