@@ -61,8 +61,8 @@ for mult in QMULTS:
                  total = receiver1_total.join(receiver2_total, how='inner', lsuffix='1', rsuffix='2')[['bandwidth1', 'bandwidth2']]
                  partial = receiver1.join(receiver2, how='inner', lsuffix='1', rsuffix='2')[['bandwidth1', 'bandwidth2']]
 
-                 # total = total.dropna()
-                 # partial = partial.dropna()
+                 total = total.dropna()
+                 partial = partial.dropna()
 
                  goodput_ratios_20.append(partial.min(axis=1)/partial.max(axis=1))
                  goodput_ratios_total.append(total.min(axis=1)/total.max(axis=1))

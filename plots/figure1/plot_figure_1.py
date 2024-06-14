@@ -15,7 +15,7 @@ PROTOCOLS = ['cubic', 'bbr', 'bbr1']
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 QMULTS = [0.2, 1 ,4]
-RUNS = [1, 2]
+RUNS = [1, 2, 3, 4, 5]
 LOSSES=[0]
 
 
@@ -49,7 +49,6 @@ for mult in QMULTS:
                  receiver1_total = pd.read_csv(PATH + '/csvs/x1.csv').reset_index(drop=True)
                  receiver2_total = pd.read_csv(PATH + '/csvs/x2.csv').reset_index(drop=True)
 
-                 print(receiver1_total['time'])
                  receiver1_total['time'] = receiver1_total['time'].apply(lambda x: int(float(x)))
                  receiver2_total['time'] = receiver2_total['time'].apply(lambda x: int(float(x)))
 
@@ -112,7 +111,7 @@ for mult in QMULTS:
    markers, caps, bars = ax.errorbar(cubic_data.index*2, cubic_data['goodput_ratio_20_mean'], yerr=cubic_data['goodput_ratio_20_std'],marker='x',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='cubic')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr_data.index*2,bbr_data['goodput_ratio_20_mean'], yerr=bbr_data['goodput_ratio_20_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr3')
+   markers, caps, bars = ax.errorbar(bbr_data.index*2,bbr_data['goodput_ratio_20_mean'], yerr=bbr_data['goodput_ratio_20_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
    markers, caps, bars = ax.errorbar(bbr1_data.index*2,bbr1_data['goodput_ratio_20_mean'], yerr=bbr1_data['goodput_ratio_20_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr1')

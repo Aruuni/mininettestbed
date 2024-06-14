@@ -41,8 +41,8 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     else:
         print("ERROR: topology \'%s\' not recognised" % topology)
 
-    
-    bdp_in_bytes = int(10*(2**20)*2*delay*(10**-3)/8)
+    #TODO  check this 
+    bdp_in_bytes = int(bw*(2**20)*2*delay*(10**-3)/8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
     
     net = Mininet(topo=topo)

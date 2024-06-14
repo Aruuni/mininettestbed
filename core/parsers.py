@@ -48,7 +48,7 @@ def parse_tcp_probe_output(file, address, key='source'):
         lines = f.readlines()
 
     # Split each line by whitespace and create a list of lists
-    # [print(line.strip().split()) for line in lines]
+
     data = [line.strip().split() for line in lines]
     data = [row for row in data if len(row) == 18]
     # Remove 'varname=' from numerical values in each row
@@ -66,6 +66,8 @@ def parse_tcp_probe_output(file, address, key='source'):
     df = pd.DataFrame(data, columns=columns)
     
     # Convert the data types of the columns as needed
+    min_time = df['time'].min()
+    df['time'] = df['time'].astype(float) - min_time
     df['time'] = df['time'].astype(float)
     df['sequence_number'] = df['sequence_number'].apply(lambda x: int(x.split('=')[1], 0) if '=' in x else int(x, 0))
     df['ack_number'] = df['ack_number'].apply(lambda x: int(x.split('=')[1], 0) if '=' in x else int(x, 0))

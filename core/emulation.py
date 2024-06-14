@@ -60,6 +60,7 @@ class Emulation:
             
             if delay and not bw:
                 cmd = 'sudo tc qdisc %s dev %s root handle 1:0 netem delay %sms limit %s' % (command, intf_name, delay,  100000)
+                #print(cmd)
                 if (loss is not None) and (float(loss) > 0):
                     cmd += " loss %s%%" % (loss)
                 if aqm == 'fq_codel':
@@ -72,6 +73,7 @@ class Emulation:
             elif bw and not delay:
                 burst = int(10*bw*(2**20)/250/8)
                 cmd = 'sudo tc qdisc %s dev %s root handle 1:0 tbf rate %smbit burst %s limit %s ' % (command, intf_name, bw, burst, qsize)
+                #print(cmd)
                 if aqm == 'fq_codel':
                     cmd += "&& sudo tc qdisc %s dev %s parent 1: handle 2: fq_codel limit %s target 5ms interval 100ms flows 100" % (command, intf_name,     int(qsize/1500))
                 elif aqm == 'codel':
@@ -82,6 +84,7 @@ class Emulation:
             elif delay and bw:
                 burst = int(10*bw*(2**20)/250/8)
                 cmd = 'sudo tc qdisc %s dev %s root handle 1:0 netem delay %sms limit %s && sudo tc qdisc %s dev %s parent 1:1 handle 10:0 tbf rate %smbit burst %s limit %s ' % (command, intf_name, delay,    100000, command, intf_name, bw, burst, qsize)
+                #print(cmd)
                 if aqm == 'fq_codel':
                     cmd += "&& sudo tc qdisc %s dev %s parent 10: handle 20: fq_codel limit %s target 5ms interval 100ms flows 100" % (command, intf_name,     int(qsize/1500))
                 elif aqm == 'codel':
@@ -132,7 +135,7 @@ class Emulation:
 
                 self.sending_nodes.append(source_node)
                 self.receiving_nodes.append(destination)
-
+            # ANSI escape code for green color
             if protocol == 'orca':
                 params = (source_node,duration)
                 command = self.start_orca_sender
@@ -141,38 +144,27 @@ class Emulation:
                 params = (destination,source_node)
                 command = self.start_orca_receiver
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
-              
-            elif protocol == 'cubic':
+            elif protocol != 'aurora' and protocol != 'orca':
                 # Create server start up call
                 params = (destination,)
                 command = self.start_iperf_server
                 self.call_first.append(Command(command, params, None))
 
                 # Create client start up call
-                params = (source_node,destination,duration)
+                params = (source_node,destination,duration, protocol)
                 command = self.start_iperf_client
+                self.call_second.append(Command(command, params, start_time - previous_start_time))
+            elif protocol == 'aurora':
+                # Create server start up call
+                params = (destination, duration)
+                command = self.start_aurora_server
+                self.call_first.append(Command(command, params, None))
+
+                # Create client start up call
+                params = (source_node,destination,duration,"%s/mininettestbed/saved_models/icml_paper_model" % HOME_DIR)
+                command = self.start_aurora_client
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
             
-            elif protocol == 'bbr':
-                # Create server start up call
-                params = (destination,)
-                command = self.start_iperf_server
-                self.call_first.append(Command(command, params, None))
-
-                # Create client start up call
-                params = (source_node,destination,duration)
-                command = self.start_iperf_client
-                self.call_second.append(Command(command, params, start_time - previous_start_time))
-            elif protocol == 'bbr1':
-                # Create server start up call
-                params = (destination,)
-                command = self.start_iperf_server
-                self.call_first.append(Command(command, params, None))
-
-                # Create client start up call
-                params = (source_node,destination,duration)
-                command = self.start_iperf_client
-                self.call_second.append(Command(command, params, start_time - previous_start_time))
             elif protocol == 'tbf' or protocol == 'netem':
                 # Change the tbf rate to the value provided
                 params = list(flowconfig.params)
@@ -192,9 +184,8 @@ class Emulation:
 
         for monitor in self.qmonitors:
             monitor.start()
-
         if self.tcp_probe:
-            start_tcpprobe(self.path,"tcp_probe.txt")
+            start_tcpprobe()
 
         if self.sysstat:
             start_sysstat(1,self.sysstat_length,self.path) 
@@ -221,7 +212,7 @@ class Emulation:
                 monitor.terminate()
 
         if self.tcp_probe:
-            stop_tcpprobe()
+            stop_tcpprobe(self.path,"tcp_probe.txt")
 
         if self.sysstat:
             stop_sysstat(self.path, self.sending_nodes)
@@ -251,10 +242,10 @@ class Emulation:
         print("Sending command '%s' to host %s" % (cmd, node.name))
         node.sendCmd(cmd)
 
-    def start_iperf_client(self, node_name, destination_name, duration, port=5201, monitor_interval=1):
+    def start_iperf_client(self, node_name, destination_name, duration, protocol, port=5201, monitor_interval=1):
         node = self.network.get(node_name)
         destination =  self.network.get(destination_name)
-        iperfArgs = 'iperf3 -p %d -i %s --json ' % (port, monitor_interval)
+        iperfArgs = 'iperf3 -p %d -i %s --congestion %s --json ' % (port, monitor_interval, protocol)
         cmd = iperfArgs + '-t %d -c %s' % (duration, destination.IP())
         print("Sending command '%s' to host %s" % (cmd, node.name))
         node.sendCmd(cmd)
@@ -276,7 +267,7 @@ class Emulation:
     def start_aurora_client(self, node_name, destination_name, duration, model_path, port=9000, perf_interval=1):
         node = self.network.get(node_name)
         destination = self.network.get(destination_name)
-        auroracmd = 'sudo -u %s EXPERIMENT_PATH=%s LD_LIBRARY_PATH=$LD_LIBRARY_PATH:%s/src/core %s/src/app/pccclient send %s %s %s %s --pcc-rate-control=python3 -pyhelper=loaded_client -pypath=%s/src/udt-plugins/testing/ --history-len=10 --pcc-utility-calc=linear --model-path=%s' % (USERNAME, self.path, PCC_USPACE_INSTALL_FOLDER, PCC_USPACE_INSTALL_FOLDER, destination.IP(), port, perf_interval, duration, PCC_RL_INSTALL_FOLDER, model_path)
+        auroracmd = 'sudo -u %s EXPERIMENT_PATH=%s LD_LIBRARY_PATH=$LD_LIBRARY_PATH:%s/src/core %s/src/app/pccclient send %s %s %s %s --pcc-rate-control=python3.7 -pyhelper=loaded_client -pypath=%s/src/udt-plugins/testing/ --history-len=10 --pcc-utility-calc=linear --model-path=%s' % (USERNAME, self.path, PCC_USPACE_INSTALL_FOLDER, PCC_USPACE_INSTALL_FOLDER, destination.IP(), port, perf_interval, duration, PCC_RL_INSTALL_FOLDER, model_path)        
         print("Sending command '%s' to host %s" % (auroracmd, node.name))
         node.sendCmd(auroracmd)
 
