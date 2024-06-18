@@ -11,32 +11,33 @@ plt.rcParams['text.usetex'] = False
 
 def get_aqm_data(BW,aqm, delay, qmult):
 
-    # Fetch per flow goodput
-    goodput_data = {'cubic':
+    # Fetch per flow goodput orcaOriginalData
+    goodput_data = {
+             'orcaHyper-V':
                 {1: pd.DataFrame([], columns=['time','mean', 'std']),
                  2: pd.DataFrame([], columns=['time','mean', 'std']),
                  3: pd.DataFrame([], columns=['time','mean', 'std']),
                  4: pd.DataFrame([], columns=['time','mean', 'std'])},
-             'bbr':
+             'orcaVMWare':
                 {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  2: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  3: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-             'bbr-1sec':
+             'orcaOriginalData':
                 {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  2: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  3: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-             'bbr-7sec':
+             'sageDataOrcaVMWare':
                 {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  2: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  3: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-             'bbr1':
+             'sageDataOrcaHyper-V':
                 {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  2: pd.DataFrame([], columns=['time', 'mean', 'std']),
                  3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 4: pd.DataFrame([], columns=['time', 'mean', 'std'])}
+                 4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
              }
 
     start_time = 0
@@ -75,169 +76,21 @@ def get_aqm_data(BW,aqm, delay, qmult):
            goodput_data[protocol][n+1]['std'] = pd.concat(receivers[n+1], axis=1).std(axis=1)
            goodput_data[protocol][n+1].index = pd.concat(receivers[n+1], axis=1).index
 
-    # Fetch per flow delay
-    delay_data = {'cubic':
-                        {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                    'bbr':
-                        {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                    'bbr-1sec':
-                    {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                        2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                        3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                        4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                    'bbr-7sec':
-                    {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                        2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                        3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                        4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                    'bbr1':
-                        {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         4: pd.DataFrame([], columns=['time', 'mean', 'std'])}
-                    }
 
-    start_time = 0
-    end_time = 100
-    for protocol in PROTOCOLS:
-        BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
-        BDP_IN_PKTS = BDP_IN_BYTES / 1500
-        senders = {1: [], 2: [], 3: [], 4: []}
-        receivers = {1: [], 2: [], 3: [], 4: []}
-        for run in RUNS:
-            PATH = ROOT_PATH + '/%s/Dumbell_%smbit_%sms_%spkts_0loss_%sflows_22tcpbuf_%s/run%s' % (
-            aqm, BW, delay, int(qmult * BDP_IN_PKTS), 4, protocol, run)
-            for n in range(4):
-                if protocol != 'aurora':
-                    if os.path.exists(PATH + '/csvs/c%s_probe.csv' % (n+1)) :
-                        # Compute the avg and std rtt across all samples of both flows
-                        sender = pd.read_csv(PATH + '/csvs/c%s_probe.csv' % (n+1)).reset_index(drop=True)
-                        sender = sender[['time', 'srtt']]
-                        sender['srtt'] = sender['srtt'] / 1000
-                        sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
-
-                        # We need to resample this data to 1 Hz frequency: Truncate time value to seconds, groupby.mean()
-                        sender['time'] = sender['time'].apply(lambda x: int(x))
-                        sender = sender.groupby('time').mean()
-
-                        # sender = sender.drop_duplicates('time')
-                        # sender = sender.set_index('time')
-                        senders[n + 1].append(sender)
-                else:
-                    if os.path.exists(PATH + '/csvs/c%s.csv' % (n+1)) :
-                        sender = pd.read_csv(PATH + '/csvs/c%s.csv' % (n+1)).reset_index(drop=True)
-                        sender = sender[['time', 'rtt']]
-                        sender = sender.rename(columns={'rtt': 'srtt'})
-                        sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
-                        sender = sender.drop_duplicates('time')
-                        sender = sender.set_index('time')
-                        senders[n + 1].append(sender)
-
-
-        # For each flow, receivers contains a list of dataframes with a time and bandwidth column. These dataframes SHOULD have
-        # exactly the same index. Now I can concatenate and compute mean and std
-        for n in range(4):
-            delay_data[protocol][n + 1]['mean'] = pd.concat(senders[n + 1], axis=1).mean(axis=1)
-            delay_data[protocol][n + 1]['std'] = pd.concat(senders[n + 1], axis=1).std(axis=1)
-            delay_data[protocol][n + 1].index = pd.concat(senders[n + 1], axis=1).index
-
-    # Fetch per flow retransmissions
-    retr_data = {'cubic':
-                      {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                  'bbr':
-                      {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                  'bbr-1sec':
-                      {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                  'bbr-7sec':
-                       {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                  'bbr1':
-                      {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       4: pd.DataFrame([], columns=['time', 'mean', 'std'])}
-                  }
-
-    start_time = 0
-    end_time = 100
-    for protocol in PROTOCOLS:
-        BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
-        BDP_IN_PKTS = BDP_IN_BYTES / 1500
-        senders = {1: [], 2: [], 3: [], 4: []}
-        receivers = {1: [], 2: [], 3: [], 4: []}
-        for run in RUNS:
-            PATH = ROOT_PATH + '/%s/Dumbell_%smbit_%sms_%spkts_0loss_%sflows_22tcpbuf_%s/run%s' % (
-                aqm, BW, delay, int(qmult * BDP_IN_PKTS), 4, protocol, run)
-            start_timestamp = 0
-            for n in range(4):
-                if protocol != 'aurora':
-                    if os.path.exists(PATH + '/sysstat/etcp_c%s.log' % (n+1)):
-                        systat = pd.read_csv(PATH + '/sysstat/etcp_c%s.log' % (n+1), sep=';').rename(
-                            columns={"# hostname": "hostname"})
-                        retr = systat[['timestamp', 'retrans/s']]
-
-                        if n == 0:
-                            start_timestamp =  retr['timestamp'].iloc[0]
-
-                        retr['timestamp'] = retr['timestamp'] - start_timestamp + 1
-
-                        retr = retr.rename(columns={'timestamp': 'time'})
-                        retr['time'] = retr['time'].apply(lambda x: int(float(x)))
-                        retr = retr[(retr['time'] >= (start_time + n * 25)) & (retr['time'] <= (end_time + n * 25))]
-                        retr = retr.drop_duplicates('time')
-                        retr = retr.set_index('time')
-                        senders[n + 1].append(retr)
-
-                    else:
-                        print("Folder %s not found" % (PATH))
-                else:
-                    if os.path.exists(PATH + '/csvs/c%s.csv' % (n+1)):
-                        systat = pd.read_csv(PATH + '/csvs/c%s.csv' % (n+1)).rename(
-                            columns={"retr": "retrans/s"})
-                        retr = systat[['time', 'retrans/s']]
-                        retr['time'] = retr['time'].apply(lambda x: int(float(x)))
-                        retr = retr[(retr['time'] >= (start_time + n * 25)) & (retr['time'] <= (end_time + n * 25))]
-                        retr = retr.drop_duplicates('time')
-                        retr = retr.set_index('time')
-                        senders[n + 1].append(retr)
-
-
-        # For each flow, receivers contains a list of dataframes with a time and bandwidth column. These dataframes SHOULD have
-        # exactly the same index. Now I can concatenate and compute mean and std
-        for n in range(4):
-            retr_data[protocol][n + 1]['mean'] = pd.concat(senders[n + 1], axis=1).mean(axis=1)
-            retr_data[protocol][n + 1]['std'] = pd.concat(senders[n + 1], axis=1).std(axis=1)
-            retr_data[protocol][n + 1].index = pd.concat(senders[n + 1], axis=1).index
-
-
-    return goodput_data, delay_data, retr_data
+    return goodput_data
 
 
 def plot_data(data, filename, ylim=None):
-    COLOR = {'cubic': '#0C5DA5',
-             'bbr': '#00B945',
-             'bbr-1sec': '#FF0000',
-             'bbr-7sec': '#7E2F8E',
-             'bbr1': '#FF9500'}
+    COLOR = {
+            'orcaVMWare': '#00B945',     
+            'orcaHyper-V': '#0C5DA5',
+            'orcaOriginalData': '#7E2F8E',
+            'sageDataOrcaVMWare': '#FF9500',
+            'sageDataOrcaHyper-V': '#8B0000'
+            }
+
     LINEWIDTH = 1
-    fig, axes = plt.subplots(nrows=5, ncols=1, figsize=(4, 3), sharex=True, sharey=True)
+    fig, axes = plt.subplots(nrows=5, ncols=1, figsize=(6, 4), sharex=True, sharey=True)
 
     for i, protocol in enumerate(PROTOCOLS):
         ax = axes[i]
@@ -270,8 +123,8 @@ def plot_data(data, filename, ylim=None):
 
 
 if __name__ == "__main__":
-    ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_fairness_aqm"
-    PROTOCOLS = ['cubic', 'bbr', 'bbr-1sec', 'bbr-7sec','bbr1']
+    ROOT_PATH = "/home/sage/mininettestbed/nooffload/results_fairness_aqm"
+    PROTOCOLS = ['orcaVMWare', 'sageDataOrcaVMWare' , 'orcaHyper-V', 'sageDataOrcaHyper-V',  'orcaOriginalData']
     BW = 100
     DELAY = 10
     RUNS = [1, 2, 3, 4, 5]
@@ -284,10 +137,8 @@ if __name__ == "__main__":
         delay_data = {}
         retr_data = {}
         for aqm in AQM_LIST:
-            goodput, delay, retr = get_aqm_data(BW,aqm, DELAY, QMULT)
+            goodput = get_aqm_data(BW,aqm, DELAY, QMULT)
             goodput_data[aqm] = goodput
-            delay_data[aqm] = delay
-            retr_data[aqm] = retr
 
         for format in ['pdf']:
             plot_data(goodput_data, 'aqm_goodput_%smbps_%sms_%smult.%s' % (BW, DELAY, QMULT, format), ylim=[0, 100])

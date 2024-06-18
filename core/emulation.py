@@ -247,13 +247,22 @@ class Emulation:
         destination =  self.network.get(destination_name)
         iperfArgs = 'iperf3 -p %d -i %s --congestion %s --json ' % (port, monitor_interval, protocol)
         cmd = iperfArgs + '-t %d -c %s' % (duration, destination.IP())
+        sscmd = './ss_script.sh 0.001 >> {}.{} &'.format(node.name,'_ss.txt')
         print("Sending command '%s' to host %s" % (cmd, node.name))
         node.sendCmd(cmd)
+        node.sendCmd(sscmd)
 
     def start_orca_sender(self,node_name, duration, port=4444):
         node = self.network.get(node_name)
-        orcacmd = 'sudo -u %s  EXPERIMENT_PATH=%s %s/sender.sh %s %s %s' % (USERNAME, self.path, ORCA_INSTALL_FOLDER, port,  self.orca_flows_counter, duration)
-        print("Sending command '%s' to host %s" % (orcacmd, node.name))
+        
+        orcacmd = 'sudo -u %s  EXPERIMENT_PATH=%s %s/sender.sh %s %s %s ' % (USERNAME, self.path, ORCA_INSTALL_FOLDER, port,  self.orca_flows_counter, duration)
+        orcasscmd = './ss_script.sh 1 %s &' % (self.path + '/' + node.name + '_ss.txt')
+
+
+
+        print("\033[92mSending command '%s' to host %s\033[0m" % (orcacmd, node.name))
+        orcacmd_output = node.cmd(orcasscmd)
+        print("\033[93mSending command '%s' to host %s\033[0m" % (orcasscmd, node.name))
         node.sendCmd(orcacmd)
         self.orca_flows_counter+= 1 
 
@@ -261,7 +270,7 @@ class Emulation:
         node = self.network.get(node_name)
         destination = self.network.get(destination_name)
         orcacmd = 'sudo -u %s %s/receiver.sh %s %s %s' % (USERNAME,ORCA_INSTALL_FOLDER,destination.IP(), port, 0)
-        print("Sending command '%s' to host %s" % (orcacmd, node.name))
+        print("\033[92mSending command '%s' to host %s\033[0m" % (orcacmd, node.name))
         node.sendCmd(orcacmd)
 
     def start_aurora_client(self, node_name, destination_name, duration, model_path, port=9000, perf_interval=1):
