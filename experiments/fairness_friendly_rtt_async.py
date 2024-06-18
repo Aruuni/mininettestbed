@@ -78,8 +78,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     em.configure_network()
     em.configure_traffic()
     monitors = ['s1-eth1', 's2-eth2', 'sysstat']
-    # if protocol != 'aurora':
-    monitors.append('tcp_probe')
+
         
     em.set_monitors(monitors)
     em.run()
@@ -105,13 +104,6 @@ if __name__ == '__main__':
     n_flows = int(sys.argv[8])
     params = {'n':n_flows}
 
-    # Same sysctl as original Orca
-    # os.system('sudo sysctl -w net.ipv4.tcp_wmem="4096 32768 4194304"')
-    os.system('sudo sysctl -w net.ipv4.tcp_low_latency=1')
-    os.system('sudo sysctl -w net.ipv4.tcp_autocorking=0')
-    os.system('sudo sysctl -w net.ipv4.tcp_no_metrics_save=1')
-    # os.system('sudo sysctl -w fs.inotify.max_user_watches=524288')
-    # os.system('sudo sysctl -w fs.inotify.max_user_instances=524288')
 
     print('Loss is %s' % loss)
     run_emulation(topology, protocol, params, bw, delay, qmult, 22, run, aqm, loss, n_flows) #Qsize should be at least 1 MSS.
