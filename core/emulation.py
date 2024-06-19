@@ -227,42 +227,41 @@ class Emulation:
             self.sysstat = True
             monitors.remove("sysstat")
 
-        # for monitor in monitors:
-        #     node, interface = monitor.split('-')
-        #     if 's' in node:
-        #         iface = '%s-%s' % (node, interface)
-        #         monitor = Process(target=monitor_qlen, args=(iface, interval_sec,'%s/queues' % (self.path)))
-        #         self.qmonitors.append(monitor)
+        for monitor in monitors:
+            node, interface = monitor.split('-')
+            if 's' in node:
+                iface = '%s-%s' % (node, interface)
+                monitor = Process(target=monitor_qlen, args=(iface, interval_sec,'%s/queues' % (self.path)))
+                self.qmonitors.append(monitor)
                 
 
     def start_iperf_server(self, node_name, port=5201, monitor_interval=1):
         node = self.network.get(node_name)
         iperfArgs = 'iperf3 -p %d -i %s --one-off --json ' % (port, monitor_interval)
         cmd = iperfArgs + '-s' 
-        print("Sending command '%s' to host %s" % (cmd, node.name))
+        print("\033[94mSending command '%s' to host %s\033[0m" % (cmd, node.name))
         node.sendCmd(cmd)
 
     def start_iperf_client(self, node_name, destination_name, duration, protocol, port=5201, monitor_interval=1):
         node = self.network.get(node_name)
-        destination =  self.network.get(destination_name)
-        iperfArgs = 'iperf3 -p %d -i %s --congestion %s --json ' % (port, monitor_interval, protocol)
-        cmd = iperfArgs + '-t %d -c %s' % (duration, destination.IP())
-        sscmd = './ss_script.sh 0.001 >> {}.{} &'.format(node.name,'_ss.txt')
-        print("Sending command '%s' to host %s" % (cmd, node.name))
-        node.sendCmd(cmd)
-        node.sendCmd(sscmd)
+
+        sscmd = './ss_script.sh 0.01 %s &' % (self.path + '/' + node.name + '_ss.csv')
+        print("\033[94mSending command '%s' to host %s\033[0m" % (sscmd, node.name))
+        node.cmd(sscmd)
+
+        iperfCmd = 'iperf3 -p %d -i %s -C %s --json -t %d -c %s' % (port, monitor_interval, protocol, duration, self.network.get(destination_name).IP())
+        print("\033[94mSending command '%s' to host %s\033[0m" % (iperfCmd, node.name))
+        node.sendCmd(iperfCmd)
 
     def start_orca_sender(self,node_name, duration, port=4444):
         node = self.network.get(node_name)
         
         orcacmd = 'sudo -u %s  EXPERIMENT_PATH=%s %s/sender.sh %s %s %s ' % (USERNAME, self.path, ORCA_INSTALL_FOLDER, port,  self.orca_flows_counter, duration)
-        orcasscmd = './ss_script.sh 1 %s &' % (self.path + '/' + node.name + '_ss.txt')
-
-
+        sscmd = './ss_script.sh 0.01 %s &' % (self.path + '/' + node.name + '_ss.csv')
 
         print("\033[92mSending command '%s' to host %s\033[0m" % (orcacmd, node.name))
-        orcacmd_output = node.cmd(orcasscmd)
-        print("\033[93mSending command '%s' to host %s\033[0m" % (orcasscmd, node.name))
+        node.cmd(sscmd)
+        print("\033[93mSending command '%s' to host %s\033[0m" % (sscmd, node.name))
         node.sendCmd(orcacmd)
         self.orca_flows_counter+= 1 
 

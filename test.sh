@@ -1,5 +1,5 @@
 bash setup.sh
-PROTOCOLS="orca"
+PROTOCOLS="cubic"
 BANDWIDTHS="100"
 DELAYS="2"
 RUNS="1"  
