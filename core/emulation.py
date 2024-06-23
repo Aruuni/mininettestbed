@@ -30,6 +30,7 @@ class Emulation:
         self.tcp_probe = False
 
         self.orca_flows_counter = 0
+        self.sage_flows_counter =0
 
     def configure_network(self, network_config=None):
         if network_config:
@@ -144,15 +145,13 @@ class Emulation:
                 params = (destination,source_node)
                 command = self.start_orca_receiver
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
-            elif protocol != 'aurora' and protocol != 'orca':
-                # Create server start up call
-                params = (destination,)
-                command = self.start_iperf_server
+            elif protocol == 'sage':
+                params = (source_node,duration)
+                command = self.start_sage_sender
                 self.call_first.append(Command(command, params, None))
 
-                # Create client start up call
-                params = (source_node,destination,duration, protocol)
-                command = self.start_iperf_client
+                params = (destination,source_node)
+                command = self.start_sage_receiver
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
             elif protocol == 'aurora':
                 # Create server start up call
@@ -164,7 +163,7 @@ class Emulation:
                 params = (source_node,destination,duration,"%s/mininettestbed/saved_models/icml_paper_model" % HOME_DIR)
                 command = self.start_aurora_client
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
-            
+                
             elif protocol == 'tbf' or protocol == 'netem':
                 # Change the tbf rate to the value provided
                 params = list(flowconfig.params)
@@ -172,6 +171,18 @@ class Emulation:
                 params[0] = self.network.linksBetween(self.network.get(nodes_names[0]), self.network.get(nodes_names[1]))[0]
                 command = self.configure_link
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
+            
+            elif protocol != 'aurora' and protocol != 'orca' and protocol != 'sage':
+                # Create server start up call
+                params = (destination,)
+                command = self.start_iperf_server
+                self.call_first.append(Command(command, params, None))
+
+                # Create client start up call
+                params = (source_node,destination,duration, protocol)
+                command = self.start_iperf_client
+                self.call_second.append(Command(command, params, start_time - previous_start_time))
+
             else:
                 print("ERROR: Protocol %s not recognised. Terminating..." % (protocol))
 
@@ -184,8 +195,6 @@ class Emulation:
 
         for monitor in self.qmonitors:
             monitor.start()
-        if self.tcp_probe:
-            start_tcpprobe()
 
         if self.sysstat:
             start_sysstat(1,self.sysstat_length,self.path) 
@@ -211,18 +220,11 @@ class Emulation:
             if monitor is not None:
                 monitor.terminate()
 
-        if self.tcp_probe:
-            stop_tcpprobe(self.path,"tcp_probe.txt")
-
         if self.sysstat:
             stop_sysstat(self.path, self.sending_nodes)
 
 
     def set_monitors(self, monitors, interval_sec=1):
-        if "tcp_probe" in monitors:
-            self.tcp_probe = True
-            monitors.remove("tcp_probe")
-
         if "sysstat" in monitors:
             self.sysstat = True
             monitors.remove("sysstat")
@@ -253,6 +255,7 @@ class Emulation:
         print("\033[94mSending command '%s' to host %s\033[0m" % (iperfCmd, node.name))
         node.sendCmd(iperfCmd)
 
+
     def start_orca_sender(self,node_name, duration, port=4444):
         node = self.network.get(node_name)
         
@@ -271,6 +274,27 @@ class Emulation:
         orcacmd = 'sudo -u %s %s/receiver.sh %s %s %s' % (USERNAME,ORCA_INSTALL_FOLDER,destination.IP(), port, 0)
         print("\033[92mSending command '%s' to host %s\033[0m" % (orcacmd, node.name))
         node.sendCmd(orcacmd)
+
+
+    def start_sage_sender(self,node_name, duration, port=5555):
+        node = self.network.get(node_name)
+        
+        sagecmd = 'sudo -u %s  EXPERIMENT_PATH=%s %s/sender.sh %s %s %s ' % (USERNAME, self.path, SAGE_INSTALL_FOLDER, port, self.sage_flows_counter, duration)
+        sscmd = './ss_script.sh 0.01 %s &' % (self.path + '/' + node.name + '_ss.csv')
+
+        print("\033[92mSending command '%s' to host %s\033[0m" % (sagecmd, node.name))
+        node.cmd(sscmd)
+        print("\033[93mSending command '%s' to host %s\033[0m" % (sscmd, node.name))
+        node.sendCmd(sagecmd)
+        self.sage_flows_counter+= 1 
+
+    def start_sage_receiver(self, node_name, destination_name, port=5555):
+        node = self.network.get(node_name)
+        destination = self.network.get(destination_name)
+        sagecmd = 'sudo -u %s %s/receiver.sh %s %s %s' % (USERNAME, SAGE_INSTALL_FOLDER,destination.IP(), port, 0)
+        print("\033[92mSending command '%s' to host %s\033[0m" % (sagecmd, node.name))
+        node.sendCmd(sagecmd)
+
 
     def start_aurora_client(self, node_name, destination_name, duration, model_path, port=9000, perf_interval=1):
         node = self.network.get(node_name)
