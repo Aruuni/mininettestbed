@@ -30,7 +30,7 @@ class Emulation:
         self.tcp_probe = False
 
         self.orca_flows_counter = 0
-        self.sage_flows_counter =0
+        self.sage_flows_counter = 0
 
     def configure_network(self, network_config=None):
         if network_config:
