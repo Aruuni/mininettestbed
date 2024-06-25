@@ -13,7 +13,7 @@ import numpy as np
 plt.rcParams['text.usetex'] = False
 
 ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_friendly_intra_rtt_async/fifo" 
-PROTOCOLS = ['cubic', 'bbr', 'bbr-1sec', 'bbr-7sec','bbr1']
+PROTOCOLS = ['cubic', 'orca', 'bbr']
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 QMULTS = [0.2,1,4]
@@ -96,9 +96,11 @@ for mult in QMULTS:
 
    bbr_data = summary_data[summary_data['protocol'] == 'bbr'].set_index('delay')
    cubic_data = summary_data[summary_data['protocol'] == 'cubic'].set_index('delay')
-   bbr1_data = summary_data[summary_data['protocol'] == 'bbr1'].set_index('delay')
-   bbr1sec_data = summary_data[summary_data['protocol'] == 'bbr-1sec'].set_index('delay')
-   bbr7sec_data = summary_data[summary_data['protocol'] == 'bbr-7sec'].set_index('delay')
+   orca_data = summary_data[summary_data['protocol'] == 'orca'].set_index('delay')
+
+   #bbr1_data = summary_data[summary_data['protocol'] == 'bbr1'].set_index('delay')
+   #bbr1sec_data = summary_data[summary_data['protocol'] == 'bbr-1sec'].set_index('delay')
+   #bbr7sec_data = summary_data[summary_data['protocol'] == 'bbr-7sec'].set_index('delay')
    LINEWIDTH = 0.15
    ELINEWIDTH = 0.75
    CAPTHICK = ELINEWIDTH
@@ -115,15 +117,18 @@ for mult in QMULTS:
    markers, caps, bars = ax.errorbar(bbr_data.index*2,bbr_data['goodput_ratio_20_mean'], yerr=bbr_data['goodput_ratio_20_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr1_data.index*2,bbr1_data['goodput_ratio_20_mean'], yerr=bbr1_data['goodput_ratio_20_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr1')
+   markers, caps, bars = ax.errorbar(orca_data.index*2,orca_data['goodput_ratio_20_mean'], yerr=orca_data['goodput_ratio_20_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr1sec_data.index*2,bbr1sec_data['goodput_ratio_20_mean'], yerr=bbr1sec_data['goodput_ratio_20_std'],marker='*',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr-1sec')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr7sec_data.index*2,bbr7sec_data['goodput_ratio_20_mean'], yerr=bbr7sec_data['goodput_ratio_20_std'],marker='.',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr-7sec')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
+   # markers, caps, bars = ax.errorbar(bbr1_data.index*2,bbr1_data['goodput_ratio_20_mean'], yerr=bbr1_data['goodput_ratio_20_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr1')
+   # [bar.set_alpha(0.5) for bar in bars]
+   # [cap.set_alpha(0.5) for cap in caps]
+   # markers, caps, bars = ax.errorbar(bbr1sec_data.index*2,bbr1sec_data['goodput_ratio_20_mean'], yerr=bbr1sec_data['goodput_ratio_20_std'],marker='*',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr-1sec')
+   # [bar.set_alpha(0.5) for bar in bars]
+   # [cap.set_alpha(0.5) for cap in caps]
+   # markers, caps, bars = ax.errorbar(bbr7sec_data.index*2,bbr7sec_data['goodput_ratio_20_mean'], yerr=bbr7sec_data['goodput_ratio_20_std'],marker='.',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr-7sec')
+   # [bar.set_alpha(0.5) for bar in bars]
+   # [cap.set_alpha(0.5) for cap in caps]
    ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio')
    for axis in [ax.xaxis, ax.yaxis]:
        axis.set_major_formatter(ScalarFormatter())

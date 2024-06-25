@@ -144,16 +144,6 @@ class Emulation:
                 params = (destination,source_node)
                 command = self.start_orca_receiver
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
-            elif protocol != 'aurora' and protocol != 'orca':
-                # Create server start up call
-                params = (destination,)
-                command = self.start_iperf_server
-                self.call_first.append(Command(command, params, None))
-
-                # Create client start up call
-                params = (source_node,destination,duration, protocol)
-                command = self.start_iperf_client
-                self.call_second.append(Command(command, params, start_time - previous_start_time))
             elif protocol == 'aurora':
                 # Create server start up call
                 params = (destination, duration)
@@ -171,6 +161,17 @@ class Emulation:
                 nodes_names = params[0]
                 params[0] = self.network.linksBetween(self.network.get(nodes_names[0]), self.network.get(nodes_names[1]))[0]
                 command = self.configure_link
+                self.call_second.append(Command(command, params, start_time - previous_start_time))
+            
+            elif protocol != 'aurora' and protocol != 'orca':
+                # Create server start up call
+                params = (destination,)
+                command = self.start_iperf_server
+                self.call_first.append(Command(command, params, None))
+
+                # Create client start up call
+                params = (source_node,destination,duration, protocol)
+                command = self.start_iperf_client
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
             else:
                 print("ERROR: Protocol %s not recognised. Terminating..." % (protocol))

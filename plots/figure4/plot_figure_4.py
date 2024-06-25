@@ -11,7 +11,7 @@ plt.rcParams['text.usetex'] = False
 
 
 ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_fairness_bw_async/fifo" 
-PROTOCOLS = ['cubic', 'bbr', 'bbr1'] 
+PROTOCOLS = ['cubic', 'bbr', 'orca'] 
 BWS = [10,20,30,40,50,60,70,80,90,100]
 DELAYS = [20]
 QMULTS = [0.2,1,4]
@@ -87,7 +87,7 @@ for mult in QMULTS:
 
    bbr_data = summary_data[summary_data['protocol'] == 'bbr'].set_index('bandwidth')
    cubic_data = summary_data[summary_data['protocol'] == 'cubic'].set_index('bandwidth')
-   bbr1_data = summary_data[summary_data['protocol'] == 'bbr1'].set_index('bandwidth')
+   orca_data = summary_data[summary_data['protocol'] == 'orca'].set_index('bandwidth')
 
    LINEWIDTH = 0.15
    ELINEWIDTH = 0.75
@@ -104,7 +104,7 @@ for mult in QMULTS:
    markers, caps, bars = ax.errorbar(bbr_data.index,bbr_data['goodput_ratio_20_mean'], yerr=bbr_data['goodput_ratio_20_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr1_data.index,bbr1_data['goodput_ratio_20_mean'], yerr=bbr1_data['goodput_ratio_20_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr1')
+   markers, caps, bars = ax.errorbar(orca_data.index,orca_data['goodput_ratio_20_mean'], yerr=orca_data['goodput_ratio_20_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
 

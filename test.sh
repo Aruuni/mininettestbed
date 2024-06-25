@@ -1,5 +1,5 @@
 bash setup.sh
-PROTOCOLS="cubic"
+PROTOCOLS="orca cubic"
 BANDWIDTHS="100"
 DELAYS="2"
 RUNS="1"  
@@ -20,7 +20,7 @@ FLOWS='2'
      do
          for run in $RUNS
          do
-             sudo python experiments/fairness_intra_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
+             time sudo python3.7 experiments/fairness_intra_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
          done
      done
      done

@@ -1,5 +1,6 @@
 #!/bin/bash
-#  PROTOCOLS="cubic orca bbr"
+sudo bash setup.sh
+#  PROTOCOLS="pcc"
 #  BANDWIDTHS="100"
 #  DELAYS="10 20 30 40 50 60 70 80 90 100"
 #  RUNS="1 2 3 4 5"
@@ -18,43 +19,44 @@
 #      do
 #          for run in $RUNS
 #          do
-#              sudo python experiments/fairness_intra_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
+#              time sudo python3.7 experiments/fairness_intra_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
 #          done
 #      done
 #      done
 #      done
 #      done
 #      done
+#done
 
- PROTOCOLS="cubic orca bbr"
- BANDWIDTHS="10 20 30 40 50 60 70 80 90 100"
+ PROTOCOLS="pcc"
+ BANDWIDTHS="90 100"
  DELAYS="20"
  RUNS="1 2 3 4 5"
  QMULTS="0.2 1 4"
  FLOWS="2"
 
- for bw in $BANDWIDTHS
+ for bw in $BANDWIDTHS 
  do
- for del in $DELAYS
- do
- for qmult in $QMULTS
- do
- for flow in $FLOWS
- do
-    for protocol in $PROTOCOLS
+    for del in $DELAYS 
     do
-        for run in $RUNS
+        for qmult in $QMULTS 
         do
-            sudo python experiments/fairness_bw_async.py $del $bw $qmult $protocol $run fifo 0 $flow
+            for flow in $FLOWS 
+            do
+                for protocol in $PROTOCOLS 
+                do
+                    for run in $RUNS 
+                    do
+                        time sudo  python3.7 experiments/fairness_bw_async.py $del $bw $qmult $protocol $run fifo 0 $flow
+                    done
+                done
+            done
         done
     done
-    done
-    done
-    done
-    done
+done
 
 
-PROTOCOLS="cubic orca bbr"
+PROTOCOLS="pcc"
 BANDWIDTHS="100"
 DELAYS="10 20 30 40 50 60 70 80 90 100"
 RUNS="1 2 3 4 5"
@@ -73,7 +75,7 @@ do
     do
         for run in $RUNS
         do
-            sudo python experiments/fairness_friendly_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
+            time sudo python3.7 experiments/fairness_friendly_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
         done
     done
     done
@@ -81,90 +83,38 @@ do
     done
     done
 
-PROTOCOLS="cubic orca bbr"
-BANDWIDTHS="100"
-DELAYS="10 20 30 40 50 60 70 80 90 100"
-RUNS="1 2 3 4 5"
-QMULTS="0.2 1 4"
-FLOWS="2"
 
-for bw in $BANDWIDTHS
-do
-for del in $DELAYS
-do
-for qmult in $QMULTS
-do
-for flow in $FLOWS
-do
-    for protocol in $PROTOCOLS
+
+
+    PROTOCOLS="pcc"
+    BANDWIDTHS="100"
+    DELAYS="50 60 70 80 90 100"
+    RUNS="1 2 3 4 5"
+    QMULTS="0.2 1 4"
+    FLOWS="2"
+
+    for bw in $BANDWIDTHS
     do
-        for run in $RUNS
-        do
-            sudo python experiments/fairness_friendly_rtt_async_inverse.py $del $bw $qmult $protocol $run fifo 0 $flow
-        done
-    done
-    done
-    done
-    done
-    done
-
-
-PROTOCOLS="cubic orca bbr"
-BANDWIDTHS="10 20 30 40 50 60 70 80 90 100"
-DELAYS="20"
-RUNS="1 2 3 4 5"
-QMULTS="0.2 1 4"
-FLOWS="2"
-
-for bw in $BANDWIDTHS
-do
-for del in $DELAYS
-do
-for qmult in $QMULTS
-do
-for flow in $FLOWS
-do
-   for protocol in $PROTOCOLS
-   do
-       for run in $RUNS
-       do
-           sudo python experiments/fairness_friendly_bw_async.py $del $bw $qmult $protocol $run fifo 0 $flow
-       done
-   done
-   done
-   done
-   done
-   done
-
-PROTOCOLS="cubic orca bbr"
-BANDWIDTHS="100"
-DELAYS="10 20 30 40 50 60 70 80 90 100"
-RUNS="1 2 3 4 5"
-QMULTS="0.2 1 4"
-FLOWS="2"
-
-for bw in $BANDWIDTHS
-do
-for del in $DELAYS
-do
-for qmult in $QMULTS
-do
-for flow in $FLOWS
-do
-    for protocol in $PROTOCOLS
+    for del in $DELAYS
     do
-        for run in $RUNS
+    for qmult in $QMULTS
+    do
+    for flow in $FLOWS
+    do
+        for protocol in $PROTOCOLS
         do
-            sudo python experiments/fairness_inter_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
+            for run in $RUNS
+            do
+                time sudo python3.7 experiments/fairness_inter_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
+            done
         done
-    done
-    done
-    done
-    done
-    done
+        done
+        done
+        done
+        done
   
 
-PROTOCOLS="cubic orca bbr"
+PROTOCOLS="pcc"
 BANDWIDTHS="100"
 DELAYS="10 100"
 RUNS="1 2 3 4 5"  
@@ -187,7 +137,7 @@ do
    do
        for run in $RUNS
        do
-           sudo python experiments/fairness_aqm.py $del $bw $qmult $protocol $run $aqm 0 $flow
+           time sudo python3.7 experiments/fairness_aqm.py $del $bw $qmult $protocol $run $aqm 0 $flow
        done
    done
    done
@@ -197,7 +147,7 @@ do
 done
 
 
-PROTOCOLS="cubic orca bbr"
+PROTOCOLS="pcc"
 BANDWIDTHS="50"
 DELAYS="50"
 RUNS="1"  
@@ -220,7 +170,7 @@ do
    do
        for run in {1..50}
        do
-           sudo python experiments/responsiveness_bw_rtt.py $del $bw $qmult $protocol $run $aqm 0 $flow
+           time sudo python3.7 experiments/responsiveness_bw_rtt.py $del $bw $qmult $protocol $run $aqm 0 $flow
        done
    done
    done
@@ -229,7 +179,7 @@ do
    done
 done
 
-PROTOCOLS="cubic orca bbr"
+PROTOCOLS="pcc"
 BANDWIDTHS="50"
 DELAYS="50"
 RUNS="1"  
@@ -252,7 +202,7 @@ do
    do
        for run in {1..50}
        do
-           sudo python experiments/responsiveness_loss.py $del $bw $qmult $protocol $run $aqm 0 $flow
+           time sudo python3.7 experiments/responsiveness_loss.py $del $bw $qmult $protocol $run $aqm 0 $flow
        done
    done
    done
@@ -260,3 +210,32 @@ do
    done
    done
 done
+
+
+
+# PROTOCOLS="pcc"
+# BANDWIDTHS="100"
+# DELAYS="10 20 30 40 50 60 70 80 90 100"
+# RUNS="1 2 3 4 5"
+# QMULTS="0.2 1 4"
+# FLOWS="2"
+
+# for bw in $BANDWIDTHS
+# do
+# for del in $DELAYS
+# do
+# for qmult in $QMULTS
+# do
+# for flow in $FLOWS
+# do
+#     for protocol in $PROTOCOLS
+#     do
+#         for run in $RUNS
+#         do
+#             time sudo python3.7 experiments/fairness_friendly_rtt_async_inverse.py $del $bw $qmult $protocol $run fifo 0 $flow
+#         done
+#     done
+#     done
+#     done
+#     done
+#     done
