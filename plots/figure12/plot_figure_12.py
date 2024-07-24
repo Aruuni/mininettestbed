@@ -13,31 +13,31 @@ def get_aqm_data(BW,aqm, delay, qmult):
 
     # Fetch per flow goodput orcaOriginalData
     goodput_data = {
-             'orcaHyper-V':
+             'sage':
                 {1: pd.DataFrame([], columns=['time','mean', 'std']),
                  2: pd.DataFrame([], columns=['time','mean', 'std']),
                  3: pd.DataFrame([], columns=['time','mean', 'std']),
                  4: pd.DataFrame([], columns=['time','mean', 'std'])},
-             'orcaVMWare':
-                {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-             'orcaOriginalData':
-                {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-             'sageDataOrcaVMWare':
-                {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-             'sageDataOrcaHyper-V':
-                {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
+            #  'orcaVMWare':
+            #     {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
+            #      2: pd.DataFrame([], columns=['time', 'mean', 'std']),
+            #      3: pd.DataFrame([], columns=['time', 'mean', 'std']),
+            #      4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
+            #  'orcaOriginalData':
+            #     {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
+            #      2: pd.DataFrame([], columns=['time', 'mean', 'std']),
+            #      3: pd.DataFrame([], columns=['time', 'mean', 'std']),
+            #      4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
+            #  'sageDataOrcaVMWare':
+            #     {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
+            #      2: pd.DataFrame([], columns=['time', 'mean', 'std']),
+            #      3: pd.DataFrame([], columns=['time', 'mean', 'std']),
+            #      4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
+            #  'sageDataOrcaHyper-V':
+            #     {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
+            #      2: pd.DataFrame([], columns=['time', 'mean', 'std']),
+            #      3: pd.DataFrame([], columns=['time', 'mean', 'std']),
+            #      4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
              }
 
     start_time = 0
@@ -82,18 +82,18 @@ def get_aqm_data(BW,aqm, delay, qmult):
 
 def plot_data(data, filename, ylim=None):
     COLOR = {
-            'orcaVMWare': '#00B945',     
-            'orcaHyper-V': '#0C5DA5',
-            'orcaOriginalData': '#7E2F8E',
-            'sageDataOrcaVMWare': '#FF9500',
-            'sageDataOrcaHyper-V': '#8B0000'
+            'sage': '#00B945' #,     
+            # 'orcaHyper-V': '#0C5DA5',
+            # 'orcaOriginalData': '#7E2F8E',
+            # 'sageDataOrcaVMWare': '#FF9500',
+            # 'sageDataOrcaHyper-V': '#8B0000'
             }
 
     LINEWIDTH = 1
-    fig, axes = plt.subplots(nrows=5, ncols=1, figsize=(6, 4), sharex=True, sharey=True)
+    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(6, 2), sharex=True, sharey=True)
 
     for i, protocol in enumerate(PROTOCOLS):
-        ax = axes[i]
+        ax = axes#[i]
         for n in range(4):
             ax.plot(data['fifo'][protocol][n + 1].index, data['fifo'][protocol][n + 1]['mean'],
                     linewidth=LINEWIDTH, label=protocol)
@@ -124,7 +124,7 @@ def plot_data(data, filename, ylim=None):
 
 if __name__ == "__main__":
     ROOT_PATH = "/home/sage/mininettestbed/nooffload/results_fairness_aqm"
-    PROTOCOLS = ['orcaVMWare', 'sageDataOrcaVMWare' , 'orcaHyper-V', 'sageDataOrcaHyper-V',  'orcaOriginalData']
+    PROTOCOLS = ['sage'] # , 'sageDataOrcaVMWare' , 'orcaHyper-V', 'sageDataOrcaHyper-V',  'orcaOriginalData']
     BW = 100
     DELAY = 10
     RUNS = [1, 2, 3, 4, 5]

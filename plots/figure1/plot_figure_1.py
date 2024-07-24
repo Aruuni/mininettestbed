@@ -127,7 +127,7 @@ for mult in QMULTS:
    # remove the errorbars
    handles = [h[0] for h in handles]
 
-   legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.08),columnspacing=0.8,handletextpad=0.5)
+   legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.08),columnspacing=0.8, handletextpad=0.9)
    # ax.grid()
 
    for format in ['pdf']:

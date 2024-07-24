@@ -6,10 +6,10 @@ if [ "$#" -ne 2 ]; then
     exit 1
 fi
 
-echo "time,rtt,cwnd,bytes_sent,bytes_retrans,bytes_acked,retrans,minrtt" >> "$2"
+echo "time,rtt,cwnd,minrtt" >> "$2"
 while true; do
     ./ss -tin | sed -En \
-        -e 's/.*rtt:([0-9]*\.?[0-9]+).* cwnd:([0-9]*).* bytes_sent:([0-9]*).* bytes_retrans:([0-9]*).* bytes_acked:([0-9]*).* retrans:([0-9]*\/[0-9]*).* minrtt:([0-9]*).*/\1,\2,\3,\4,\5,\6,\7,/p' \
+        -e 's/.*rtt:([0-9]*\.?[0-9]+).* cwnd:([0-9]*).* minrtt:([0-9]*).*/\1,\2,\3,/p' \
         | ts '%.s,' \
         | sed 's/, /,/' \
         >> "$2"

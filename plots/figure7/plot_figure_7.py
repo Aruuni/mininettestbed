@@ -104,15 +104,21 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                     bandwidth_std = None
 
                                 if protocol != 'aurora':
-                                    if os.path.exists(PATH + '/csvs/c%s_probe.csv' % (n + 1)):
+                                    if os.path.exists(PATH + '/c%s_ss.csv' % (n + 1)):
                                         # Compute the avg and std rtt across all samples of both flows
-                                        sender = pd.read_csv(PATH + '/csvs/c%s_probe.csv' % (n + 1)).reset_index(
-                                            drop=True)
-                                        sender = sender[['time', 'srtt']]
-                                        sender['srtt'] = sender['srtt'] / 1000
-                                        sender = sender[(sender['time'] >= (start_time + n * 25)) & (
-                                                    sender['time'] <= (end_time + n * 25))]
+                                        sender = pd.read_csv(PATH + '/c%s_ss.csv' % (n + 1), names=['time', 'rtt', 'cwnd', 'minrtt'], header=None)
+                                        sender = sender.drop(index=0)
+                                        sender = sender[['time', 'rtt']]
+                                        print(PATH)
+                                        sender['time'] = sender['time'].astype(float)
+                                        sender['rtt'] = sender['rtt'].astype(float)
 
+                                        min_time = sender['time'].min()
+
+                                        sender['time'] = sender['time'] - min_time      
+                                        sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
+
+                                        #print(sender.head(10))
                                         # We need to resample this data to 1 Hz frequency: Truncate time value to seconds, groupby.mean()
                                         sender['time'] = sender['time'].apply(lambda x: int(x))
                                         sender = sender.groupby('time').mean()
@@ -133,7 +139,7 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                         if n == 0:
                                             start_timestamp = retr['timestamp'].iloc[0]
 
-                                        retr['timestamp'] = retr['timestamp'] - start_timestamp + 1
+                                        retr.loc[:, 'timestamp'] = retr['timestamp'] - start_timestamp + 1
 
                                         retr = retr.rename(columns={'timestamp': 'time'})
                                         retr['time'] = retr['time'].apply(lambda x: int(float(x)))
@@ -195,7 +201,9 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
 
                                     start_timestamp = util['timestamp'].iloc[0]
 
-                                    util['timestamp'] = util['timestamp'] - start_timestamp + 1
+                                    #util['timestamp'] = util['timestamp'] - start_timestamp + 1
+                                    util.loc[:, 'timestamp'] = util['timestamp'] - start_timestamp + 1
+
 
                                     util = util.rename(columns={'timestamp': 'time'})
                                     util['time'] = util['time'].apply(lambda x: int(float(x)))
@@ -221,7 +229,8 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
 
                                     start_timestamp = util['timestamp'].iloc[0]
 
-                                    util['timestamp'] = util['timestamp'] - start_timestamp + 1
+                                    util.loc[:, 'timestamp'] = util['timestamp'] - start_timestamp + 1
+
 
                                     util = util.rename(columns={'timestamp': 'time'})
                                     util['time'] = util['time'].apply(lambda x: int(float(x)))
@@ -262,23 +271,7 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
 def get_aqm_data(aqm, delay, qmult):
 
     # Fetch per flow goodput
-    goodput_data = {'cubic':
-                {1: pd.DataFrame([], columns=['time','mean', 'std']),
-                 2: pd.DataFrame([], columns=['time','mean', 'std']),
-                 3: pd.DataFrame([], columns=['time','mean', 'std']),
-                 4: pd.DataFrame([], columns=['time','mean', 'std'])},
-             'bbr':
-                {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-             'bbr1':
-                {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                 4: pd.DataFrame([], columns=['time', 'mean', 'std'])}
-             }
-
+    goodput_data = {protocol: {flow: pd.DataFrame(columns=['time', 'mean', 'std']) for flow in range(1,5)} for protocol in PROTOCOLS}
     start_time = 0
     end_time = 100
     for protocol in PROTOCOLS:
@@ -316,22 +309,8 @@ def get_aqm_data(aqm, delay, qmult):
            goodput_data[protocol][n+1].index = pd.concat(receivers[n+1], axis=1).index
 
     # Fetch per flow delay
-    delay_data = {'cubic':
-                        {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                    'bbr':
-                        {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                    'bbr1':
-                        {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                         4: pd.DataFrame([], columns=['time', 'mean', 'std'])}
-                    }
+    delay_data = {protocol: {flow: pd.DataFrame(columns=['time', 'mean', 'std']) for flow in range(1,5)} for protocol in PROTOCOLS}
+
 
     start_time = 0
     end_time = 100
@@ -345,11 +324,13 @@ def get_aqm_data(aqm, delay, qmult):
             aqm, BW, delay, int(qmult * BDP_IN_PKTS), 4, protocol, run)
             for n in range(4):
                 if protocol != 'aurora':
-                    if os.path.exists(PATH + '/csvs/c%s_probe.csv' % (n+1)) :
+                    if os.path.exists(PATH + '/csvs/c%s_ss.csv' % (n+1)) :
                         # Compute the avg and std rtt across all samples of both flows
-                        sender = pd.read_csv(PATH + '/csvs/c%s_probe.csv' % (n+1)).reset_index(drop=True)
-                        sender = sender[['time', 'srtt']]
-                        sender['srtt'] = sender['srtt'] / 1000
+                        sender = pd.read_csv(PATH + '/csvs/c%s_ss.csv' % (n+1)).reset_index(drop=True)
+                        sender = sender[['time', 'rtt']]
+
+                        min_time = sender['time'].min()
+                        sender['time'] = sender['time'] - min_time
                         sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
 
                         # We need to resample this data to 1 Hz frequency: Truncate time value to seconds, groupby.mean()
@@ -378,22 +359,7 @@ def get_aqm_data(aqm, delay, qmult):
             delay_data[protocol][n + 1].index = pd.concat(senders[n + 1], axis=1).index
 
     # Fetch per flow retransmissions
-    retr_data = {'cubic':
-                      {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                  'bbr':
-                      {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                  'bbr1':
-                      {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                       4: pd.DataFrame([], columns=['time', 'mean', 'std'])}
-                  }
+    retr_data = {protocol: {flow: pd.DataFrame(columns=['time', 'mean', 'std']) for flow in range(1,5)} for protocol in PROTOCOLS}
 
     start_time = 0
     end_time = 100
@@ -451,9 +417,7 @@ def get_aqm_data(aqm, delay, qmult):
 
 
 def plot_data(data, filename, ylim=None):
-    COLOR = {'cubic': '#0C5DA5',
-             'bbr': '#00B945',
-             'bbr1': '#FF9500'}
+
     LINEWIDTH = 1
     fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(4, 3), sharex=True, sharey=True)
 
@@ -478,7 +442,7 @@ def plot_data(data, filename, ylim=None):
         if i == 2:
             ax.set(xlabel='time (s)')
         # ax.set(title='%s' % protocol)
-        ax.text(70, 1.8, '%s' % protocol, va='center', c=COLOR[protocol])
+        ax.text(70, 1.8, '%s' % protocol, va='center')
         ax.grid()
 
     # fig.suptitle("%s Mbps, %s RTT, %sxBDP" % (BW, 2*DELAY, QMULTS))
@@ -489,7 +453,7 @@ def plot_data(data, filename, ylim=None):
 
 if __name__ == "__main__":
     ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_fairness_aqm"
-    PROTOCOLS = ['cubic', 'bbr', 'bbr1']
+    PROTOCOLS = ['cubic', 'bbr', 'orca' , 'sage' , 'pcc']
     DELAYS = [10,100]
     RUNS = [1, 2, 3, 4, 5]
     QMULTS = [0.2,1,4]
@@ -507,7 +471,9 @@ if __name__ == "__main__":
 
     COLOR_MAP = {'cubic': 'blue',
                  'bbr': 'green',
-                 'bbr1': 'orange'}
+                 'orca': 'orange',
+                 'sage': 'purple',
+                 'pcc':'red'}
     MARKER_MAP = {10: '^',
                  100: '*'}
 
@@ -526,8 +492,7 @@ if __name__ == "__main__":
                     confidence_ellipse(x, y, axes, facecolor=COLOR_MAP[protocol], edgecolor='none', alpha=0.25)
 
         handles, labels = axes.get_legend_handles_labels()
-        legend = fig.legend(handles, labels, ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.2), columnspacing=0.001,
-                            handletextpad=0.001)
+        legend = fig.legend(handles, labels, ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.5), columnspacing=0.001, handletextpad=0.001)
         axes.set( ylabel="Norm. Throughput", xlabel="Norm. Delay", ylim=[0,1])
         axes.invert_xaxis()
         for format in ['pdf']:

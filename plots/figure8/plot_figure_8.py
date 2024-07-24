@@ -6,12 +6,11 @@ plt.style.use('science')
 import os
 from matplotlib.ticker import ScalarFormatter
 import numpy as np
-
 plt.rcParams['text.usetex'] = False
 
-
-ROOT_PATH =  "/home/mihai/mininettestbed/nooffload/results_fairness_bw_async/fifo" 
-PROTOCOLS = ['cubic', 'bbr', 'bbr1'] # aur is bbr1
+HOME_DIR = "/home/mihai"
+ROOT_PATH =  f"{HOME_DIR}/mininettestbed/nooffload/results_fairness_bw_async/fifo" 
+PROTOCOLS = ['cubic', 'bbr', 'orca', 'sage', 'pcc']
 BWS = [10,20,30,40,50,60,70,80,90,100]
 DELAYS = [20]
 QMULTS = [0.2,1,4]
@@ -31,17 +30,39 @@ for mult in QMULTS:
 
            for run in RUNS:
               PATH = ROOT_PATH + '/Dumbell_%smbit_%sms_%spkts_0loss_2flows_22tcpbuf_%s/run%s' % (bw,delay,int(mult * BDP_IN_PKTS),protocol,run)
+              if protocol != 'aurora':
+                 if os.path.exists(PATH + '/sysstat/etcp_c1.log'):
+                    systat1 = pd.read_csv(PATH + '/sysstat/etcp_c1.log', sep=';').rename(
+                       columns={"# hostname": "hostname"})
+                    retr1 = systat1[['timestamp', 'retrans/s']]
+                    systat2 = pd.read_csv(PATH + '/sysstat/etcp_c2.log', sep=';').rename(
+                       columns={"# hostname": "hostname"})
+                    retr2 = systat2[['timestamp', 'retrans/s']]
+                    if retr1['timestamp'].iloc[0] <= retr2['timestamp'].iloc[0]:
+                       start_timestamp = retr1['timestamp'].iloc[0]
+                    else:
+                       start_timestamp = retr2['timestamp'].iloc[0]
 
-              if os.path.exists(PATH + '/csvs/c1.csv'):
-                  systat1 = pd.read_csv(PATH + '/csvs/c1.csv').rename(
-                     columns={"retr": "retrans/s"})
-                  retr1 = systat1[['time', 'retrans/s']]
-                  systat2 = pd.read_csv(PATH + '/csvs/c1.csv').rename(
-                     columns={"retr": "retrans/s"})
-                  retr2 = systat2[['time', 'retrans/s']]
-                  valid = True
+                    retr1['timestamp'] = retr1['timestamp'] - start_timestamp + 1
+                    retr2['timestamp'] = retr2['timestamp'] - start_timestamp + 1
+
+                    retr1 = retr1.rename(columns={'timestamp': 'time'})
+                    retr2 = retr2.rename(columns={'timestamp': 'time'})
+                    valid = True
+
+                 else:
+                    valid=False
               else:
-                  valid = False
+                 if os.path.exists(PATH + '/csvs/c1.csv'):
+                    systat1 = pd.read_csv(PATH + '/csvs/c1.csv').rename(
+                       columns={"retr": "retrans/s"})
+                    retr1 = systat1[['time', 'retrans/s']]
+                    systat2 = pd.read_csv(PATH + '/csvs/c1.csv').rename(
+                       columns={"retr": "retrans/s"})
+                    retr2 = systat2[['time', 'retrans/s']]
+                    valid = True
+                 else:
+                    valid = False
 
               if valid:
                  retr1['time'] = retr1['time'].apply(lambda x: int(float(x)))
@@ -73,10 +94,11 @@ for mult in QMULTS:
    summary_data = pd.DataFrame(data,
                               columns=['protocol', 'bandwidth', 'delay', 'delay_ratio','qmult', 'retr_total_mean', 'retr_total_std'])
 
-   bbr_data = summary_data[summary_data['protocol'] == 'bbr'].set_index('bandwidth')
+   orca_data = summary_data[summary_data['protocol'] == 'orca'].set_index('bandwidth')
    cubic_data = summary_data[summary_data['protocol'] == 'cubic'].set_index('bandwidth')
-   bbr1_data = summary_data[summary_data['protocol'] == 'bbr1'].set_index('bandwidth')
-
+   bbr_data = summary_data[summary_data['protocol'] == 'bbr'].set_index('bandwidth')
+   pcc_data = summary_data[summary_data['protocol'] == 'pcc'].set_index('bandwidth')
+   sage_data = summary_data[summary_data['protocol'] == 'sage'].set_index('bandwidth')
    LINEWIDTH = 0.15
    ELINEWIDTH = 0.75
    CAPTHICK = ELINEWIDTH
@@ -91,12 +113,19 @@ for mult in QMULTS:
    markers, caps, bars = ax.errorbar(cubic_data.index,cubic_data['retr_total_mean']*1448.0*8.0/(1024.0*1024.0), yerr=(cubic_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),cubic_data['retr_total_std']*1448*8/(1024*1024)),marker='x',elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,linewidth=LINEWIDTH, label='cubic')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr_data.index,bbr_data['retr_total_mean']*1448*8/(1024*1024), yerr=(bbr_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),bbr_data['retr_total_std']*1448*8/(1024*1024)),marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr')
+   markers, caps, bars = ax.errorbar(orca_data.index,orca_data['retr_total_mean']*1448*8/(1024*1024), yerr=(orca_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),orca_data['retr_total_std']*1448*8/(1024*1024)),marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr1_data.index,bbr1_data['retr_total_mean']*1448*8/(1024*1024), yerr=(bbr1_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),bbr1_data['retr_total_std']*1448*8/(1024*1024)),marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr1')
+   markers, caps, bars = ax.errorbar(bbr_data.index,bbr_data['retr_total_mean']*1448*8/(1024*1024), yerr=(bbr_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),bbr_data['retr_total_std']*1448*8/(1024*1024)),marker='.',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbr')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
+   markers, caps, bars = ax.errorbar(pcc_data.index,pcc_data['retr_total_mean']*1448*8/(1024*1024), yerr=(pcc_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),pcc_data['retr_total_std']*1448*8/(1024*1024)),marker='_',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='pcc')
+   [bar.set_alpha(0.5) for bar in bars]
+   [cap.set_alpha(0.5) for cap in caps]
+   markers, caps, bars = ax.errorbar(sage_data.index,sage_data['retr_total_mean']*1448*8/(1024*1024), yerr=(sage_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),sage_data['retr_total_std']*1448*8/(1024*1024)),marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='sage')
+   [bar.set_alpha(0.5) for bar in bars]
+   [cap.set_alpha(0.5) for cap in caps]
+
 
    ax.set(xlabel='Bandwidth (Mbps)', ylabel='Retr. Rate (Mbps)',yscale=SCALE)
    for axis in [ax.xaxis, ax.yaxis]:
@@ -106,7 +135,7 @@ for mult in QMULTS:
    # remove the errorbars
    handles = [h[0] for h in handles]
 
-   legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.08),columnspacing=0.8,handletextpad=0.5)
+   legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.30),columnspacing=0.8,handletextpad=0.5)
    # ax.grid()
 
    for format in ['pdf']:

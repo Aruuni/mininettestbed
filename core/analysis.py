@@ -21,6 +21,7 @@ def process_raw_outputs(path):
         receiver_ip = str(flow[3])
         start_time = int(flow[-3])
         #ADD An ADDITIONAL SPECIAL CASE IF NEEDED 
+        
         if flow[-2] == 'orca':
             port=4444
             # Convert sender output into csv
@@ -30,7 +31,15 @@ def process_raw_outputs(path):
             # Convert receiver output into csv
             df = parse_orca_output(path+"/%s_output.txt" % receiver, start_time)
             df.to_csv("%s/%s.csv" %  (csv_path, receiver),index=False)
+        elif flow[-2] == 'sage':
+            port=5555
+            # Convert sender output into csv
+            df = parse_orca_output(path+"/%s_output.txt" % sender, start_time)
+            df.to_csv("%s/%s.csv" %  (csv_path, sender), index=False)
 
+            # Convert receiver output into csv
+            df = parse_orca_output(path+"/%s_output.txt" % receiver, start_time)
+            df.to_csv("%s/%s.csv" %  (csv_path, receiver),index=False)
         elif flow[-2] == 'aurora':
             # Convert sender output into csv
             df = parse_aurora_output(path+"/%s_output.txt" % sender, start_time)

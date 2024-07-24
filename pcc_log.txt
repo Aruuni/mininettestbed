@@ -1,0 +1,13 @@
+{
+"log version":"njay-1",
+"Experiment Parameters":{
+  "PCC Args":"/home/mihai/PCC-Uspace/src/app/pccserver recv 9000 1 9 "
+},
+"Events":[
+]}
+
+control=python3.7 -pyhelper=loaded_client -pypath=/home/mihai/PCC-RL/src/udt-plugins/testing/ --history-len=10 --pcc-utility-calc=linear --model-path=/home/mihai/mininettestbed/saved_models/icml_paper_model "
+},
+"Events":[
+]}
+
