@@ -2,9 +2,10 @@ from core.utils import *
 from core.monitor import *
 from multiprocessing import Process
 from core.config import *
+from core.common import *
 import time
 import json
-
+import threading 
 class Emulation:
     def __init__(self, network, network_config = None, traffic_config = None, path='.'):
         self.network = network
@@ -28,7 +29,8 @@ class Emulation:
         self.path = path
         self.qmonitors = []
         self.tcp_probe = False
-
+        self.start_time = 0
+        self.flip = False
         self.orca_flows_counter = 0
         self.sage_flows_counter = 0
 
@@ -51,6 +53,7 @@ class Emulation:
     
     def configure_link(self, link, bw, delay, qsize, bidir, aqm='fifo', loss=None, command='add'):
         interfaces = [link.intf1, link.intf2]
+        printDebug(f"intf 1: {link.intf1}, intf 2: {link.intf2}")
         if bidir:
             n = 2
         else:
@@ -58,8 +61,8 @@ class Emulation:
         for i in range(n):
             intf_name = interfaces[i].name
             node = interfaces[i].node
-            
             if delay and not bw:
+                
                 cmd = 'sudo tc qdisc %s dev %s root handle 1:0 netem delay %sms limit %s' % (command, intf_name, delay,  100000)
                 #print(cmd)
                 if (loss is not None) and (float(loss) > 0):
@@ -97,11 +100,11 @@ class Emulation:
                 print("ERROR: either the delay or bandiwdth must be specified")
 
             if 's' in intf_name:
-                print("Running the following command in root terminal: %s" % cmd)
+                printTC(f"Running the following command in root terminal: {cmd}" )
                 # os.system("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
                 os.system(cmd)
             else:
-                print("Running the following command in %s's terminal: %s" % (node.name, cmd))
+                printTC("Running the following command in %s's terminal: %s" % (node.name, cmd))
                 # node.cmd("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
                 node.cmd(cmd)
 
@@ -130,13 +133,13 @@ class Emulation:
             destination = flowconfig.dest
             protocol = flowconfig.proto
 
-            if protocol != 'tbf' and protocol != 'netem':
+            if protocol != 'tbf' and protocol != 'netem' and protocol != 'cross_traffic':
                 self.waitoutput.append(source_node)
                 self.waitoutput.append(destination)
 
                 self.sending_nodes.append(source_node)
                 self.receiving_nodes.append(destination)
-            # ANSI escape code for green color
+
             if protocol == 'orca':
                 params = (source_node,duration)
                 command = self.start_orca_sender
@@ -145,6 +148,7 @@ class Emulation:
                 params = (destination,source_node)
                 command = self.start_orca_receiver
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
+
             elif protocol == 'sage':
                 params = (source_node,duration)
                 command = self.start_sage_sender
@@ -153,6 +157,7 @@ class Emulation:
                 params = (destination,source_node)
                 command = self.start_sage_receiver
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
+
             elif protocol == 'aurora':
                 # Create server start up call
                 params = (destination, duration)
@@ -171,7 +176,7 @@ class Emulation:
                 params[0] = self.network.linksBetween(self.network.get(nodes_names[0]), self.network.get(nodes_names[1]))[0]
                 command = self.configure_link
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
-            
+
             elif protocol != 'aurora' and protocol != 'orca' and protocol != 'sage':
                 # Create server start up call
                 params = (destination,)
@@ -186,13 +191,11 @@ class Emulation:
             else:
                 print("ERROR: Protocol %s not recognised. Terminating..." % (protocol))
 
-
             previous_start_time = start_time
 
     def run(self):
         for call in self.call_first:
             call.command(*call.params)
-
         for monitor in self.qmonitors:
             monitor.start()
 
@@ -201,21 +204,21 @@ class Emulation:
             # run sysstat on each sender to collect ETCP and UDP stats
             for node_name in self.sending_nodes:
                 start_sysstat(1,self.sysstat_length,self.path, self.network.get(node_name))
-          
+
         for call in self.call_second:
             time.sleep(call.waiting_time)
             call.command(*call.params)
+        
 
         for node_name in self.waitoutput:
             host = self.network.get(node_name)
-            
-            print(host)
-            output = host.waitOutput()
-
+            printDebug2("Waiting for %s to finish" % node_name)
+            #printDebug3(host.waitOutput(verbose = True))
+            output = host.waitOutput(verbose = True)
             mkdirp(self.path)
             with open( '%s/%s_output.txt' % (self.path, node_name), 'w') as fout:
                 fout.write(output)
-        
+        printDebug2("All flows have finished")
         for monitor in self.qmonitors:
             if monitor is not None:
                 monitor.terminate()
@@ -235,44 +238,67 @@ class Emulation:
                 iface = '%s-%s' % (node, interface)
                 monitor = Process(target=monitor_qlen, args=(iface, interval_sec,'%s/queues' % (self.path)))
                 self.qmonitors.append(monitor)
-                
 
-    def start_iperf_server(self, node_name, port=5201, monitor_interval=1):
+    def shift_traffic(self, delay=3):
+
+        printDebug3("Shifting traffic")
+
+
+
+        print("Updating flow rules")
+        self.network.configLinkStatus('s1a', 's1b', 'up')
+        self.network.configLinkStatus('s3a', 's3b', 'up')
+        self.network.configLinkStatus('s2b', 's3b', 'down')
+        self.network.configLinkStatus('s1b', 's2b', 'down')
+        node = self.network.get('s1a')
+        printDebug3(node.cmd('ifconfig'))
+        #self.network.configLinkStatus('s1a', 's1b', 'down')
+        print("Link Status:")
+        for link in self.network.links:
+            intf1 = link.intf1
+            intf2 = link.intf2
+            status1 = self.network.configLinkStatus(intf1.node, intf2.node, 'status')
+            print(f"{intf1.node}-{intf1} <-> {intf2.node}-{intf2} : {status1}")
+
+
+
+    def start_iperf_server(self, node_name, port=5201, monitor_interval=0.1):
         node = self.network.get(node_name)
-        iperfArgs = 'iperf3 -p %d -i %s --one-off --json ' % (port, monitor_interval)
-        cmd = iperfArgs + '-s' 
-        print("\033[94mSending command '%s' to host %s\033[0m" % (cmd, node.name))
+        cmd = f"iperf3 -p {port} -i {monitor_interval} --one-off --json -s"
+        printIperf3(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
 
     def start_iperf_client(self, node_name, destination_name, duration, protocol, port=5201, monitor_interval=1):
         node = self.network.get(node_name)
 
-        sscmd = './ss_script.sh 0.01 %s &' % (self.path + '/' + node.name + '_ss.csv')
-        print("\033[94mSending command '%s' to host %s\033[0m" % (sscmd, node.name))
+        sscmd = f"./ss_script.sh 0.01 {f"{self.path}/{node.name}_ss.csv"} &" 
+        printIperf3SS(f"mSending command '{sscmd}' to host {node.name}")
         node.cmd(sscmd)
 
-        iperfCmd = 'iperf3 -p %d -i %s -C %s --json -t %d -c %s' % (port, monitor_interval, protocol, duration, self.network.get(destination_name).IP())
-        print("\033[94mSending command '%s' to host %s\033[0m" % (iperfCmd, node.name))
+        iperfCmd = f"iperf3 -p {port} -i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}" 
+        printIperf3(f"Sending command '{iperfCmd}' to host {node.name}")
         node.sendCmd(iperfCmd)
 
 
     def start_orca_sender(self,node_name, duration, port=4444):
         node = self.network.get(node_name)
         
-        orcacmd = 'sudo -u %s  EXPERIMENT_PATH=%s %s/sender.sh %s %s %s ' % (USERNAME, self.path, ORCA_INSTALL_FOLDER, port,  self.orca_flows_counter, duration)
-        sscmd = './ss_script.sh 0.01 %s &' % (self.path + '/' + node.name + '_ss.csv')
-
-        print("\033[92mSending command '%s' to host %s\033[0m" % (orcacmd, node.name))
+        sscmd = f"./ss_script.sh 0.01 {(self.path + '/' + node.name + '_ss.csv')} &"
+        printOrcaSS(f"Sending command '{orcacmd}' to host {node.name}")
         node.cmd(sscmd)
-        print("\033[93mSending command '%s' to host %s\033[0m" % (sscmd, node.name))
+        
+        orcacmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {ORCA_INSTALL_FOLDER}/sender.sh {port} {self.orca_flows_counter} {duration}"  
+        printOrca(f"Sending command '{sscmd}' to host {node.name}")
         node.sendCmd(orcacmd)
+
         self.orca_flows_counter+= 1 
 
     def start_orca_receiver(self, node_name, destination_name, port=4444):
         node = self.network.get(node_name)
         destination = self.network.get(destination_name)
-        orcacmd = 'sudo -u %s %s/receiver.sh %s %s %s' % (USERNAME,ORCA_INSTALL_FOLDER,destination.IP(), port, 0)
-        print("\033[92mSending command '%s' to host %s\033[0m" % (orcacmd, node.name))
+
+        orcacmd = f"sudo -u {USERNAME} {ORCA_INSTALL_FOLDER}/receiver.sh {destination.IP()} {port} {0}"
+        printOrca(f"Sending command '{orcacmd}' to host {node.name}")
         node.sendCmd(orcacmd)
 
 

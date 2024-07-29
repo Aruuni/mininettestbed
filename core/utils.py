@@ -18,6 +18,17 @@ def mkdirp( path ):
         if not os.path.isdir( path ):
             raise
 
+def rmdirp(path):
+    try:
+        for root, dirs, files in os.walk(path, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
+        os.rmdir(path)
+    except OSError as e:
+        if os.path.isdir(path):
+            raise
 
 def convert_to_mega_units(string):
     value, units = string.split(" ")
@@ -71,3 +82,45 @@ def disable_offload(net):
 
 
 
+RESET = "\033[0m"
+
+def printDebug(string):
+    start = "\033[95m" # pink
+    print(f"{start}{string}{RESET}")
+def printDebug2(string):
+    start = "\033[103m" # yellow
+    print(f"{start}{string}{RESET}")
+def printDebug3(string):
+    start = "\033[42m\033[30m" # green
+    print(f"{start}{string}{RESET}")
+
+
+
+
+def printIperf3(string):
+    start = "\033[104m" # background blue
+    print(f"{start}{string}{RESET}")
+def printIperf3SS(string):
+    start = "\033[94m" # blue
+    print(f"{start}{string}{RESET}")
+
+
+def printOrca(string):
+    start = "\033[102m" # backgroundgreen
+    print(f"{start}{string}{RESET}")
+def printOrcaSS(string):
+    start = "\033[32m" # green
+    print(f"{start}{string}{RESET}")
+
+
+def printSage(string):
+    start = "\033[31m" # red
+    print(f"{start}{string}{RESET}")
+
+def printSS(string):
+    start = "\033[33m" # red
+    print(f"{start}{string}{RESET}")
+
+def printTC(string):
+    start = "\033[90m" # gray
+    print(f"{start}{string}{RESET}")
