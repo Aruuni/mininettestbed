@@ -240,11 +240,7 @@ class Emulation:
                 self.qmonitors.append(monitor)
 
     def shift_traffic(self, delay=3):
-
         printDebug3("Shifting traffic")
-
-
-
         print("Updating flow rules")
         self.network.configLinkStatus('s1a', 's1b', 'up')
         self.network.configLinkStatus('s3a', 's3b', 'up')
