@@ -16,7 +16,6 @@ from core.analysis import *
 from core.utils import *
 from core.emulation import *
 from core.config import *
-from core.common import *
 
 def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
     if topology == 'DoubleDumbell':
