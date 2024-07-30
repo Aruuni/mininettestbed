@@ -2,14 +2,13 @@
 results/*
 *.zip
 rl_logging
-plots/*.png
 results*
 .idea
 nooffload
 parkinglottest
-plots/
 aurora_analysis/*
 tcp_tracing/*
+pcc_log.txt
 *.png
 *.pdf
 Python*
