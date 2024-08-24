@@ -1,6 +1,5 @@
 from mininet.topo import Topo
 from mininet.node import OVSKernelSwitch, Host
-from core.common import *
 
 class DumbellTopo(Topo):
     "Single bottleneck topology with n pairs of client/servers interconnected by two switches."
