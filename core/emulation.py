@@ -267,7 +267,7 @@ class Emulation:
     def start_iperf_client(self, node_name, destination_name, duration, protocol, port=5201, monitor_interval=1):
         node = self.network.get(node_name)
 
-        sscmd = f"./ss_script.sh 0.01 {f"{self.path}/{node.name}_ss.csv"} &" 
+        sscmd = f"./ss_script.sh 0.01 {self.path}/{node.name}_ss.csv &" 
         printIperf3SS(f"mSending command '{sscmd}' to host {node.name}")
         node.cmd(sscmd)
 
