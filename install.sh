@@ -11,6 +11,8 @@ if [[ "$UBUNTU_VERSION" == "16.04" ]]; then
     sudo apt install -y python3-pip openvswitch-testcontroller mininet python3.7 python3.7-dev moreutils sysstat ethtool iperf3
     sudo python3.7 -m pip install pip==20.3.4
     sudo python3.7 -m pip install  mininet numpy==1.18.5 matplotlib==3.1.3 pandas==1.0.5 tensorflow==1.14.0
+    sudo python3.7 -m pip install --ignore-installed --upgrade pexpect
+
 else
     # Execute if on any other Ubuntu version
     sudo apt update
