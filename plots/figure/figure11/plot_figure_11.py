@@ -13,8 +13,15 @@ mpl.rcParams.update({'font.size': 12})
 
 plt.rcParams['text.usetex'] = False
 
+COLOR = {'cubic': '#0C5DA5',
+             'orca': '#00B945',
+             'bbr3': '#FF9500',
+             'bbr': '#FF2C01',
+             'sage': '#845B97',
+             'pcc': '#686868',
+             }
 
-PROTOCOLS = ['cubic', 'bbr', 'bbr1']
+PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
 BW = 50
 DELAY = 50
 QMULT = 1
@@ -60,7 +67,7 @@ for protocol in PROTOCOLS:
         sender = sender.drop_duplicates('time')
 
         sender = sender.set_index('time')
-        ax.plot(sender.index + 1, sender['bandwidth'],linewidth=LINEWIDTH, label=protocol)
+        ax.plot(sender.index + 1, sender['bandwidth'],linewidth=LINEWIDTH, label=(lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), color=COLOR[protocol])
 
 
 
@@ -112,10 +119,10 @@ for protocol in PROTOCOLS:
         sender = sender.drop_duplicates('time')
 
         sender = sender.set_index('time')
-        ax.plot(sender.index + 1, sender['bandwidth'], linewidth=LINEWIDTH, label=protocol)
+        ax.plot(sender.index + 1, sender['bandwidth'], linewidth=LINEWIDTH, color=COLOR[protocol])
 
 ax.step(list(range(start_time, end_time + 1, 10)), bw_capacities, where='post', color='black',
-        linewidth=0.5, label='bandwidth', alpha=0.5)
+        linewidth=0.5, alpha=0.5)
 ax2.step(list(range(start_time, end_time + 1, 10)), losses, where='post', color='red', linewidth=0.5,
          label='loss rate', linestyle='-.', alpha=0.5)
 ax2.set_ylabel('Loss Rate\n(\%)')
@@ -135,6 +142,6 @@ for handle, label in zip(handles, labels):
 ax.set(xlabel="time (s)")
 fig.text(-0.05,0.5,"Sending Rate (Mbps)", rotation='vertical', va='center', ha='center')
 ax2.yaxis.set_label_coords(1.15, 0.5)
-fig.legend(final_handles, final_labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.19),columnspacing=0.5,handletextpad=0.5, handlelength=1)
+fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.35),columnspacing=0.5,handletextpad=0.5, handlelength=1)
 for format in ['pdf']:
     fig.savefig("joined_sending_rate.%s" % format, dpi=1080)

@@ -46,9 +46,10 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
     
     net = Mininet(topo=topo)
+
     path = "%s/mininettestbed/nooffload/results_responsiveness_bw_rtt/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
     mkdirp(path)
-
+ 
 
 
 

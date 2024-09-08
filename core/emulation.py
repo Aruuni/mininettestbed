@@ -6,8 +6,9 @@ from core.config import *
 import time
 import json
 import threading 
+
 class Emulation:
-    def __init__(self, network, network_config = None, traffic_config = None, path='.'):
+    def __init__(self, network, network_config = None, traffic_config = None, path='.', interval=1):
         self.network = network
         self.network_config = network_config
         self.traffic_config = traffic_config
@@ -22,7 +23,7 @@ class Emulation:
         
         self.sysstat_length = max(flow_lengths)
 
-    
+        self.interval = interval
         self.waitoutput = []
         self.call_first = []
         self.call_second = []
@@ -108,6 +109,8 @@ class Emulation:
                 # node.cmd("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
                 node.cmd(cmd)
 
+ 
+
     def configure_traffic(self, traffic_config=None):
         '''
         This function should return two iterables:
@@ -179,12 +182,12 @@ class Emulation:
 
             elif protocol != 'aurora' and protocol != 'orca' and protocol != 'sage':
                 # Create server start up call
-                params = (destination,)
+                params = (destination, self.interval)
                 command = self.start_iperf_server
                 self.call_first.append(Command(command, params, None))
 
                 # Create client start up call
-                params = (source_node,destination,duration, protocol)
+                params = (source_node,destination,duration, protocol, self.interval)
                 command = self.start_iperf_client
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
 
@@ -256,23 +259,32 @@ class Emulation:
             status1 = self.network.configLinkStatus(intf1.node, intf2.node, 'status')
             print(f"{intf1.node}-{intf1} <-> {intf2.node}-{intf2} : {status1}")
 
+    def start_handovers(self, delay, interval=15):
+        printDebug("Starting handovers")
+        
+        # Perform the handover
+        self.network.configLinkStatus('s1', 's2', 'down')
+        threading.Timer(delay * 3 / 1000, self.network.configLinkStatus, args=('s1', 's2', 'up')).start()
+        
+        # Schedule the next handover after `interval` seconds
+        threading.Timer(interval, self.start_handovers, args=[self, delay, interval]).start()
 
 
-    def start_iperf_server(self, node_name, port=5201, monitor_interval=0.1):
+    def start_iperf_server(self, node_name, monitor_interval=1, port=5201):
         node = self.network.get(node_name)
         cmd = f"iperf3 -p {port} -i {monitor_interval} --one-off --json -s"
         printIperf3(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
 
-    def start_iperf_client(self, node_name, destination_name, duration, protocol, port=5201, monitor_interval=1):
+    def start_iperf_client(self, node_name, destination_name, duration, protocol, monitor_interval=1, port=5201):
         node = self.network.get(node_name)
 
-        sscmd = f"./ss_script.sh 0.01 {f"{self.path}/{node.name}_ss.csv"} &" 
-        printIperf3SS(f"mSending command '{sscmd}' to host {node.name}")
+        sscmd = f"./ss_script.sh 0.01 {self.path}/{node.name}_ss.csv &" 
+        printIperf3SS(f'Sending command {sscmd} to host {node.name}')
         node.cmd(sscmd)
 
         iperfCmd = f"iperf3 -p {port} -i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}" 
-        printIperf3(f"Sending command '{iperfCmd}' to host {node.name}")
+        printIperf3(f'Sending command {iperfCmd} to host {node.name}')
         node.sendCmd(iperfCmd)
 
 
@@ -330,7 +342,6 @@ class Emulation:
         auroracmd = 'sudo -u %s LD_LIBRARY_PATH=$LD_LIBRARY_PATH:%s/src/core %s/src/app/pccserver recv %s %s %s' % (USERNAME,PCC_USPACE_INSTALL_FOLDER,PCC_USPACE_INSTALL_FOLDER,port, perf_interval, duration)
         print("Sending command '%s' to host %s" % (auroracmd, node.name))
         node.sendCmd(auroracmd)
-
 
     def dump_info(self):
         emulation_info = {}

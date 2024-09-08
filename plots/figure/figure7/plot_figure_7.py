@@ -106,13 +106,11 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                 if protocol != 'aurora':
                                     if os.path.exists(PATH + '/c%s_ss.csv' % (n + 1)):
                                         # Compute the avg and std rtt across all samples of both flows
-                                        sender = pd.read_csv(PATH + '/c%s_ss.csv' % (n + 1), names=['time', 'rtt', 'cwnd', 'minrtt'], header=None)
+                                        sender = pd.read_csv(PATH + '/c%s_ss.csv' % (n + 1), names=['time', 'rtt', 'cwnd', 'minrtt', ''], header=None)
                                         sender = sender.drop(index=0)
                                         sender = sender[['time', 'rtt']]
-                                        print(PATH)
                                         sender['time'] = sender['time'].astype(float)
                                         sender['rtt'] = sender['rtt'].astype(float)
-
                                         min_time = sender['time'].min()
 
                                         sender['time'] = sender['time'] - min_time      
@@ -324,9 +322,11 @@ def get_aqm_data(aqm, delay, qmult):
             aqm, BW, delay, int(qmult * BDP_IN_PKTS), 4, protocol, run)
             for n in range(4):
                 if protocol != 'aurora':
-                    if os.path.exists(PATH + '/csvs/c%s_ss.csv' % (n+1)) :
+                    if os.path.exists(PATH + '/c%s_ss.csv' % (n+1)) :
                         # Compute the avg and std rtt across all samples of both flows
-                        sender = pd.read_csv(PATH + '/csvs/c%s_ss.csv' % (n+1)).reset_index(drop=True)
+                        sender = pd.read_csv(PATH + '/c%s_ss.csv' % (n+1), names=['time', 'rtt', 'cwnd', 'minrtt'], header=None)
+                        sender = sender.drop(index=0)
+
                         sender = sender[['time', 'rtt']]
 
                         min_time = sender['time'].min()
@@ -417,6 +417,13 @@ def get_aqm_data(aqm, delay, qmult):
 
 
 def plot_data(data, filename, ylim=None):
+    COLOR = {'cubic': '#0C5DA5',
+             'orca': '#00B945',
+             'bbr3': '#FF9500',
+             'bbr': '#FF2C01',
+             'sage': '#845B97',
+             'pcc': '#686868',
+             }
 
     LINEWIDTH = 1
     fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(4, 3), sharex=True, sharey=True)
@@ -442,7 +449,7 @@ def plot_data(data, filename, ylim=None):
         if i == 2:
             ax.set(xlabel='time (s)')
         # ax.set(title='%s' % protocol)
-        ax.text(70, 1.8, '%s' % protocol, va='center')
+        ax.text(70, 1.8, '%s' % protocol, va='center', c=COLOR[protocol])
         ax.grid()
 
     # fig.suptitle("%s Mbps, %s RTT, %sxBDP" % (BW, 2*DELAY, QMULTS))
@@ -453,7 +460,7 @@ def plot_data(data, filename, ylim=None):
 
 if __name__ == "__main__":
     ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_fairness_aqm"
-    PROTOCOLS = ['cubic', 'bbr', 'orca' , 'sage' , 'pcc']
+    PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
     DELAYS = [10,100]
     RUNS = [1, 2, 3, 4, 5]
     QMULTS = [0.2,1,4]
@@ -469,11 +476,13 @@ if __name__ == "__main__":
     data = df.groupby(['min_delay','qmult','protocol']).mean()
 
 
-    COLOR_MAP = {'cubic': 'blue',
-                 'bbr': 'green',
-                 'orca': 'orange',
-                 'sage': 'purple',
-                 'pcc':'red'}
+    COLOR_MAP = {'cubic': '#0C5DA5',
+             'orca': '#00B945',
+             'bbr3': '#FF9500',
+             'bbr': '#FF2C01',
+             'sage': '#845B97',
+             'pcc': '#686868',
+             }
     MARKER_MAP = {10: '^',
                  100: '*'}
 
@@ -484,7 +493,7 @@ if __name__ == "__main__":
             for delay in DELAYS:
                 if not (delay == 100 and protocol == 'aurora' and CONTROL_VAR == 4):
                     axes.scatter(data.loc[delay,CONTROL_VAR, protocol]['delay_mean']/ (delay*2), data.loc[delay,CONTROL_VAR, protocol]['util_mean']/100 - data.loc[delay,CONTROL_VAR, protocol]['retr_mean']/100, edgecolors=COLOR_MAP[protocol], marker=MARKER_MAP[delay], facecolors='none', alpha=0.25)
-                    axes.scatter(data.loc[delay,CONTROL_VAR, protocol]['delay_mean']/ (delay*2), data.loc[delay,CONTROL_VAR, protocol]['util_mean']/100, edgecolors=COLOR_MAP[protocol], marker=MARKER_MAP[delay], facecolors='none', label='%s-%s' % (protocol, 2*delay))
+                    axes.scatter(data.loc[delay,CONTROL_VAR, protocol]['delay_mean']/ (delay*2), data.loc[delay,CONTROL_VAR, protocol]['util_mean']/100, edgecolors=COLOR_MAP[protocol], marker=MARKER_MAP[delay], facecolors='none', label='%s-%s' % ((lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), delay*2))
                     subset = df[(df['protocol'] == protocol) & (df['qmult'] == CONTROL_VAR)  & (df['min_delay'] == delay)]
                     y = subset['util_mean'].values/100
                     x = subset['delay_mean'].values/(delay*2)

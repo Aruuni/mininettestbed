@@ -25,8 +25,9 @@ class DumbellTopo(Topo):
     
 class DoubleDumbellTopo(Topo):
     "Two dumbbell topologies with n pairs of client/servers interconnected by four switches."
-    def build(self, n=2):
+    def build(self, n=3):
         # First Dumbbell Topology
+        assert n >= 3, "Number of flows must be at least 3 for the parking lot topology, otherwise it is effectively a dumbbell topology."
         switch1a = self.addSwitch('s1a', cls=OVSKernelSwitch, failMode='standalone')
         switch2a = self.addSwitch('s2a', cls=OVSKernelSwitch, failMode='standalone')
         switch3a = self.addSwitch('s3a', cls=OVSKernelSwitch, failMode='standalone')
@@ -71,45 +72,35 @@ class DoubleDumbellTopo(Topo):
 
 class ParkingLot(Topo):
     "Single bottleneck topology with n pairs of client/servers interconnected by two switches."
-    def build(self):
-        switch1 = self.addSwitch('s1', cls=OVSKernelSwitch, failMode='standalone')
-        switch2 = self.addSwitch('s2', cls=OVSKernelSwitch, failMode='standalone')
-        switch3 = self.addSwitch('s3', cls=OVSKernelSwitch, failMode='standalone')
-        switch4 = self.addSwitch('s4', cls=OVSKernelSwitch, failMode='standalone')
-        switch5 = self.addSwitch('s5', cls=OVSKernelSwitch, failMode='standalone')
+    def build(self, n=3):
+        switches = []
+        for i in range(1,n+1,1):
+            switches.append(self.addSwitch('s%s' % i, cls=OVSKernelSwitch, failMode='standalone'))
+        clients = []
+        for i in range(1,n+1,1):
+            clients.append(self.addHost('c%s' % i, cls=Host))
+        servers = []
+        for i in range(1,n+1,1):
+            servers.append(self.addHost('x%s' % i, cls=Host))
+        self.n = n
 
-        self.addLink(switch1, switch2) #s1-eth1 is netem
-        self.addLink(switch2, switch3) #s2-eth2 is first bottleneck (tbf)
-        self.addLink(switch3, switch5) #s3-eth2 is second bottleneck (tbf)
-        self.addLink(switch4, switch3) #s4-eth1 is netem
+        print(switches)
+        print(clients)
+        print(servers)
+        print(switches)
 
-        client1 = self.addHost('c1', cls=Host)
-        client2 = self.addHost('c2', cls=Host)
-        client3 = self.addHost('c3', cls=Host)
-        client4 = self.addHost('c4', cls=Host)
-        client5 = self.addHost('c5', cls=Host)
+        self.addLink(clients[0], switches[0])
+        self.addLink(servers[0], switches[n-1])
 
-        self.addLink(client1, switch1)
-        self.addLink(client2, switch1)
-        self.addLink(client3, switch4)
-        self.addLink(client4, switch4)
-        self.addLink(client5, switch4)
+        for i in range(1,n,1):
+            print(f"({clients[i]} to {switches[i-1]})") 
+            print(f"({servers[i]} to {switches[i]})")
+            self.addLink(clients[i], switches[i-1])
+            self.addLink(servers[i], switches[i])
 
-
-        server1 = self.addHost('x1', cls=Host)
-        server2 = self.addHost('x2', cls=Host)
-        server3 = self.addHost('x3', cls=Host)
-        server4 = self.addHost('x4', cls=Host)
-        server5 = self.addHost('x5', cls=Host)
-
-        self.addLink(server1, switch3)
-        self.addLink(server2, switch5)
-        self.addLink(server3, switch5)
-        self.addLink(server4, switch5)
-        self.addLink(server5, switch5)
 
     def __str__(self):
-        return "ParkingLot"
+        return "ParkingLotTopo(n=%d)" % self.n
 
 
 topos = { 'dumbell': DumbellTopo, 'double_dumbell': DoubleDumbellTopo }

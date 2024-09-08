@@ -56,7 +56,7 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
                         continue
 
 
-                    retr1['timestamp'] = retr1['timestamp'] - start_timestamp + 1
+                    retr1.loc[:, 'timestamp'] = retr1['timestamp'] - start_timestamp + 1
 
                     retr1 = retr1.rename(columns={'timestamp': 'time'})
                     valid = True
@@ -85,10 +85,14 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
     return pd.DataFrame(data, columns=COLUMNS)
 
 COLOR = {'cubic': '#0C5DA5',
-             'bbr': '#00B945',
-             'bbr1': '#FF9500'}
+             'orca': '#00B945',
+             'bbr3': '#FF9500',
+             'bbr': '#FF2C01',
+             'sage': '#845B97',
+             'pcc': '#686868',
+             }
 
-PROTOCOLS = ['cubic', 'bbr', 'bbr1']
+PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
 BW = 50
 DELAY = 50
 QMULT = 1
@@ -108,17 +112,17 @@ for protocol in PROTOCOLS:
     # evaluate the cumulative
     cumulative = np.cumsum(values)
     # plot the cumulative function
-    ax.plot(base[:-1], cumulative/50*100, label="%s-rtt" % protocol, c=COLOR[protocol])
+    ax.plot(base[:-1], cumulative/50*100, label="%s-rtt" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), c=COLOR[protocol])
 
     avg_goodputs = loss_data[loss_data['protocol'] == protocol]['average_retr_rate']
     values, base = np.histogram(avg_goodputs, bins=BINS)
     # evaluate the cumulative
     cumulative = np.cumsum(values)
     # plot the cumulative function
-    ax.plot(base[:-1], cumulative / 50 * 100, label="%s-loss" % protocol, c=COLOR[protocol], linestyle='dashed')
+    ax.plot(base[:-1], cumulative / 50 * 100, label="%s-loss" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), c=COLOR[protocol], linestyle='dashed')
 
 ax.set(xlabel="Average Retr. Rate (Mbps)", ylabel="Percentage of Trials (\%)")
 
-fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.19),columnspacing=0.5,handletextpad=0.5, handlelength=1)
+fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.50),columnspacing=0.5,handletextpad=0.5, handlelength=1)
 for format in ['pdf']:
     fig.savefig("joined_retr_cdf.%s" % format, dpi=720)

@@ -11,7 +11,7 @@ import numpy as np
 
 plt.rcParams['text.usetex'] = False
 #skibidi toilet
-
+PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
 def parse_aurora_output(file, offset):
    with open(file, 'r') as fin:
       auroraOutput = fin.read()
@@ -99,16 +99,19 @@ def parse_orca_output(file, offset):
 if __name__ == "__main__":
     for QMULT in [0.2,1,4]:
         for mode in ['normal', 'inverse']:
-            fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(5,2.5), sharex=True)
-
-            COLORMAP = {'bbr':  '#00B945',
-                        'bbr1': '#FF9500',
-                        'bbr-7sec': '#7E2F8E',
-                        'bbr-1sec': '#FF0000'}
+            fig, axes = plt.subplots(nrows=len(PROTOCOLS), ncols=1, figsize=(5,3), sharex=True)
+            plt.subplots_adjust(hspace=0.5)
+            COLORMAP = {'cubic': '#0C5DA5',
+             'orca': '#00B945',
+             'bbr3': '#FF9500',
+             'bbr': '#FF2C01',
+             'sage': '#845B97',
+             'pcc': '#686868',
+             }
             LEGENDMAP = {}
             BW = 100
-            DELAY = 20
-            PROTOCOLS = ['bbr', 'bbr1', 'bbr-7sec', 'bbr-1sec']
+            DELAY = 50
+            
             RUNS = [1,2,3,4,5]
 
             LINEWIDTH = 1
@@ -118,32 +121,8 @@ if __name__ == "__main__":
             else:
                 ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_friendly_intra_rtt_async/fifo" 
             for FLOWS in [2]:
-               data = {'cubic':
-                          {1: pd.DataFrame([], columns=['time','mean', 'std']),
-                           2: pd.DataFrame([], columns=['time','mean', 'std']),
-                           3: pd.DataFrame([], columns=['time','mean', 'std']),
-                           4: pd.DataFrame([], columns=['time','mean', 'std'])},
-                       'bbr':
-                          {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                           2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                           3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                           4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                       'bbr1':
-                          {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                           2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                           3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                           4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                       'bbr-7sec':
-                          {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                           2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                           3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                           4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                       'bbr-1sec':
-                          {1: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                           2: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                           3: pd.DataFrame([], columns=['time', 'mean', 'std']),
-                           4: pd.DataFrame([], columns=['time', 'mean', 'std'])},
-                       }
+               data = {protocol: {i: pd.DataFrame([], columns=['time', 'mean', 'std']) for i in range(1, 5)} for protocol in PROTOCOLS}
+
 
                start_time = 0
                end_time = 4*DELAY-2
@@ -199,10 +178,10 @@ if __name__ == "__main__":
 
                for n in range(FLOWS):
                    if mode == 'inverse':
-                       LABEL = protocol if n == 0 else 'cubic'
+                       LABEL = (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol) if n == 0 else 'cubic'
                        COLOR = '#0C5DA5' if n == 1 else COLORMAP[protocol]
                    else:
-                       LABEL = protocol if n == 1 else 'cubic'
+                       LABEL = (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol) if n == 1 else 'cubic'
                        COLOR = '#0C5DA5' if n == 0 else COLORMAP[protocol]
 
                    ax.plot(data[protocol][n+1].index, data[protocol][n+1]['mean'], linewidth=LINEWIDTH, label=LABEL, color=COLOR)
@@ -217,6 +196,7 @@ if __name__ == "__main__":
 
 
                ax.set(ylim=[0,100])
+               ax.set(xlim=[0,200])
 
                ax.grid()
 
@@ -226,13 +206,11 @@ if __name__ == "__main__":
                      LEGENDMAP[label] = handle
 
             fig.text(0.5, 0.01, 'time (s)', ha='center')
-            fig.text(0.045, 0.5, 'Goodput (Mbps)', va='center', rotation='vertical')
+            fig.text(0.045, 0.6, 'Goodput (Mbps)', va='center', rotation='vertical')
 
             
             fig.legend(list(LEGENDMAP.values()), list(LEGENDMAP.keys()), loc='upper center',ncol=3, bbox_to_anchor=(0.5, 1.20))
 
             for format in ['pdf']:
                 plt.subplots_adjust(top=1)
-
-
                 plt.savefig('goodput_friendly_%sms_%s_%s.%s' % (DELAY, QMULT, mode, format), dpi=720, bbox_inches='tight')
