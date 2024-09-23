@@ -16,7 +16,7 @@ from core.emulation import *
 from core.config import *
 
 
-def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
+def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
     if topology == 'Dumbell':
         topo = DumbellTopo(**params)
     elif topology == 'ParkingLot':
@@ -33,7 +33,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     net = Mininet(topo=topo)
  
     path = "%s/mininettestbed/nooffload/results_fairness_parking_lot/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
-
+    rmdirp(path)
     mkdirp(path)
     subprocess.call(['chown', '-R' ,USERNAME, path])
 
@@ -48,15 +48,16 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     net.start()
 
-    disable_offload(net)
+    #disable_offload(net)
 
     #network_config = [NetworkConf(f's{i}', f's{i+1}', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),NetworkConf(f's{i}', f's{i+1}' bw, None, qsize_in_bytes, False, aqm, None)]
     bw_config = [NetworkConf(f's{i}', f's{i+1}', bw, delay, qsize_in_bytes, False, aqm, loss) for i in range(1, n_flows,1)]
     delay_config = [NetworkConf(f'c{i}', f's{i-1}', None, 2*delay, 3*qsize_in_bytes, False, aqm, loss) for i in range(2, n_flows+1,1)]
     delay_config.append(NetworkConf('c1', 's1', None, 2*delay, 3*qsize_in_bytes, False, aqm, loss))
     network_config = bw_config + delay_config
-    traffic_config = [TrafficConf(f'c{i}', f'x{i}', 0, duration * 2, protocol) for i in range(1,n_flows+1)]
-    
+    traffic_config = [TrafficConf('c1', 'x1', int(duration/2), int(duration/2)+duration, protocol)]
+    traffic_config = [traffic_config.append(TrafficConf(f'c{i}', f'x{i}', 0, duration * 2, protocol)) for i in range(2,n_flows+1)]
+    print (traffic_config)
     em = Emulation(net, network_config, traffic_config, path)
 
     em.configure_network()
@@ -73,7 +74,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     # Process raw outputs into csv files
     process_raw_outputs(path)
-
+    plot_all(path, n_flows, [flow.start for flow in traffic_config])
 if __name__ == '__main__':
 
     topology = 'ParkingLot'

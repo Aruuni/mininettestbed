@@ -34,6 +34,7 @@ class Emulation:
         self.flip = False
         self.orca_flows_counter = 0
         self.sage_flows_counter = 0
+        self.counter = 0
 
     def configure_network(self, network_config=None):
         if network_config:
@@ -98,12 +99,7 @@ class Emulation:
                     cmd += "&& sudo tc qdisc %s dev %s parent 10: handle 20: sfq perturb 10" % (command, intf_name)
 
             else:
-                print("ERROR: either the delay or bandiwdth must be specified")
-
-            if 's' in intf_name:
-                printTC(f"Running the following command in root terminal: {cmd}" )
-                # os.system("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
-                os.system(cmd)
+                print("ERROR: either the delay or bandiwdth must be specified")should
             else:
                 printTC("Running the following command in %s's terminal: %s" % (node.name, cmd))
                 # node.cmd("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
@@ -197,6 +193,9 @@ class Emulation:
             previous_start_time = start_time
 
     def run(self):
+        """
+        The main function that runs the experiment. It starts the servers, then the clients, and waits for all the flows to finish. The flows "finish" whent the waitOutput of the node returns the full output of its commandline output.
+        """
         for call in self.call_first:
             call.command(*call.params)
         for monitor in self.qmonitors:
@@ -260,23 +259,33 @@ class Emulation:
             print(f"{intf1.node}-{intf1} <-> {intf2.node}-{intf2} : {status1}")
 
     def start_handovers(self, delay, interval=15):
-        printDebug("Starting handovers")
+        printDebug(f"Starting handovers total duration is {self.sysstat_length} seconds")
+        self.counter += 1
         
         # Perform the handover
         self.network.configLinkStatus('s1', 's2', 'down')
         threading.Timer(delay * 3 / 1000, self.network.configLinkStatus, args=('s1', 's2', 'up')).start()
         
         # Schedule the next handover after `interval` seconds
-        threading.Timer(interval, self.start_handovers, args=[self, delay, interval]).start()
+        if (self.counter * interval) < self.sysstat_length:
+            threading.Timer(interval, self.start_handovers, args=[delay, interval]).start()
 
 
-    def start_iperf_server(self, node_name, monitor_interval=1, port=5201):
+    def start_iperf_server(self, node_name: str, monitor_interval=1, port=5201):
+        """
+        Start a one off iperf3 server on the given node with the given port at a default interval of 1 second
+        """
         node = self.network.get(node_name)
         cmd = f"iperf3 -p {port} -i {monitor_interval} --one-off --json -s"
         printIperf3(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
 
-    def start_iperf_client(self, node_name, destination_name, duration, protocol, monitor_interval=1, port=5201):
+    def start_iperf_client(self, node_name: str, destination_name: str, duration: int, protocol: str, monitor_interval=1, port=5201):
+        """
+        Start a iperf3 client on the given node with the given destination and port at a default interval of 1 second. 
+        Additioanlly, the SS script is started on the client node with a default interval of 0.01 seconds (lowest possible). 
+        Later versions of iperf3 will have the rtt and cwnd in its json output.
+        """
         node = self.network.get(node_name)
 
         sscmd = f"./ss_script.sh 0.01 {self.path}/{node.name}_ss.csv &" 
@@ -288,7 +297,10 @@ class Emulation:
         node.sendCmd(iperfCmd)
 
 
-    def start_orca_sender(self,node_name, duration, port=4444):
+    def start_orca_sender(self, node_name: str, duration: int, port=4444):
+        """
+        Start the orca sender on the given node with the given duration and port. Also starts a SS script on the node with an interval of 0.01 seconds for the rtt and cwnd.
+        """
         node = self.network.get(node_name)
         
         sscmd = f"./ss_script.sh 0.01 {(self.path + '/' + node.name + '_ss.csv')} &"
@@ -299,9 +311,13 @@ class Emulation:
         printOrca(f"Sending command '{sscmd}' to host {node.name}")
         node.sendCmd(orcacmd)
 
+        # global flow counter for orca flows
         self.orca_flows_counter+= 1 
 
-    def start_orca_receiver(self, node_name, destination_name, port=4444):
+    def start_orca_receiver(self, node_name: str, destination_name: str, port=4444):
+        """
+        Start the orca receiver on the given node with the given destination and port.
+        """
         node = self.network.get(node_name)
         destination = self.network.get(destination_name)
 
@@ -310,7 +326,7 @@ class Emulation:
         node.sendCmd(orcacmd)
 
 
-    def start_sage_sender(self,node_name, duration, port=5555):
+    def start_sage_sender(self, node_name, duration, port=5555):
         node = self.network.get(node_name)
         
         sagecmd = 'sudo -u %s  EXPERIMENT_PATH=%s %s/sender.sh %s %s %s' % (USERNAME, self.path, SAGE_INSTALL_FOLDER, port, self.sage_flows_counter, duration)

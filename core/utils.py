@@ -1,4 +1,4 @@
-import os
+import os 
 import subprocess
 from collections import namedtuple
 
@@ -11,14 +11,14 @@ NetworkConf.__new__.__defaults__ = (None,) * len(NetworkConf._fields)
 TrafficConf.__new__.__defaults__ = (None,) * len(TrafficConf._fields)
 
 
-def mkdirp( path ):
+def mkdirp(path: str) -> None:
     try:
         os.makedirs( path,0o777 )
     except OSError:
         if not os.path.isdir( path ):
             raise
 
-def rmdirp(path):
+def rmdirp(path: str) -> None:
     try:
         for root, dirs, files in os.walk(path, topdown=False):
             for name in files:

@@ -71,9 +71,11 @@ class DoubleDumbellTopo(Topo):
 
 
 class ParkingLot(Topo):
-    "Single bottleneck topology with n pairs of client/servers interconnected by two switches."
+    """
+    """
     def build(self, n=3):
         switches = []
+        
         for i in range(1,n+1,1):
             switches.append(self.addSwitch('s%s' % i, cls=OVSKernelSwitch, failMode='standalone'))
         clients = []
@@ -84,11 +86,6 @@ class ParkingLot(Topo):
             servers.append(self.addHost('x%s' % i, cls=Host))
         self.n = n
 
-        print(switches)
-        print(clients)
-        print(servers)
-        print(switches)
-
         self.addLink(clients[0], switches[0])
         self.addLink(servers[0], switches[n-1])
 
@@ -98,6 +95,8 @@ class ParkingLot(Topo):
             self.addLink(clients[i], switches[i-1])
             self.addLink(servers[i], switches[i])
 
+        for i in range(1,n,1):
+            self.addLink(switches[i-1], switches[i])    
 
     def __str__(self):
         return "ParkingLotTopo(n=%d)" % self.n

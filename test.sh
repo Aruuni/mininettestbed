@@ -7,7 +7,7 @@ DELAYS="10"
 RUNS="1"  
 QMULTS="1"
 AQMS='fifo'
-FLOWS='5'
+FLOWS='3'
 
 
 for bw in $BANDWIDTHS
