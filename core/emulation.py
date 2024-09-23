@@ -99,7 +99,12 @@ class Emulation:
                     cmd += "&& sudo tc qdisc %s dev %s parent 10: handle 20: sfq perturb 10" % (command, intf_name)
 
             else:
-                print("ERROR: either the delay or bandiwdth must be specified")should
+                print("ERROR: either the delay or bandiwdth must be specified")
+
+            if 's' in intf_name:
+                printTC(f"Running the following command in root terminal: {cmd}" )
+                # os.system("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
+                os.system(cmd)
             else:
                 printTC("Running the following command in %s's terminal: %s" % (node.name, cmd))
                 # node.cmd("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
@@ -195,6 +200,10 @@ class Emulation:
     def run(self):
         """
         The main function that runs the experiment. It starts the servers, then the clients, and waits for all the flows to finish. The flows "finish" whent the waitOutput of the node returns the full output of its commandline output.
+        Also to note: 
+        1. the first flow MUST start at time 0, and any subsequent flows after that can start after, I presume that all flows haev to have an increasing start time. e.g. flow 1 start at time 0, flow 2 starts at time 10 and flow 3 at time 0 will not work.
+
+        TODO: FIX THIS 
         """
         for call in self.call_first:
             call.command(*call.params)
@@ -208,6 +217,7 @@ class Emulation:
                 start_sysstat(1,self.sysstat_length,self.path, self.network.get(node_name))
 
         for call in self.call_second:
+            printDebug3(call.waiting_time)
             time.sleep(call.waiting_time)
             call.command(*call.params)
         
