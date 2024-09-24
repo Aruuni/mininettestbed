@@ -135,7 +135,7 @@ class Emulation:
             duration = flowconfig.duration
             source_node = flowconfig.source
             destination = flowconfig.dest
-            protocol = flowconfig.proto
+            protocol = flowconfig.protocol
 
             if protocol != 'tbf' and protocol != 'netem' and protocol != 'cross_traffic':
                 self.waitoutput.append(source_node)
@@ -166,7 +166,7 @@ class Emulation:
                 # Create server start up call
                 params = (destination, duration)
                 command = self.start_aurora_server
-                self.call_first.append(Command(command, params, None))
+                self.call_first.append(Command(command, params, None, ))
 
                 # Create client start up call
                 params = (source_node,destination,duration,"%s/mininettestbed/saved_models/icml_paper_model" % HOME_DIR)
@@ -183,14 +183,14 @@ class Emulation:
 
             elif protocol != 'aurora' and protocol != 'orca' and protocol != 'sage':
                 # Create server start up call
-                params = (destination, self.interval)
+                params = (destination, 1)
                 command = self.start_iperf_server
-                self.call_first.append(Command(command, params, None))
+                self.call_first.append(Command(command, params, None, destination))
 
                 # Create client start up call
-                params = (source_node,destination,duration, protocol, self.interval)
+                params = (source_node, destination, duration, protocol, self.interval)
                 command = self.start_iperf_client
-                self.call_second.append(Command(command, params, start_time - previous_start_time))
+                self.call_second.append(Command(command, params, start_time, source_node))
 
             else:
                 print("ERROR: Protocol %s not recognised. Terminating..." % (protocol))
@@ -199,30 +199,16 @@ class Emulation:
 
     def run(self):
         """
-        The main function that runs the experiment. It starts the servers, then the clients, and waits for all the flows to finish. The flows "finish" whent the waitOutput of the node returns the full output of its commandline output.
-        Also to note: 
-        1. the first flow MUST start at time 0, and any subsequent flows after that can start after, I presume that all flows haev to have an increasing start time. e.g. flow 1 start at time 0, flow 2 starts at time 10 and flow 3 at time 0 will not work.
+        The main function that runs the experiment. It works by starting the clients first, 
 
-        TODO: FIX THIS 
         """
-        for call in self.call_first:
-            call.command(*call.params)
-        for monitor in self.qmonitors:
-            monitor.start()
+        # def wait_for_output(node_name: str) -> None:
+        #     print("Starting perf")
+        #     start_perf(self.path, self.sending_nodes, self.receiving_nodes)
+        #     print("Finished perf")
 
-        if self.sysstat:
-            start_sysstat(1,self.sysstat_length,self.path) 
-            # run sysstat on each sender to collect ETCP and UDP stats
-            for node_name in self.sending_nodes:
-                start_sysstat(1,self.sysstat_length,self.path, self.network.get(node_name))
-
-        for call in self.call_second:
-            printDebug3(call.waiting_time)
-            time.sleep(call.waiting_time)
-            call.command(*call.params)
-        
-
-        for node_name in self.waitoutput:
+        wait_threads = []
+        def wait_thread(node_name: str) -> None:
             host = self.network.get(node_name)
             printDebug2("Waiting for %s to finish" % node_name)
             #printDebug3(host.waitOutput(verbose = True))
@@ -230,6 +216,34 @@ class Emulation:
             mkdirp(self.path)
             with open( '%s/%s_output.txt' % (self.path, node_name), 'w') as fout:
                 fout.write(output)
+
+        def host_thread(call: Command) -> None:
+            time.sleep(call.waiting_time)
+            call.command(*call.params)
+            t = threading.Thread(target=wait_thread, args=(call.node,))
+            t.start()
+            wait_threads.append(t)
+
+        for call in self.call_first:
+            call.command(*call.params)
+            t = threading.Thread(target=wait_thread, args=(call.node,))
+            t.start()
+            wait_threads.append(t)
+
+        for monitor in self.qmonitors:
+            monitor.start()
+        if self.sysstat:
+            start_sysstat(1,self.sysstat_length,self.path) 
+            # run sysstat on each sender to collect ETCP and UDP stats
+            for node_name in self.sending_nodes:
+                start_sysstat(1,self.sysstat_length,self.path, self.network.get(node_name))
+
+        for call in self.call_second:
+            threading.Thread(target=host_thread, args=(call,)).start()
+        
+        for t in wait_threads:
+            t.join()
+                
         printDebug2("All flows have finished")
         for monitor in self.qmonitors:
             if monitor is not None:
@@ -374,7 +388,7 @@ class Emulation:
         emulation_info['topology'] = str(self.network.topo)
         flows = []
         for config in self.traffic_config:
-            flow = [config.source, config.dest, self.network.get(config.source).IP(), self.network.get(config.dest).IP(), config.start, config.proto, config.params]
+            flow = [config.source, config.dest, self.network.get(config.source).IP(), self.network.get(config.dest).IP(), config.start, config.protocol, config.params]
             flows.append(flow)
         emulation_info['flows'] = flows
         with open(self.path + "/emulation_info.json", 'w') as fout:

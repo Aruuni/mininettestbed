@@ -33,9 +33,10 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     net = Mininet(topo=topo)
  
     path = "%s/mininettestbed/nooffload/results_fairness_parking_lot/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    printDebug3(path)
     rmdirp(path)
     mkdirp(path)
-    subprocess.call(['chown', '-R' ,USERNAME, path])
+    subprocess.call(['sudo','chown', '-R' ,USERNAME, path])
 
 
 
@@ -51,14 +52,19 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     #disable_offload(net)
 
     #network_config = [NetworkConf(f's{i}', f's{i+1}', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),NetworkConf(f's{i}', f's{i+1}' bw, None, qsize_in_bytes, False, aqm, None)]
-    bw_config = [NetworkConf(f's{i}', f's{i+1}', bw, delay, qsize_in_bytes, False, aqm, loss) for i in range(1, n_flows,1)]
+    bw_config = [NetworkConf(f's{i}', f's{i+1}', bw, None, qsize_in_bytes, False, aqm, loss) for i in range(1, n_flows,1)]
     delay_config = [NetworkConf(f'c{i}', f's{i-1}', None, 2*delay, 3*qsize_in_bytes, False, aqm, loss) for i in range(2, n_flows+1,1)]
     delay_config.append(NetworkConf('c1', 's1', None, 2*delay, 3*qsize_in_bytes, False, aqm, loss))
+    #printDebug3(delay_config)
     network_config = bw_config + delay_config
+
     traffic_config = [TrafficConf('c1', 'x1', int(duration/2), int(duration/2)+duration, protocol)]
-    traffic_config = [traffic_config.append(TrafficConf(f'c{i}', f'x{i}', 0, duration * 2, protocol)) for i in range(2,n_flows+1)]
+    #traffic_config = [TrafficConf('c1', 'x1', 0 , duration * 2, protocol)]
+    for i in range(2,n_flows+1):
+        traffic_config.append(TrafficConf(f'c{i}', f'x{i}', 0, duration * 2, protocol)) 
+
     print (traffic_config)
-    em = Emulation(net, network_config, traffic_config, path)
+    em = Emulation(net, network_config, traffic_config, path, 0.1)
 
     em.configure_network()
     #net.pingAll()

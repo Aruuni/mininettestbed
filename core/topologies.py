@@ -74,6 +74,7 @@ class ParkingLot(Topo):
     """
     """
     def build(self, n=3):
+        assert n >= 3, "Number of flows must be at least 3 for the parking lot topology. At one node there is no bw policing as the middle links dont exist, and at 2 is is effectively a dumbbell topology."
         switches = []
         
         for i in range(1,n+1,1):
@@ -90,8 +91,6 @@ class ParkingLot(Topo):
         self.addLink(servers[0], switches[n-1])
 
         for i in range(1,n,1):
-            print(f"({clients[i]} to {switches[i-1]})") 
-            print(f"({servers[i]} to {switches[i]})")
             self.addLink(clients[i], switches[i-1])
             self.addLink(servers[i], switches[i])
 
@@ -102,4 +101,4 @@ class ParkingLot(Topo):
         return "ParkingLotTopo(n=%d)" % self.n
 
 
-topos = { 'dumbell': DumbellTopo, 'double_dumbell': DoubleDumbellTopo }
+topos = { 'dumbell': DumbellTopo, 'double_dumbell': DoubleDumbellTopo, 'parking_lot': ParkingLot }

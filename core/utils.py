@@ -3,8 +3,9 @@ import subprocess
 from collections import namedtuple
 
 NetworkConf = namedtuple("NetworkConf", ['node1', 'node2', 'bw', 'delay', 'qsize', 'bidir', 'aqm', 'loss'])
-TrafficConf = namedtuple("TrafficConf", ['source', 'dest', 'start', 'duration', 'proto', 'params'])
-Command = namedtuple("Command", ['command', 'params', 'waiting_time'])
+TrafficConf = namedtuple("TrafficConf", ['source', 'dest', 'start', 'duration', 'protocol', 'params'])
+
+Command = namedtuple("Command", ['command', 'params', 'waiting_time', 'node'])
 default_dir = '.'
 
 NetworkConf.__new__.__defaults__ = (None,) * len(NetworkConf._fields)
