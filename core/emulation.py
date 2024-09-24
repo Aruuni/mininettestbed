@@ -199,7 +199,7 @@ class Emulation:
 
     def run(self):
         """
-        The main function that runs the experiment. It works by starting the clients first, 
+        The main function that runs the experiment. It works by starting the senders first, the monitors and then the receivers.
 
         """
         # def wait_for_output(node_name: str) -> None:
@@ -209,15 +209,19 @@ class Emulation:
 
         wait_threads = []
         def wait_thread(node_name: str) -> None:
+            """
+            This thread is used to wait for the output of the given node.
+            """
             host = self.network.get(node_name)
-            printDebug2("Waiting for %s to finish" % node_name)
-            #printDebug3(host.waitOutput(verbose = True))
             output = host.waitOutput(verbose = True)
             mkdirp(self.path)
             with open( '%s/%s_output.txt' % (self.path, node_name), 'w') as fout:
                 fout.write(output)
 
         def host_thread(call: Command) -> None:
+            """
+            These threads are used to start the receivers at a specific time, independent of other flows. 
+            """
             time.sleep(call.waiting_time)
             call.command(*call.params)
             t = threading.Thread(target=wait_thread, args=(call.node,))
@@ -239,12 +243,14 @@ class Emulation:
                 start_sysstat(1,self.sysstat_length,self.path, self.network.get(node_name))
 
         for call in self.call_second:
+            # start all the receivers at the same time, they will individually wait for the correct time
             threading.Thread(target=host_thread, args=(call,)).start()
         
+        #here we wait untill all the waitOutput threads are finished, indicating that all flows are done
         for t in wait_threads:
             t.join()
                 
-        printDebug2("All flows have finished")
+        printDebug3("All flows have finished")
         for monitor in self.qmonitors:
             if monitor is not None:
                 monitor.terminate()
