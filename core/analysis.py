@@ -63,7 +63,7 @@ def process_raw_outputs(path):
 
 
 
-def plot_all(path: str, num_flows:int, start_times: list[float]) -> None:
+def plot_all(path: str, num_flows:int, start_times) -> None:
     """
     This function plots goodput (server-side throughput), RTT, and CWND for each flow from the iperf3 output files.
     All flows are plotted on the same graph for each variable (goodput, RTT, and CWND),
