@@ -9,6 +9,8 @@ parkinglottest
 aurora_analysis/*
 tcp_tracing/*
 pcc_log.txt
+*.txt
+*.json
 *.png
 *.pdf
 Python*
