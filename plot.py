@@ -3,7 +3,7 @@ import sys
 import matplotlib.pyplot as plt
 import os
 
-def plot_metrics(num_pairs):
+def plot_metrics(path, num_pairs):
     fig, axs = plt.subplots(5, 1, figsize=(10, 15))
 
     for dumbbell_index in range(1, 3):  # For both dumbbell topologies

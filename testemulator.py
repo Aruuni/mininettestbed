@@ -138,20 +138,7 @@ def configure_routing(net, num_pairs):
 def kill_iperf3():
     os.system('killall iperf3')
 
-def reroute_traffic(net, num_pairs):
-    info("Rerouting traffic from Dumbbell 2 to Dumbbell 1...\n")
-    
-    r1a, r2a, r3a = net.get('r1a', 'r2a', 'r3a')
-    r1b, r2b, r3b = net.get('r1b', 'r2b', 'r3b')
-    # thsi is for the case of HARD handover  ??
-    #r2b.cmd('ifconfig r2b-eth1 down')
 
-    for i in range(1, num_pairs + 1):
-        x2_subnet = f'192.168.{i+3*num_pairs}.0/24'
-        c2_subnet = f'192.168.{i+2*num_pairs}.0/24'
-        r1b.cmd(f'ip route replace {x2_subnet} via 10.0.5.1')
-        r3b.cmd(f'ip route replace {c2_subnet} via 10.0.6.1')
-    
 
 
 
@@ -181,15 +168,7 @@ def run(num_pairs=1, delay1='10ms', delay2='10ms'):
     os.system('sudo rm -f iperf_result_*')
     configure_routing(net, num_pairs)
 
-    # Schedule reroute_traffic to run after 3 seconds using Timer
-    reroute_timer = Timer(3, reroute_traffic, [net, num_pairs])
-    end_timer = Timer(11, kill_iperf3)
-    end_timer.start()   
-    reroute_timer.start()
-
-    # # Run iperf test between client-server pairs
-    run_iperf_test(net, num_pairs)
-
+    # Schedule reroute_traffic re
     # # Wait for the reroute_timer to finish
     reroute_timer.join()
     end_timer.join()

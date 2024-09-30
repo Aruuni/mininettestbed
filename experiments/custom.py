@@ -98,8 +98,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     # Process raw outputs into csv files
     process_raw_outputs(path)
-    start_times = [flow.start for flow in traffic_config]
-    plot_all(path, n_flows, start_times)
+    plot_all(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
 
 if __name__ == '__main__':
 

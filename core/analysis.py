@@ -63,7 +63,7 @@ def process_raw_outputs(path):
 
 
 
-def plot_all(path: str, num_flows:int, start_times) -> None:
+def plot_all(path: str, flows:dict) -> None:
     """
     This function plots goodput (server-side throughput), RTT, and CWND for each flow from the iperf3 output files.
     All flows are plotted on the same graph for each variable (goodput, RTT, and CWND),
@@ -74,16 +74,13 @@ def plot_all(path: str, num_flows:int, start_times) -> None:
     num_flows (int): The number of flows to plot.
     start_times (list): A list of start times for each flow, where start_times[i] corresponds to the start time for flow 'c(i+1)'.
     """
-    if len(start_times) != num_flows:
-        raise ValueError("Number of start times must match the number of flows")
-    
     # Initialize figure with 3 subplots: one for goodput, one for RTT, and one for CWND
     fig, axs = plt.subplots(3, 1, figsize=(10, 12))  # 3 rows: goodput, RTT, CWND
     
     # Iterate over the number of flows and plot the metrics on the same graph
-    for i in range(1, num_flows + 1):
-        flow_client = f'c{i}'  # Client flow name like 'c1', 'c2', etc.
-        flow_server = f'x{i}'  # Server flow name like 'x1', 'x2', etc.
+    for flow in flows:
+        flow_client = flow['src']  # Client flow name like 'c1', 'c2', etc.
+        flow_server = flow['dest']  # Server flow name like 'x1', 'x2', etc.
         
         client_file_path = os.path.join(path, f'{flow_client}_output.txt')
         server_file_path = os.path.join(path, f'{flow_server}_output.txt')
@@ -99,9 +96,9 @@ def plot_all(path: str, num_flows:int, start_times) -> None:
         df_client = parse_iperf_json(client_file_path, 0) if os.path.exists(client_file_path) else pd.DataFrame()
 
         # Add the corresponding start time to the time column to adjust the time series for both client and server
-        df_server['time'] = df_server['time'] + start_times[i - 1]
+        df_server['time'] = df_server['time'] + flow['start']
         if not df_client.empty:
-            df_client['time'] = df_client['time'] + start_times[i - 1]
+            df_client['time'] = df_client['time'] + flow['start']
         
         # Plot goodput (throughput measured at the server)
         axs[0].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')

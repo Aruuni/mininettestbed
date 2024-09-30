@@ -31,10 +31,11 @@ class Emulation:
         self.qmonitors = []
         self.tcp_probe = False
         self.start_time = 0
-        self.flip = False
         self.orca_flows_counter = 0
         self.sage_flows_counter = 0
         self.counter = 0
+
+        self.flip = True
 
     def configure_network(self, network_config=None):
         if network_config:
@@ -110,7 +111,74 @@ class Emulation:
                 # node.cmd("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
                 node.cmd(cmd)
 
- 
+
+
+    def configure_routing(self, num_pairs):
+        "Configure static routing on routers"
+        r1a, r2a, r3a = self.network.get('r1a', 'r2a', 'r3a')
+        r1b, r2b, r3b = self.network.get('r1b', 'r2b', 'r3b')
+
+        # FIRST DUMBBELL
+        r1a.setIP('10.0.1.1/24', intf='r1a-eth0')
+
+        r2a.setIP('10.0.1.2/24', intf='r2a-eth0')
+        r2a.setIP('10.0.2.1/24', intf='r2a-eth1')
+        
+        r3a.setIP('10.0.2.2/24', intf='r3a-eth0')
+
+        r1a.setIP('10.0.5.1/24', intf='r1a-eth1')
+        r3a.setIP('10.0.6.1/24', intf='r3a-eth1')
+        
+        # SECOND DUMBBELL
+        r1b.setIP('10.0.3.1/24', intf='r1b-eth0')
+
+        r2b.setIP('10.0.3.2/24', intf='r2b-eth0')
+        r2b.setIP('10.0.4.1/24', intf='r2b-eth1')
+
+        r3b.setIP('10.0.4.2/24', intf='r3b-eth0')
+
+        r1b.setIP('10.0.5.2/24', intf='r1b-eth1')
+        r3b.setIP('10.0.6.2/24', intf='r3b-eth1')
+
+        # Configure routing for the client-server pairs
+        for i in range(1, num_pairs + 1):
+            # interfaces between 1 and 3 nodes and the c and x nodes in their respective dumbbells
+            r1a.setIP(f'192.168.{i}.1/24', intf=f'r1a-eth{i+1}')
+            r3a.setIP(f'192.168.{i+num_pairs}.1/24', intf=f'r3a-eth{i+1}')
+
+            r1b.setIP(f'192.168.{i+2*num_pairs}.1/24', intf=f'r1b-eth{i+1}')
+            r3b.setIP(f'192.168.{i+3*num_pairs}.1/24', intf=f'r3b-eth{i+1}')
+
+            x1_subnet = f'192.168.{i+num_pairs}.0/24'
+            c1_subnet = f'192.168.{i}.0/24'
+
+            x2_subnet = f'192.168.{i+3*num_pairs}.0/24'
+            c2_subnet = f'192.168.{i+2*num_pairs}.0/24'
+            
+            # Dumbbell 1 
+            r1a.cmd(f'ip route add {x1_subnet} via 10.0.1.2')
+            r2a.cmd(f'ip route add {x1_subnet} via 10.0.2.2')
+            r2a.cmd(f'ip route add {c1_subnet} via 10.0.1.1')
+            r3a.cmd(f'ip route add {c1_subnet} via 10.0.2.1')
+
+
+            # Dumbbell 2
+            r1b.cmd(f'ip route add {x2_subnet} via 10.0.3.2')
+            r2b.cmd(f'ip route add {x2_subnet} via 10.0.4.2')
+            r2b.cmd(f'ip route add {c2_subnet} via 10.0.3.1')
+            r3b.cmd(f'ip route add {c2_subnet} via 10.0.4.1')
+            
+
+            # CROSS-LINKS BETWEEN DUMBBELLS
+            r1a.cmd(f'ip route add {x2_subnet} via 10.0.1.2')
+            r3a.cmd(f'ip route add {x2_subnet} via 10.0.6.2')
+
+            r3a.cmd(f'ip route add {c2_subnet} via 10.0.2.1')
+            r1a.cmd(f'ip route add {c2_subnet} via 10.0.5.2')
+
+            r2a.cmd(f'ip route add {x2_subnet} via 10.0.2.2')
+            r2a.cmd(f'ip route add {c2_subnet} via 10.0.1.1')    
+
 
     def configure_traffic(self, traffic_config=None):
         '''
@@ -271,34 +339,10 @@ class Emulation:
                 monitor = Process(target=monitor_qlen, args=(iface, interval_sec,'%s/queues' % (self.path)))
                 self.qmonitors.append(monitor)
 
-    def shift_traffic(self, delay=3):
-        printDebug3("Shifting traffic")
-        print("Updating flow rules")
-        self.network.configLinkStatus('s1a', 's1b', 'up')
-        self.network.configLinkStatus('s3a', 's3b', 'up')
-        self.network.configLinkStatus('s2b', 's3b', 'down')
-        self.network.configLinkStatus('s1b', 's2b', 'down')
-        node = self.network.get('s1a')
-        printDebug3(node.cmd('ifconfig'))
-        #self.network.configLinkStatus('s1a', 's1b', 'down')
-        print("Link Status:")
-        for link in self.network.links:
-            intf1 = link.intf1
-            intf2 = link.intf2
-            status1 = self.network.configLinkStatus(intf1.node, intf2.node, 'status')
-            print(f"{intf1.node}-{intf1} <-> {intf2.node}-{intf2} : {status1}")
-
+    
+    # TODO: rework this to bind to a specific link/ interface
     def start_handovers(self, delay, interval=15):
-        printDebug(f"Starting handovers total duration is {self.sysstat_length} seconds")
-        self.counter += 1
-        
-        # Perform the handover
-        self.network.configLinkStatus('s1', 's2', 'down')
-        threading.Timer(delay * 3 / 1000, self.network.configLinkStatus, args=('s1', 's2', 'up')).start()
-        
-        # Schedule the next handover after `interval` seconds
-        if (self.counter * interval) < self.sysstat_length:
-            threading.Timer(interval, self.start_handovers, args=[delay, interval]).start()
+        printDebug(f"Starting handovers")
 
 
     def start_iperf_server(self, node_name: str, monitor_interval=1, port=5201):

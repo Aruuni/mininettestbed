@@ -9,9 +9,8 @@ script_dir = os.path.dirname(__file__)
 mymodule_dir = os.path.join(script_dir, '..')
 sys.path.append(mymodule_dir)
 
-from core.topologies import DoubleDumbellTopo
+from core.topologies import DoubleDumbbellTopo
 from mininet.net import Mininet
-from mininet.node import Controller, RemoteController, OVSSwitch
 from core.analysis import *
 from core.utils import *
 from core.emulation import *
@@ -19,7 +18,7 @@ from core.config import *
 
 def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
     if topology == 'DoubleDumbell':
-        topo = DoubleDumbellTopo(n=params['n'])
+        topo = DoubleDumbbellTopo(n=params['n'])
     else:
         print("ERROR: topology \'%s\' not recognised" % topology)
         return
@@ -27,13 +26,10 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     bdp_in_bytes = int(bw * (2**20) * 2 * delay * (10**-3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1510)
     
-    net = Mininet(topo=topo, switch=OVSSwitch) # , controller=None)
-    # net.addController("c0",
-    #                 controller=RemoteController,
-    #                 ip="127.0.0.1",
-    #                 port=6633)
+    net = Mininet(topo=topo)
     path = "%s/mininettestbed/nooffload/fairness_cross_traffic/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (
         HOME_DIR, aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    
     rmdirp(path)
     mkdirp(path)
 
@@ -44,52 +40,62 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     net.start()
 
     # Disable segmentation offloading
-    #disable_offload(net)
+    disable_offload(net)
 
     duration = int(2*delay)
-        # Bring down cross traffic links initially
-    # for h in range(2, 4):
-    #net.configLinkStatus('x2%s', 's3b', 'down')
-    # Network links configuration for both dumbbell topologies
+
     network_config = [
-        NetworkConf('s1a', 's2a', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
-        NetworkConf('s2a', 's3a', bw, None, qsize_in_bytes, False, aqm, None),
-        NetworkConf('s1b', 's2b', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
-        NetworkConf('s2b', 's3b', bw, None, qsize_in_bytes, False, aqm, None),
-        # Cross traffic links
-        NetworkConf('s1a', 's1b', bw, None, qsize_in_bytes, False, aqm, None),
-        NetworkConf('s3a', 's3b', bw, None, qsize_in_bytes, False, aqm, None),
+        NetworkConf('r1a', 'r2a', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
+        NetworkConf('r2a', 'r3a', bw, None, qsize_in_bytes, False, aqm, None),
+        NetworkConf('r1b', 'r2b', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
+        NetworkConf('r2b', 'r3b', bw, None, qsize_in_bytes, False, aqm, None),
     ]
     
     traffic_config = [
-        TrafficConf(f'c1{i+1}', f'x1{i+1}', 0, duration, protocol) for i in range(n_flows // 2)
+        TrafficConf(f'c1_{i+1}', f'x1_{i+1}', 0, duration, protocol) for i in range(n_flows)
     ] + [
-        TrafficConf(f'c2{i+1}', f'x2{i+1}', 0, duration, protocol) for i in range(n_flows // 2)
+        TrafficConf(f'c2_{i+1}', f'x2_{i+1}', 0, duration, protocol) for i in range(n_flows)
     ] 
-    #traffic_config.append(TrafficConf('god', 'god', 0, 3, 'cross_traffic'))
-    # Create an emulation handler with links and traffic config
-    net.configLinkStatus('s1a', 's1b', 'down')
-    net.configLinkStatus('s3a', 's3b', 'down')
-    em = Emulation(net, network_config, traffic_config, path)
+    def delayed_reroute_traffic(delay, flip):
+        time.sleep(delay)
+        reroute_traffic(n_flows, flip)
+    
+    def reroute_traffic(num_pairs, flip):
 
+        printDebug3("Rerouting traffic")
+        r1b, r3b = net.get('r1b', 'r3b')
+        # thsi is for the case of HARD handover  ??
+        #r2b.cmd('ifconfig r2b-eth1 down')
+
+        if flip:
+            for i in range(1, num_pairs + 1):
+                x2_subnet = f'192.168.{i+3*num_pairs}.0/24'
+                c2_subnet = f'192.168.{i+2*num_pairs}.0/24'
+                r1b.cmd(f'ip route replace {x2_subnet} via 10.0.5.1')
+                r3b.cmd(f'ip route replace {c2_subnet} via 10.0.6.1')
+        else:
+            for i in range(1, num_pairs + 1):
+                x2_subnet = f'192.168.{i+3*num_pairs}.0/24'
+                c2_subnet = f'192.168.{i+2*num_pairs}.0/24'
+                r1b.cmd(f'ip route replace {x2_subnet} via 10.0.3.1')
+                r3b.cmd(f'ip route replace {c2_subnet} via 10.0.4.1')
+    em = Emulation(net, network_config, traffic_config, path, 0.1)
+    em.configure_routing(n_flows)
     # Use tbf and netem to set up the network links as per config
     em.configure_network()
 
     # Schedule start and termination of traffic events 
     em.configure_traffic()
     # Set up system monitoring on the outgoing router's network interfaces and set up sysstat monitoring for all nodes
-    monitors = ['s1a-eth1', 's2a-eth2', 's1b-eth1', 's2b-eth2', 'sysstat']
+    monitors = ['r1a-eth0', 'r2a-eth1', 'r1b-eth0', 'r2b-eth1', 'sysstat']
  
     em.set_monitors(monitors)
-
-    # Run the emulation
-    Timer(3, em.shift_traffic).start()
+    #em.reroute_traffic(n_flows, delay-(delay/2))
+    #em.reroute_traffic(n_flows, False)
+    threading.Thread(target=delayed_reroute_traffic, args=(5,True)).start()
+    threading.Thread(target=delayed_reroute_traffic, args=(10,False)).start()  
     em.run()
-
-    # Store traffic config into json file
     em.dump_info()
-
-    # Stop emulation
     net.stop()
 
     # Change user permissions for created directory and files since script was called as root
@@ -97,6 +103,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     # Process raw outputs into csv files
     process_raw_outputs(path)
+    plot_all(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
 
 if __name__ == '__main__':
     topology = 'DoubleDumbell'
