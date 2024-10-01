@@ -150,11 +150,13 @@ def parse_iperf_json(file, offset):
     retr = []
     cwnd = []
     rtt = []
-
+    rttvar = []
+    bytes_total = 0
     for interval in iperfOutput['intervals']:
         interval_data = interval['streams'][0]
+        bytes_total = bytes_total + (interval_data['bytes'] / (2**20))
         time.append(interval_data['end'] + offset)
-        transferred.append(interval_data['bytes'] / (2**20))
+        transferred.append(bytes_total)
         bandwidth.append(interval_data['bits_per_second'] / (2**20))
         if 'retransmits' in list(interval_data.keys()):
             retr.append(interval_data['retransmits'])
@@ -162,6 +164,9 @@ def parse_iperf_json(file, offset):
             cwnd.append(interval_data['snd_cwnd'] / snd_mss)
         if 'rtt' in list(interval_data.keys()):
             rtt.append(interval_data['rtt'] / 1000)
+        if 'rttvar' in list(interval_data.keys()):
+            rttvar.append(interval_data['rttvar'] / 1000)
+
 
     data_dict = {'time': time, 'transferred': transferred, 'bandwidth': bandwidth}
     if len(retr) > 0:
@@ -170,6 +175,9 @@ def parse_iperf_json(file, offset):
         data_dict['cwnd'] = cwnd
     if len(rtt) > 0:
         data_dict['rtt'] = rtt
+    if len(rttvar) > 0:
+        data_dict['rttvar'] = rttvar
+    
 
     df = pd.DataFrame(data_dict)
     return df

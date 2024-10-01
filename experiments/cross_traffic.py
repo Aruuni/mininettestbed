@@ -2,7 +2,7 @@ import os
 import sys
 import time
 
-from threading import Timer
+from threading import Timer, Thread 
 
 
 script_dir = os.path.dirname(__file__)
@@ -56,29 +56,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     ] + [
         TrafficConf(f'c2_{i+1}', f'x2_{i+1}', 0, duration, protocol) for i in range(n_flows)
     ] 
-    def delayed_reroute_traffic(delay, flip):
-        time.sleep(delay)
-        reroute_traffic(n_flows, flip)
-    
-    def reroute_traffic(num_pairs, flip):
 
-        printDebug3("Rerouting traffic")
-        r1b, r3b = net.get('r1b', 'r3b')
-        # thsi is for the case of HARD handover  ??
-        #r2b.cmd('ifconfig r2b-eth1 down')
-
-        if flip:
-            for i in range(1, num_pairs + 1):
-                x2_subnet = f'192.168.{i+3*num_pairs}.0/24'
-                c2_subnet = f'192.168.{i+2*num_pairs}.0/24'
-                r1b.cmd(f'ip route replace {x2_subnet} via 10.0.5.1')
-                r3b.cmd(f'ip route replace {c2_subnet} via 10.0.6.1')
-        else:
-            for i in range(1, num_pairs + 1):
-                x2_subnet = f'192.168.{i+3*num_pairs}.0/24'
-                c2_subnet = f'192.168.{i+2*num_pairs}.0/24'
-                r1b.cmd(f'ip route replace {x2_subnet} via 10.0.3.1')
-                r3b.cmd(f'ip route replace {c2_subnet} via 10.0.4.1')
     em = Emulation(net, network_config, traffic_config, path, 0.1)
     em.configure_routing(n_flows)
     # Use tbf and netem to set up the network links as per config
@@ -90,10 +68,11 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     monitors = ['r1a-eth0', 'r2a-eth1', 'r1b-eth0', 'r2b-eth1', 'sysstat']
  
     em.set_monitors(monitors)
-    #em.reroute_traffic(n_flows, delay-(delay/2))
-    #em.reroute_traffic(n_flows, False)
-    threading.Thread(target=delayed_reroute_traffic, args=(5,True)).start()
-    threading.Thread(target=delayed_reroute_traffic, args=(10,False)).start()  
+
+
+    Timer(delay/2, em.reroute_traffic, args=(n_flows, True)).start()
+    Timer(delay/2+delay, em.reroute_traffic, args=(n_flows, False)).start()
+
     em.run()
     em.dump_info()
     net.stop()

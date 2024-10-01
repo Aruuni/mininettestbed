@@ -179,6 +179,24 @@ class Emulation:
             r2a.cmd(f'ip route add {x2_subnet} via 10.0.2.2')
             r2a.cmd(f'ip route add {c2_subnet} via 10.0.1.1')    
 
+    def reroute_traffic(self, n_flows, flip):
+        printDebug3("Rerouting traffic")
+        r1b, r3b = self.network.get('r1b', 'r3b')
+        # thsi is for the case of HARD handover  ??
+        #r2b.cmd('ifconfig r2b-eth1 down')
+
+        if flip:
+            for i in range(1, n_flows + 1):
+                x2_subnet = f'192.168.{i+3*n_flows}.0/24'
+                c2_subnet = f'192.168.{i+2*n_flows}.0/24'
+                r1b.cmd(f'ip route replace {x2_subnet} via 10.0.5.1')
+                r3b.cmd(f'ip route replace {c2_subnet} via 10.0.6.1')
+        else:
+            for i in range(1, n_flows + 1):
+                x2_subnet = f'192.168.{i+3*n_flows}.0/24'
+                c2_subnet = f'192.168.{i+2*n_flows}.0/24'
+                r1b.cmd(f'ip route replace {x2_subnet} via 10.0.3.2')
+                r3b.cmd(f'ip route replace {c2_subnet} via 10.0.4.1')
 
     def configure_traffic(self, traffic_config=None):
         '''

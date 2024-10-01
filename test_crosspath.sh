@@ -1,11 +1,11 @@
  bash setup.sh
 
- PROTOCOLS="cubic"
+ PROTOCOLS="bbr"
  BANDWIDTHS="100"
  DELAYS="10"
  RUNS="1"
- QMULTS="1"
- FLOWS="1"
+ QMULTS="100"
+ FLOWS="2"
 
  for bw in $BANDWIDTHS
  do

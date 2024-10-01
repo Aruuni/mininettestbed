@@ -75,7 +75,7 @@ def plot_all(path: str, flows:dict) -> None:
     start_times (list): A list of start times for each flow, where start_times[i] corresponds to the start time for flow 'c(i+1)'.
     """
     # Initialize figure with 3 subplots: one for goodput, one for RTT, and one for CWND
-    fig, axs = plt.subplots(3, 1, figsize=(10, 12))  # 3 rows: goodput, RTT, CWND
+    fig, axs = plt.subplots(7, 1, figsize=(10, 12))  
     
     # Iterate over the number of flows and plot the metrics on the same graph
     for flow in flows:
@@ -103,13 +103,20 @@ def plot_all(path: str, flows:dict) -> None:
         # Plot goodput (throughput measured at the server)
         axs[0].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
         
-        # Plot RTT (if available)
-        if not df_client.empty and 'rtt' in df_client.columns:
-            axs[1].plot(df_client['time'], df_client['rtt'], label=f'{flow_client} RTT')
         
         # Plot CWND (if available)
-        if not df_client.empty and 'cwnd' in df_client.columns:
-            axs[2].plot(df_client['time'], df_client['cwnd'], label=f'{flow_client} CWND')
+
+        axs[1].plot(df_client['time'], df_client['bandwidth'], label=f'{flow_client} CWND')
+        
+        axs[2].plot(df_client['time'], df_client['transferred'], label=f'{flow_client} Bytes')
+
+        axs[3].plot(df_client['time'], df_client['cwnd'], label=f'{flow_client} CWND')
+
+        axs[4].plot(df_client['time'], df_client['retr'], label=f'{flow_client} Retransmits')
+
+        axs[5].plot(df_client['time'], df_client['rtt'], label=f'{flow_client} RTT')
+        
+        axs[6].plot(df_client['time'], df_client['rttvar'], label=f'{flow_client} Rttvar')
     
     # Set titles and labels for the subplots
     axs[0].set_title('Goodput (Mbps)')
@@ -117,15 +124,35 @@ def plot_all(path: str, flows:dict) -> None:
     axs[0].set_ylabel('Goodput (Mbps)')
     axs[0].legend()
 
-    axs[1].set_title('RTT (ms)')
+    axs[1].set_title('Throughput (Mbps)')
     axs[1].set_xlabel('Time (s)')
-    axs[1].set_ylabel('RTT (ms)')
+    axs[1].set_ylabel('Throughput (Mbps)')
     axs[1].legend()
 
-    axs[2].set_title('CWND (MSS)')
+    axs[2].set_title('Bytes')
     axs[2].set_xlabel('Time (s)')
-    axs[2].set_ylabel('CWND (MSS)')
+    axs[2].set_ylabel('Bytes')
     axs[2].legend()
+
+    axs[3].set_title('CWND (MSS)')
+    axs[3].set_xlabel('Time (s)')
+    axs[3].set_ylabel('CWND (MSS)')
+    axs[3].legend()
+
+    axs[4].set_title('Retransmits')
+    axs[4].set_xlabel('Time (s)')
+    axs[4].set_ylabel('Retransmits')
+    axs[4].legend()
+
+    axs[5].set_title('RTT (ms)')
+    axs[5].set_xlabel('Time (s)')
+    axs[5].set_ylabel('RTT (ms)')
+    axs[5].legend()
+
+    axs[6].set_title('Rttvar')
+    axs[6].set_xlabel('Time (s)')
+    axs[6].set_ylabel('Rttvar')
+    axs[6].legend()
 
     # Adjust layout and save the figure
     plt.tight_layout()
