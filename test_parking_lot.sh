@@ -2,13 +2,13 @@ source common.sh
 bash setup.sh
 
 
-PROTOCOLS="sage"
+PROTOCOLS="bbr"
 BANDWIDTHS="100"
-DELAYS="50"
+DELAYS="10"
 RUNS="1"  
 QMULTS="1"
 AQMS='fifo'
-FLOWS='3'
+FLOWS='5'
 
 
 for bw in $BANDWIDTHS

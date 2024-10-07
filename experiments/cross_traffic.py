@@ -15,7 +15,6 @@ from core.analysis import *
 from core.utils import *
 from core.emulation import *
 from core.config import *
-ALLOWED = ['bbr', 'bbr1', 'pcc', 'cubic']
 def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
     if topology == 'DoubleDumbell':
         topo = DoubleDumbbellTopo(n=params['n'])
@@ -82,9 +81,9 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     # Process raw outputs into csv files
     process_raw_outputs(path)
-    if protocol in ALLOWED:
+    if protocol in IPERF:
         plot_all(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
-    else:
+    elif protocol in ORCA:
         plot_all_orca(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
 
         

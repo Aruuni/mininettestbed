@@ -368,7 +368,7 @@ class Emulation:
         Start a one off iperf3 server on the given node with the given port at a default interval of 1 second
         """
         node = self.network.get(node_name)
-        cmd = f"iperf3 -p {port} -i {0.1} --one-off --json -s"
+        cmd = f"iperf3 -p {port} -i {monitor_interval} --one-off --json -s"
         printIperf3(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
 
