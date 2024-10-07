@@ -233,11 +233,11 @@ class Emulation:
             if protocol == 'orca':
                 params = (source_node,duration)
                 command = self.start_orca_sender
-                self.call_first.append(Command(command, params, None))
+                self.call_first.append(Command(command, params, None, source_node))
 
                 params = (destination,source_node)
                 command = self.start_orca_receiver
-                self.call_second.append(Command(command, params, start_time - previous_start_time))
+                self.call_second.append(Command(command, params, start_time, destination))
 
             elif protocol == 'sage':
                 params = (source_node,duration)
@@ -396,11 +396,11 @@ class Emulation:
         node = self.network.get(node_name)
         
         sscmd = f"./ss_script.sh 0.01 {(self.path + '/' + node.name + '_ss.csv')} &"
-        printOrcaSS(f"Sending command '{orcacmd}' to host {node.name}")
+        printOrca(f"Sending command '{sscmd}' to host {node.name}")
         node.cmd(sscmd)
         
         orcacmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {ORCA_INSTALL_FOLDER}/sender.sh {port} {self.orca_flows_counter} {duration}"  
-        printOrca(f"Sending command '{sscmd}' to host {node.name}")
+        printOrcaSS(f"Sending command '{orcacmd}' to host {node.name}")
         node.sendCmd(orcacmd)
 
         # global flow counter for orca flows

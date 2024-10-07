@@ -14,6 +14,7 @@ import json
 from core.utils import *
 from core.emulation import *
 from core.config import *
+ALLOWED = ['bbr', 'bbr1', 'pcc', 'cubic']
 
 
 def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
@@ -58,8 +59,8 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     #printDebug3(delay_config)
     network_config = bw_config + delay_config
 
-    traffic_config = [TrafficConf('c1', 'x1', int(duration/2), int(duration/2)+duration, protocol)]
-    #traffic_config = [TrafficConf('c1', 'x1', 0 , duration * 2, protocol)]
+    #traffic_config = [TrafficConf('c1', 'x1', int(duration/2), int(duration/2)+duration, protocol)]
+    traffic_config = [TrafficConf('c1', 'x1', 0 , duration * 2, protocol)]
     for i in range(2,n_flows+1):
         traffic_config.append(TrafficConf(f'c{i}', f'x{i}', 0, duration * 2, protocol)) 
 
@@ -80,7 +81,11 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
 
     # Process raw outputs into csv files
     process_raw_outputs(path)
-    plot_all(path, n_flows, [flow.start for flow in traffic_config])
+    if protocol in ALLOWED:
+        plot_all(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
+    else:
+        plot_all_orca(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
+
 if __name__ == '__main__':
 
     topology = 'ParkingLot'

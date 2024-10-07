@@ -1,11 +1,22 @@
+run() {
+    UBUNTU_VERSION=$(lsb_release -r | awk '{print $2}')
+
+    if [[ "$UBUNTU_VERSION" == "16.04" ]]; then
+        time python3.7 "$@"
+    else
+        time python3 "$@"
+    fi
+}
+
+
 bash setup.sh
 
 
-PROTOCOLS="cubic"
+PROTOCOLS="orca"
 BANDWIDTHS="100"
 DELAYS="10"
 RUNS="1"  
-QMULTS="0.2"
+QMULTS="1"
 AQMS='fifo'
 FLOWS='3'
 
@@ -24,7 +35,7 @@ do
    do
        for run in $RUNS
        do
-           time sudo python3 experiments/fairness_parking_lot.py $del $bw $qmult $protocol $run $aqm 0 $flow
+           run experiments/fairness_parking_lot.py $del $bw $qmult $protocol $run $aqm 0 $flow
        done
    done
    done

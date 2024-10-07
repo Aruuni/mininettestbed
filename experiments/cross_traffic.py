@@ -85,7 +85,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     if protocol in ALLOWED:
         plot_all(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
     else:
-        print("DO LATER")
+        plot_all_orca(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
 
         
 if __name__ == '__main__':
