@@ -111,11 +111,11 @@ def plot_all(path: str, flows:dict) -> None:
 
         axs[3].plot(df_client['time'], df_client['cwnd'], label=f'{flow_client} CWND')
 
-        # axs[4].plot(df_client['time'], df_client['retr'], label=f'{flow_client} Retransmits')
+        axs[4].plot(df_client['time'], df_client['retr'], label=f'{flow_client} Retransmits')
 
-        # axs[5].plot(df_client['time'], df_client['rtt'], label=f'{flow_client} RTT')
+        axs[5].plot(df_client['time'], df_client['rtt'], label=f'{flow_client} RTT')
         
-        # axs[6].plot(df_client['time'], df_client['rttvar'], label=f'{flow_client} Rttvar')
+        axs[6].plot(df_client['time'], df_client['rttvar'], label=f'{flow_client} Rttvar')
     
     # Set titles and labels for the subplots
     axs[0].set_title('Goodput (Mbps)')
@@ -137,6 +137,21 @@ def plot_all(path: str, flows:dict) -> None:
     axs[3].set_xlabel('Time (s)')
     axs[3].set_ylabel('CWND (MSS)')
     axs[3].legend()
+
+    axs[4].set_title('retransmits')
+    axs[4].set_xlabel('Time (s)')
+    axs[4].set_ylabel('retransmits (segments, i think?)')
+    axs[4].legend()
+
+    axs[5].set_title('rtt')
+    axs[5].set_xlabel('Time (s)')
+    axs[5].set_ylabel('rtt (ms)')
+    axs[5].legend()
+
+    axs[6].set_title('rtt_var')
+    axs[6].set_xlabel('Time (s)')
+    axs[6].set_ylabel('rtt_var (ms?)')
+    axs[6].legend()
    # Adjust layout and save the figure
     plt.tight_layout()
     output_file = os.path.join(path, 'flow_metrics.pdf')
