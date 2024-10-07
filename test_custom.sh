@@ -1,10 +1,10 @@
  bash setup.sh
 
- PROTOCOLS="cubic"
- BANDWIDTHS="100"
- DELAYS="26"
+ PROTOCOLS="bbr"
+ BANDWIDTHS="50"
+ DELAYS="10"
  RUNS="1"
- QMULTS="1"
+ QMULTS="100"
  FLOWS="2"
 
  for bw in $BANDWIDTHS
@@ -19,7 +19,7 @@
      do
          for run in $RUNS
          do
-             time sudo python3 experiments/custom.py $del $bw $qmult $protocol $run fifo 0 $flow
+             time sudo python3.7 experiments/custom.py $del $bw $qmult $protocol $run fifo 0 $flow
          done
      done
      done

@@ -12,9 +12,9 @@ run() {
 bash setup.sh
 
 
-PROTOCOLS="orca"
+PROTOCOLS="sage"
 BANDWIDTHS="100"
-DELAYS="10"
+DELAYS="50"
 RUNS="1"  
 QMULTS="1"
 AQMS='fifo'

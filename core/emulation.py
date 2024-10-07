@@ -242,11 +242,11 @@ class Emulation:
             elif protocol == 'sage':
                 params = (source_node,duration)
                 command = self.start_sage_sender
-                self.call_first.append(Command(command, params, None))
+                self.call_first.append(Command(command, params, None, source_node))
 
                 params = (destination,source_node)
                 command = self.start_sage_receiver
-                self.call_second.append(Command(command, params, start_time - previous_start_time))
+                self.call_second.append(Command(command, params, start_time, destination))
 
             elif protocol == 'aurora':
                 # Create server start up call
@@ -368,7 +368,7 @@ class Emulation:
         Start a one off iperf3 server on the given node with the given port at a default interval of 1 second
         """
         node = self.network.get(node_name)
-        cmd = f"iperf3 -p {port} -i {monitor_interval} --one-off --json -s"
+        cmd = f"iperf3 -p {port} -i {0.1} --one-off --json -s"
         printIperf3(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
 
@@ -420,14 +420,15 @@ class Emulation:
 
     def start_sage_sender(self, node_name, duration, port=5555):
         node = self.network.get(node_name)
-        
-        sagecmd = 'sudo -u %s  EXPERIMENT_PATH=%s %s/sender.sh %s %s %s' % (USERNAME, self.path, SAGE_INSTALL_FOLDER, port, self.sage_flows_counter, duration)
         sscmd = './ss_script.sh 0.01 %s &' % (self.path + '/' + node.name + '_ss.csv')
-
-        print("\033[35mSending command '%s' to host %s\033[0m" % (sagecmd, node.name))
-        node.cmd(sscmd)
         print("\033[93mSending command '%s' to host %s\033[0m" % (sscmd, node.name))
+        node.cmd(sscmd)
+
+        sagecmd = 'sudo -u %s  EXPERIMENT_PATH=%s %s/sender.sh %s %s %s' % (USERNAME, self.path, SAGE_INSTALL_FOLDER, port, self.sage_flows_counter, duration)
+        print("\033[35mSending command '%s' to host %s\033[0m" % (sagecmd, node.name))
         node.sendCmd(sagecmd)
+        
+
         self.sage_flows_counter+= 1 
 
     def start_sage_receiver(self, node_name, destination_name, port=5555):

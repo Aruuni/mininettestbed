@@ -43,14 +43,14 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     net.start()
 
-    disable_offload(net)
+    #disable_offload(net)
 
-    # network_config = [NetworkConf('s1', 's2', None, 25, 3*bdp_in_bytes, False, 'fifo', loss),
-    #                   NetworkConf('s2', 's3', bw, None, qsize_in_bytes, False, aqm, None)]
-    
-    network_config = [NetworkConf('c1', 's1', None, 25, 3*bdp_in_bytes, False, 'fifo', loss),
-                      NetworkConf('c2', 's1', None, 75, 3*bdp_in_bytes, False, 'fifo', loss),
+    network_config = [NetworkConf('s1', 's2', None, delay, 3*bdp_in_bytes, False, 'fifo', loss),
                       NetworkConf('s2', 's3', bw, None, qsize_in_bytes, False, aqm, None)]
+    
+    # network_config = [NetworkConf('c1', 's1', None, 25, 3*bdp_in_bytes, False, 'fifo', loss),
+    #                   NetworkConf('c2', 's1', None, 75, 3*bdp_in_bytes, False, 'fifo', loss),
+    #                   NetworkConf('s2', 's3', bw, None, qsize_in_bytes, False, aqm, None)]
 
     # network_config = [NetworkConf('c1', 's1', None, 5, 3*bdp_in_bytes, False, 'fifo', loss),
     #                   NetworkConf('c2', 's1', None, 25, 3*bdp_in_bytes, False, 'fifo', loss),
@@ -64,8 +64,8 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
                         #   TrafficConf('c3', 'x3', 50, 50, protocol),
                         #   TrafficConf('c4', 'x4', 75, 25, protocol)]
     elif n_flows == 2:
-        traffic_config = [TrafficConf('c1', 'x1', 0, 200, protocol),
-                           TrafficConf('c2', 'x2', 25, 175, protocol)]
+        traffic_config = [TrafficConf('c1', 'x1', 0, 100, protocol),
+                           TrafficConf('c2', 'x2', 5, 95, protocol)]
     elif n_flows == 3:
         traffic_config = [TrafficConf('c1', 'x1', 0, 100, protocol),
                          TrafficConf('c2', 'x2', 25, 125, protocol),
