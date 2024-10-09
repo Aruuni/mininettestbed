@@ -25,7 +25,7 @@ do
                     do
                         for run in $RUNS
                         do
-                            run experiments/fairness_parking_lot.py $del $bw $qmult $protocol $run $aqm 0 $flow
+                            run experiments/parking_lot.py $del $bw $qmult $protocol $run $aqm 0 $flow
                         done
                     done
                 done

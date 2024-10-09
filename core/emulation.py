@@ -288,12 +288,27 @@ class Emulation:
         The main function that runs the experiment. It works by starting the senders first, the monitors and then the receivers.
 
         """
-        # def wait_for_output(node_name: str) -> None:
-        #     print("Starting perf")
-        #     start_perf(self.path, self.sending_nodes, self.receiving_nodes)
-        #     print("Finished perf")
-
+        tcpdump_processes = []
         wait_threads = []
+        def start_tcpdump(node_name, interface, port):
+            """
+            Start tcpdump on the specified node and interface.
+            The pcap file will be saved in the path specified during class initialization.
+            """
+            node = self.network.get(node_name)
+            pcap_file = f"{self.path}/{node_name}_{interface}_trace.pcap"
+            tcpdump_cmd = f"tcpdump -w {pcap_file} -s 120 -c 100000000 port {port} -i {interface} &"
+            print(f"Starting tcpdump on {node_name} ({interface}) with command: {tcpdump_cmd}")
+            process = node.popen(tcpdump_cmd, shell=True)
+            tcpdump_processes.append(process)
+
+        def stop_tcpdump():
+            """
+            Stop all running tcpdump processes after the experiment ends.
+            """
+            for process in tcpdump_processes:
+                process.terminate()  # This will stop tcpdump
+
         def wait_thread(node_name: str) -> None:
             """
             This thread is used to wait for the output of the given node.
@@ -314,6 +329,7 @@ class Emulation:
             t.start()
             wait_threads.append(t)
 
+
         for call in self.call_first:
             call.command(*call.params)
             t = threading.Thread(target=wait_thread, args=(call.node,))
@@ -322,11 +338,18 @@ class Emulation:
 
         for monitor in self.qmonitors:
             monitor.start()
+
         if self.sysstat:
             start_sysstat(1,self.sysstat_length,self.path) 
             # run sysstat on each sender to collect ETCP and UDP stats
             for node_name in self.sending_nodes:
                 start_sysstat(1,self.sysstat_length,self.path, self.network.get(node_name))
+                # Start tcpdump on all sender and receiver nodes
+        # for node_name in self.sending_nodes:
+        #     start_tcpdump(node_name, f"{node_name}-eth0", 5201)  # Adjust the interface name as per your setup
+
+        # for node_name in self.receiving_nodes:
+        #     start_tcpdump(node_name, f"{node_name}-eth0", 5201)  # Adjust the interface name as per your setup
 
         for call in self.call_second:
             # start all the receivers at the same time, they will individually wait for the correct time
@@ -335,12 +358,14 @@ class Emulation:
         #here we wait untill all the waitOutput threads are finished, indicating that all flows are done
         for t in wait_threads:
             t.join()
-                
+
+        #stop_tcpdump()  
         printDebug3("All flows have finished")
+        
         for monitor in self.qmonitors:
             if monitor is not None:
                 monitor.terminate()
-
+                
         if self.sysstat:
             stop_sysstat(self.path, self.sending_nodes)
 
