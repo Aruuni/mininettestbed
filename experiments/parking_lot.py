@@ -59,10 +59,10 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     #printDebug3(delay_config)
     network_config = bw_config + delay_config
 
-    #traffic_config = [TrafficConf('c1', 'x1', int(duration/2), int(duration/2)+duration, protocol)]
-    traffic_config = [TrafficConf('c1', 'x1', 0 , duration * 2, protocol)]
+    traffic_config = [TrafficConf('c1', 'x1', int(duration/2), int(duration/2)+duration, protocol)]
+    #traffic_config = [TrafficConf('c1', 'x1', 0 , duration * 2, protocol)]
     for i in range(2,n_flows+1):
-        traffic_config.append(TrafficConf(f'c{i}', f'x{i}', int(duration/2), int(duration/2)+duration, protocol)) 
+        traffic_config.append(TrafficConf(f'c{i}', f'x{i}', 0, duration*2, protocol)) 
 
     em = Emulation(net, network_config, traffic_config, path, 0.1)
 

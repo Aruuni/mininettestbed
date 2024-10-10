@@ -4,11 +4,11 @@ bash setup.sh
 
 PROTOCOLS="bbr"
 BANDWIDTHS="100"
-DELAYS="10"
+DELAYS="15"
 RUNS="1"  
-QMULTS="1"
+QMULTS="1 4"
 AQMS='fifo'
-FLOWS='5'
+FLOWS='4'
 
 
 for bw in $BANDWIDTHS

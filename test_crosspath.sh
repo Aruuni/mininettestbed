@@ -3,10 +3,10 @@ bash setup.sh
 
 PROTOCOLS="bbr"
 BANDWIDTHS="100"
-DELAYS="10"
+DELAYS="15"
 RUNS="1"
-QMULTS="100"
-FLOWS="2"
+QMULTS="1"
+FLOWS="3"
 
 for bw in $BANDWIDTHS
 do
