@@ -29,6 +29,7 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
 
     duration = int((2*delay*1000)/1000)
+    duration = 10 
     print('\033[94mDuration is %s seconds\033[0m' % (duration*2))
     
     net = Mininet(topo=topo)
@@ -59,8 +60,8 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     #printDebug3(delay_config)
     network_config = bw_config + delay_config
 
-    traffic_config = [TrafficConf('c1', 'x1', int(duration/2), int(duration/2)+duration, protocol)]
-    #traffic_config = [TrafficConf('c1', 'x1', 0 , duration * 2, protocol)]
+    #traffic_config = [TrafficConf('c1', 'x1', int(duration/2), int(duration/2)+duration, protocol)]
+    traffic_config = [TrafficConf('c1', 'x1', 0 , duration * 2, protocol)]
     for i in range(2,n_flows+1):
         traffic_config.append(TrafficConf(f'c{i}', f'x{i}', 0, duration*2, protocol)) 
 
@@ -80,10 +81,7 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
 
     # Process raw outputs into csv files
     process_raw_outputs(path)
-    if protocol in ALLOWED:
-        plot_all(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
-    else:
-        plot_all_orca(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
+    plot_all(path, traffic_config)
 
 if __name__ == '__main__':
 
