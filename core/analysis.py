@@ -24,7 +24,6 @@ def process_raw_outputs(path):
         #ADD An ADDITIONAL SPECIAL CASE IF NEEDED 
         
         if flow[-2] == 'orca':
-            port=4444
             # Convert sender output into csv
             df = parse_orca_output(path+"/%s_output.txt" % sender, start_time)
             df.to_csv("%s/%s.csv" %  (csv_path, sender), index=False)
@@ -33,7 +32,6 @@ def process_raw_outputs(path):
             df = parse_orca_output(path+"/%s_output.txt" % receiver, start_time)
             df.to_csv("%s/%s.csv" %  (csv_path, receiver),index=False)
         elif flow[-2] == 'sage':
-            port=5555
             # Convert sender output into csv
             df = parse_orca_output(path+"/%s_output.txt" % sender, start_time)
             df.to_csv("%s/%s.csv" %  (csv_path, sender), index=False)
@@ -51,8 +49,6 @@ def process_raw_outputs(path):
             df.to_csv("%s/%s.csv" %  (csv_path, receiver),index=False)
         # WILL ONLY WORK WITH SYSTEM CC
         else:
-            port=5201
-
             # Convert sender output into csv
             df = parse_iperf_json(path+"/%s_output.txt" % sender, start_time)
             df.to_csv("%s/%s.csv" % (csv_path,sender), index=False)
@@ -62,7 +58,7 @@ def process_raw_outputs(path):
             df.to_csv("%s/%s.csv" % (csv_path, receiver), index=False)
 
 
-def plot_all(path: str, flows:dict) -> None:
+def plot_all(path: str, tarffic_config) -> None:
     """
     This function plots goodput (server-side throughput), RTT, and CWND for each flow from the iperf3 output files.
     All flows are plotted on the same graph for each variable (goodput, RTT, and CWND),
@@ -75,10 +71,10 @@ def plot_all(path: str, flows:dict) -> None:
     """
     # Initialize figure with 3 subplots: one for goodput, one for RTT, and one for CWND
     fig, axs = plt.subplots(7, 1, figsize=(10, 30))  
-    
+    printDebug("Flows: ", tarffic_config)
     # Iterate over the number of flows and plot the metrics on the same graph
-    for flow in flows:
-        flow_client = flow['src']  # Client flow name like 'c1', 'c2', etc.
+    for flow in tarffic_config:
+        flow_client = flow['source']  # Client flow name like 'c1', 'c2', etc.
         flow_server = flow['dest']  # Server flow name like 'x1', 'x2', etc.
         
         client_file_path = os.path.join(path, f'{flow_client}_output.txt')
@@ -89,28 +85,33 @@ def plot_all(path: str, flows:dict) -> None:
             continue
         
         # Parse iperf3 server output to get goodput
-        df_server = parse_iperf_json(server_file_path, 0)
-        
+        if flow in IPERF:
+            df_server = parse_iperf_json(server_file_path, 0)
+            df_client = parse_iperf_json(client_file_path, 0) 
+
+        if flow in ORCA:
+            df_server = parse_orca_output(server_file_path, 0)
+            df_server = parse_orca_output(client_file_path, 0)
         # Parse iperf3 client output to get RTT and CWND
-        df_client = parse_iperf_json(client_file_path, 0) if os.path.exists(client_file_path) else pd.DataFrame()
 
         # Add the corresponding start time to the time column to adjust the time series for both client and server
         df_server['time'] = df_server['time'] + flow['start']
         if not df_client.empty:
             df_client['time'] = df_client['time'] + flow['start']
         
+
+
+
         # Plot goodput (throughput measured at the server)
-        axs[0].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
-        
-        
-        # Plot CWND (if available)
+        if 'bandwidth' in df_server.columns:    
+            axs[0].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
 
         axs[1].plot(df_client['time'], df_client['bandwidth'], label=f'{flow_client} CWND')
         
         axs[2].plot(df_client['time'], df_client['transferred'], label=f'{flow_client} Bytes')
 
         axs[3].plot(df_client['time'], df_client['cwnd'], label=f'{flow_client} CWND')
-
+        
         axs[4].plot(df_client['time'], df_client['retr'], label=f'{flow_client} Retransmits')
 
         axs[5].plot(df_client['time'], df_client['rtt'], label=f'{flow_client} RTT')

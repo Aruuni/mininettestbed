@@ -78,7 +78,8 @@ def parse_tcp_probe_output(file, address, key='source'):
     df['rcv_wnd'] = df['rcv_wnd'].astype(int)
        
     return df[df[key] == address][['time','cwnd','sequence_number','ssthresh','snd_wnd','srtt']].copy()
-    
+def parse_ss_output(output):
+    return output
 
 def parse_iperf_output(output):
     """Parse iperf output and return bandwidth.
