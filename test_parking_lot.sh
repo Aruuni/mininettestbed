@@ -2,11 +2,11 @@ source common.sh
 bash setup.sh
 
 
-PROTOCOLS="orca"
+PROTOCOLS="bbr"
 BANDWIDTHS="100"
-DELAYS="15"
+DELAYS="5"
 RUNS="1"  
-QMULTS="1 4"
+QMULTS="1"
 AQMS='fifo'
 FLOWS='4'
 

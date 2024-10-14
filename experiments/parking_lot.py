@@ -29,12 +29,11 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
 
     duration = int((2*delay*1000)/1000)
-    duration = 10 
     print('\033[94mDuration is %s seconds\033[0m' % (duration*2))
     
     net = Mininet(topo=topo)
  
-    path = "%s/mininettestbed/nooffload/results_fairness_parking_lot/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    path = "%s/mininettestbed/nooffload/results_parking_lot/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
     printDebug3(path)
     rmdirp(path)
     mkdirp(path)
@@ -81,7 +80,7 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
 
     # Process raw outputs into csv files
     process_raw_outputs(path)
-    plot_all(path, traffic_config)
+    plot_all(path, [{'src': flow.source, 'dst': flow.dest, 'start': flow.start , 'protocol': flow.protocol} for flow in traffic_config])
 
 if __name__ == '__main__':
 

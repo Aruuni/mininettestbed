@@ -82,7 +82,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Process raw outputs into csv files
     process_raw_outputs(path)
     if protocol in IPERF:
-        plot_all(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
+        plot_all(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start , 'protocol': flow.protocol} for flow in traffic_config])
     elif protocol in ORCA:
         plot_all_orca(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
 

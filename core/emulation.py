@@ -405,7 +405,7 @@ class Emulation:
         """
         node = self.network.get(node_name)
 
-        sscmd = f"./ss_script.sh 0.01 {self.path}/{node.name}_ss.csv &" 
+        sscmd = f"./ss_script.sh 0.1 {self.path}/{node.name}_ss.csv &" 
         printIperf3SS(f'Sending command {sscmd} to host {node.name}')
         node.cmd(sscmd)
 
@@ -420,7 +420,7 @@ class Emulation:
         """
         node = self.network.get(node_name)
         
-        sscmd = f"./ss_script.sh 0.01 {(self.path + '/' + node.name + '_ss.csv')} &"
+        sscmd = f"./ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
         printOrca(f"Sending command '{sscmd}' to host {node.name}")
         node.cmd(sscmd)
         
