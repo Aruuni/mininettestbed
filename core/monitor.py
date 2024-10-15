@@ -9,7 +9,7 @@ from core.utils import *
 
 
 
-def monitor_qlen(iface, interval_sec = 0.1, path = default_dir):
+def monitor_qlen(iface, interval_sec = 0.1, path = default_dir, ):
     mkdirp(path)
     fname='%s/%s.txt' % (path, iface)
     pat_queued = re.compile(r'backlog\s+([\d]+\w+)\s+\d+p')
@@ -23,6 +23,35 @@ def monitor_qlen(iface, interval_sec = 0.1, path = default_dir):
         output = p.stdout.read()
         tmp = ''
         output = output.decode('utf-8')
+        matches_queued = pat_queued.findall(output)
+        matches_dropped = pat_dropped.findall(output)
+        if len(matches_queued) != len(matches_dropped):
+            print("WARNING: Two matches have different lengths!")
+            print(output)
+        if matches_queued and matches_dropped:
+            tmp += '%f,%s,%s' % (time(), matches_queued[0],matches_dropped[0])
+            if len(matches_queued) > 1 and len(matches_dropped)> 1: 
+                tmp += ',%s,%s\n' % (matches_queued[1], matches_dropped[1])
+            else:
+                tmp += ',,\n'
+        f = open(fname, 'a')
+        f.write(tmp)
+        f.close
+        sleep(interval_sec)
+    return
+
+def monitor_qlen_on_router(iface, mininode, interval_sec = 0.1, path = default_dir):
+    mkdirp(path)
+    fname='%s/%s.txt' % (path, iface)
+    pat_queued = re.compile(r'backlog\s+([\d]+\w+)\s+\d+p')
+    pat_dropped = re.compile(r'dropped\s+([\d]+)') 
+    cmd = "tc -s qdisc show dev %s" % (iface)
+    f = open(fname, 'w')
+    f.write('time,root_pkts,root_drp,child_pkts,child_drp\n')
+    f.close()
+    while 1:
+        output = mininode.cmd(cmd)
+        tmp = ''
         matches_queued = pat_queued.findall(output)
         matches_dropped = pat_dropped.findall(output)
         if len(matches_queued) != len(matches_dropped):

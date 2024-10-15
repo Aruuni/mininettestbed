@@ -1,7 +1,7 @@
 import os 
 import subprocess
 from collections import namedtuple
-
+from core.config import USERNAME
 NetworkConf = namedtuple("NetworkConf", ['node1', 'node2', 'bw', 'delay', 'qsize', 'bidir', 'aqm', 'loss'])
 TrafficConf = namedtuple("TrafficConf", ['source', 'dest', 'start', 'duration', 'protocol', 'params'])
 
@@ -53,8 +53,8 @@ def dump_system_config(path):
         fout.write(subprocess.check_output(['sysctl', 'net.ipv4.tcp_window_scaling']) + '\n')
 
 def change_all_user_permissions(path):
-    subprocess.call(['chmod', '-R', 'u+w', path])
-    subprocess.call(['chmod', '-R', 'u+r', path])
+    subprocess.call(['sudo','chown', '-R',USERNAME, path])
+
 
 def tcp_buffers_setup(target_bdp_bytes, multiplier=3):
     # --- Configure TCP Buffers on all senders and receivers

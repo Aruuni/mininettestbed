@@ -11,6 +11,7 @@ sys.path.append(mymodule_dir)
 
 from core.topologies import DoubleDumbbellTopo
 from mininet.net import Mininet
+from mininet.cli import CLI
 from core.analysis import *
 from core.utils import *
 from core.emulation import *
@@ -64,24 +65,26 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Schedule start and termination of traffic events 
     em.configure_traffic()
     # Set up system monitoring on the outgoing router's network interfaces and set up sysstat monitoring for all nodes
-    monitors = ['r1a-eth0', 'r2a-eth1', 'r1b-eth0', 'r2b-eth1', 'sysstat']
+    monitors = ['r2a-eth1', 'r2b-eth1', 'sysstat']
  
     em.set_monitors(monitors)
 
 
     Timer(delay/2, em.reroute_traffic, args=(n_flows, True)).start()
+    printDebug2(f'change to cross path routing happening at time {delay/2} seconds')
     Timer(delay/2+delay, em.reroute_traffic, args=(n_flows, False)).start()
+    printDebug2(f'change to original routing happening at time {delay/2+delay} seconds')
 
     em.run()
+   # CLI(net)
+
     em.dump_info()
     net.stop()
     
-    # Change user permissions for created directory and files since script was called as root
     change_all_user_permissions(path)
 
-    # Process raw outputs into csv files
     process_raw_outputs(path)
-    plot_all(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start , 'protocol': flow.protocol} for flow in traffic_config])
+    plot_all(path, [{'src': flow.source, 'dst': flow.dest, 'start': flow.start , 'protocol': flow.protocol} for flow in traffic_config])
 
         
 if __name__ == '__main__':

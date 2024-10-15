@@ -2,11 +2,11 @@ source common.sh
 bash setup.sh
 
 
-PROTOCOLS="bbr"
+PROTOCOLS="bbr cubic pcc"
 BANDWIDTHS="100"
-DELAYS="20"
+DELAYS="10 20 30 40 50 60 70 80 90 100"
 RUNS="1"  
-QMULTS="1"
+QMULTS="0.2 1 4"
 AQMS='fifo'
 FLOWS='4'
 

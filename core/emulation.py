@@ -374,12 +374,16 @@ class Emulation:
         if "sysstat" in monitors:
             self.sysstat = True
             monitors.remove("sysstat")
-
         for monitor in monitors:
             node, interface = monitor.split('-')
             if 's' in node:
                 iface = '%s-%s' % (node, interface)
                 monitor = Process(target=monitor_qlen, args=(iface, interval_sec,'%s/queues' % (self.path)))
+                self.qmonitors.append(monitor)
+            elif 'r' in node:
+                iface = '%s-%s' % (node, interface)
+                mininode = self.network.get(node)
+                monitor = Process(target=monitor_qlen_on_router, args=(iface, mininode, interval_sec,'%s/queues' % (self.path)))
                 self.qmonitors.append(monitor)
 
     

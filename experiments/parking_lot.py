@@ -38,20 +38,17 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     printDebug3(path)
     rmdirp(path)
     mkdirp(path)
-    subprocess.call(['sudo','chown', '-R' ,USERNAME, path])
-
-
-
-
     #  Configure size of TCP buffers
     #  TODO: check if this call can be put after starting mininet
     #  TCP buffers should account for QSIZE as well
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
-    
-
+    #  Configure size of TCP buffers
+    #  TODO: check if this call can be put after starting mininet
+    #  TCP buffers should account for QSIZE as well
+    tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
     net.start()
 
-    #disable_offload(net)
+    disable_offload(net)
 
     #network_config = [NetworkConf(f's{i}', f's{i+1}', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),NetworkConf(f's{i}', f's{i+1}' bw, None, qsize_in_bytes, False, aqm, None)]
     bw_config = [NetworkConf(f's{i}', f's{i+1}', bw, None, qsize_in_bytes, False, aqm, loss) for i in range(1, n_flows,1)]
@@ -60,23 +57,24 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     #printDebug3(delay_config)
     network_config = bw_config + delay_config
 
-    #traffic_config = [TrafficConf('c1', 'x1', int(duration/2), int(duration/2)+duration, protocol)]
-    traffic_config = [TrafficConf('c1', 'x1', 0 , duration * 2, protocol)]
+    traffic_config = [TrafficConf('c1', 'x1', int(duration/2), int(duration/2)+duration, protocol)]
+    #traffic_config = [TrafficConf('c1', 'x1', 0 , duration * 2, protocol)]
     for i in range(2,n_flows+1):
         traffic_config.append(TrafficConf(f'c{i}', f'x{i}', 0, duration*2, protocol)) 
 
     em = Emulation(net, network_config, traffic_config, path, 0.1)
 
     em.configure_network()
-    #net.pingAll()
     em.configure_traffic()
     monitors = ['s1-eth1', 's2-eth2', 's3-eth2', 'sysstat']
         
     em.set_monitors(monitors)
     em.run()
-   # CLI(net)
+    #net.pingAll()
+    #CLI(net)
     em.dump_info()
     net.stop()
+
     change_all_user_permissions(path)
 
     # Process raw outputs into csv files

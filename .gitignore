@@ -5,7 +5,6 @@ rl_logging
 results*
 .idea
 nooffload
-parkinglottest
 aurora_analysis/*
 tcp_tracing/*
 pcc_log.txt
@@ -13,4 +12,3 @@ pcc_log.txt
 *.json
 *.png
 *.pdf
-Python*
