@@ -42,10 +42,7 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     #  TODO: check if this call can be put after starting mininet
     #  TCP buffers should account for QSIZE as well
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
-    #  Configure size of TCP buffers
-    #  TODO: check if this call can be put after starting mininet
-    #  TCP buffers should account for QSIZE as well
-    tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
+
     net.start()
 
     disable_offload(net)
@@ -61,7 +58,7 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     #traffic_config = [TrafficConf('c1', 'x1', 0 , duration * 2, protocol)]
     for i in range(2,n_flows+1):
         traffic_config.append(TrafficConf(f'c{i}', f'x{i}', 0, duration*2, protocol)) 
-
+    printDebug(traffic_config)
     em = Emulation(net, network_config, traffic_config, path, 0.1)
 
     em.configure_network()

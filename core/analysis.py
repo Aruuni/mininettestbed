@@ -75,15 +75,6 @@ def plot_all(path: str, flows:dict) -> None:
         df_ss_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}_ss.csv'))
         df_server = pd.read_csv(os.path.join(path, f'csvs/{flow_server}.csv'))
 
-        # Add the corresponding start time to the time column to adjust the time series for both client and server
-        df_server['time'] = df_server['time'] + flow['start']
-        if not df_client.empty:
-            df_client['time'] = df_client['time'] + flow['start']
-        
-
-
-        # Plot goodput (throughput measured at the server)
-          
         axs[0].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
         axs[1].plot(df_client['time'], df_client['bandwidth'], label=f'{flow_client} CWND')
         if 'transferred' in df_client.columns:
