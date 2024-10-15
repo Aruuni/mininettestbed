@@ -96,15 +96,15 @@ class ParkingLot(Topo):
             servers.append(self.addHost('x%s' % i, cls=Host))
         self.n = n
 
+        for i in range(1,n,1):
+            self.addLink(switches[i-1], switches[i])    
+
         self.addLink(clients[0], switches[0])
         self.addLink(servers[0], switches[n-1])
 
         for i in range(1,n,1):
             self.addLink(clients[i], switches[i-1])
             self.addLink(servers[i], switches[i])
-
-        for i in range(1,n,1):
-            self.addLink(switches[i-1], switches[i])    
 
     def __str__(self):
         return "ParkingLotTopo(n=%d)" % self.n

@@ -267,7 +267,7 @@ class Emulation:
                 command = self.configure_link
                 self.call_second.append(Command(command, params, start_time - previous_start_time))
 
-            elif protocol != 'aurora' and protocol != 'orca' and protocol != 'sage':
+            elif protocol != 'aurora' and protocol not in ORCA:
                 # Create server start up call
                 params = (destination, 1)
                 command = self.start_iperf_server
@@ -370,7 +370,7 @@ class Emulation:
             stop_sysstat(self.path, self.sending_nodes)
 
 
-    def set_monitors(self, monitors, interval_sec=1):
+    def set_monitors(self, monitors, interval_sec=0.1):
         if "sysstat" in monitors:
             self.sysstat = True
             monitors.remove("sysstat")

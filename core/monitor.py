@@ -9,7 +9,7 @@ from core.utils import *
 
 
 
-def monitor_qlen(iface, interval_sec = 1, path = default_dir):
+def monitor_qlen(iface, interval_sec = 0.1, path = default_dir):
     mkdirp(path)
     fname='%s/%s.txt' % (path, iface)
     pat_queued = re.compile(r'backlog\s+([\d]+\w+)\s+\d+p')
@@ -33,7 +33,7 @@ def monitor_qlen(iface, interval_sec = 1, path = default_dir):
             if len(matches_queued) > 1 and len(matches_dropped)> 1: 
                 tmp += ',%s,%s\n' % (matches_queued[1], matches_dropped[1])
             else:
-                tmp += ',,,\n'
+                tmp += ',,\n'
         f = open(fname, 'a')
         f.write(tmp)
         f.close

@@ -65,9 +65,8 @@ def plot_all(path: str, flows:dict) -> None:
     num_flows (int): The number of flows to plot.
     start_times (list): A list of start times for each flow, where start_times[i] corresponds to the start time for flow 'c(i+1)'.
     """
-    # Initialize figure with 3 subplots: one for goodput, one for RTT, and one for CWND
-    fig, axs = plt.subplots(7, 1, figsize=(10, 30))  
-    # Iterate over the number of flows and plot the metrics on the same graph
+    fig, axs = plt.subplots(9, 1, figsize=(17, 30))  
+    #fig.suptitle(, fontsize=16)
     for flow in flows:
         flow_client = flow['src']  # Client flow name like 'c1', 'c2', etc.
         flow_server = flow['dst']  # Server flow name like 'x1', 'x2', etc.
@@ -110,21 +109,48 @@ def plot_all(path: str, flows:dict) -> None:
         else:
             axs[6].plot(df_ss_client['time'], df_ss_client['rttvar'], label=f'{flow_client} Rttvar')
     
+
+    # Now process and plot queue sizes (8th subplot)
+    queue_dir = os.path.join(path, 'queues')  # Specify the folder containing the queue files
+    queue_files = [f for f in os.listdir(queue_dir) if f.endswith('.txt')]
+    
+    for queue_file in queue_files:
+        queue_path = os.path.join(queue_dir, queue_file)
+        
+        df_queue = pd.read_csv(queue_path)
+        df_queue['time'] = pd.to_numeric(df_queue['time'], errors='coerce')
+        df_queue['time'] = df_queue['time'] - df_queue['time'].min()
+
+        # Convert 'b', 'K', and other units to numeric values if necessary
+        df_queue['root_pkts'] = df_queue['root_pkts'].str.replace('b', '').str.replace('K', '000').astype(float)
+        df_queue['root_drp'] = df_queue['root_drp'].fillna(0).astype(float)  # Handle missing drop values
+
+        # Convert root_pkts to packets from bytes assuming 1500 bytes per packet
+        df_queue['root_pkts'] = df_queue['root_pkts'] / 1500
+
+        # Calculate the interval drops (difference between consecutive drops)
+        df_queue['interval_drops'] = df_queue['root_drp'].diff().fillna(0)
+
+        axs[7].plot(df_queue['time'], df_queue['root_pkts'], label=f'{queue_file} - root_pkts')
+        axs[8].plot(df_queue['time'], df_queue['interval_drops'], linestyle='--', label=f'{queue_file} - root_drp')
+
+
+
+
     # Set titles and labels for the subplots
     titles = ['Goodput (Mbps)', 'Throughput (Mbps)', 'Bytes', 'CWND (MSS)',
-              'Retransmits', 'RTT (ms)', 'RTT Variance (ms)']
+              'Retransmits', 'RTT (ms)', 'RTT Variance (ms)', 'Queue Sizes (Packets)', 'Queue drops (Packets)']
     y_labels = ['Goodput (Mbps)', 'Throughput (Mbps)', 'Bytes', 'CWND (MSS)',
-                'Retransmits (segments)', 'RTT (ms)', 'RTT Variance (ms)']
+                'Retransmits (segments)', 'RTT (ms)', 'RTT Variance (ms)', 'Queue Size (pkts)', 'Queue drops (Packets)']
 
     for i, ax in enumerate(axs):
         ax.set_title(titles[i])
         ax.set_xlabel('Time (s)')
         ax.set_ylabel(y_labels[i])
-        ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1), borderaxespad=0.)  # Move legend outside the plot
+        ax.legend(loc='upper left')
 
     # Adjust layout and save the figure
-    plt.tight_layout(rect=[0, 0, 0.85, 1])  # Leave space for the legend on the right
-    output_file = os.path.join(path, 'flow_metrics.pdf')
+    plt.tight_layout(rect=[0, 0, 1, 1], pad=1.0)  
+    output_file = os.path.join(path, 'flow_metrics_with_queues.pdf')
     plt.savefig(output_file)
     print(f"Plot saved to {output_file}")
-

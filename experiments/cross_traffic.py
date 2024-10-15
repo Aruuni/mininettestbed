@@ -75,16 +75,13 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     em.run()
     em.dump_info()
     net.stop()
-
+    
     # Change user permissions for created directory and files since script was called as root
     change_all_user_permissions(path)
 
     # Process raw outputs into csv files
     process_raw_outputs(path)
-    if protocol in IPERF:
-        plot_all(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start , 'protocol': flow.protocol} for flow in traffic_config])
-    elif protocol in ORCA:
-        plot_all_orca(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start } for flow in traffic_config])
+    plot_all(path, [{'src': flow.source, 'dest': flow.dest, 'start': flow.start , 'protocol': flow.protocol} for flow in traffic_config])
 
         
 if __name__ == '__main__':

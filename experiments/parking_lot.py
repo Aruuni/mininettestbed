@@ -8,6 +8,7 @@ sys.path.append( mymodule_dir )
 
 from core.topologies import *
 from mininet.net import Mininet
+from mininet.cli import CLI
 from core.analysis import *
 
 import json
@@ -69,13 +70,13 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     em.configure_network()
     #net.pingAll()
     em.configure_traffic()
-    monitors = ['s1-eth1', 's2-eth2', 'sysstat']
+    monitors = ['s1-eth1', 's2-eth2', 's3-eth2', 'sysstat']
         
     em.set_monitors(monitors)
     em.run()
+   # CLI(net)
     em.dump_info()
     net.stop()
-    
     change_all_user_permissions(path)
 
     # Process raw outputs into csv files
