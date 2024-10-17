@@ -66,7 +66,6 @@ for mult in QMULTS:
 
                  receiver1 = receiver1.set_index('time')
                  receiver2 = receiver2.set_index('time')
-
                  total = receiver1_total.join(receiver2_total, how='inner', lsuffix='1', rsuffix='2')[['bandwidth1', 'bandwidth2']]
                  partial = receiver1.join(receiver2, how='inner', lsuffix='1', rsuffix='2')[['bandwidth1', 'bandwidth2']]
 
@@ -87,6 +86,10 @@ for mult in QMULTS:
               goodput_ratios_total = np.concatenate(goodput_ratios_total, axis=0)
 
               if len(goodput_ratios_20) > 0 and len(goodput_ratios_total) > 0:
+                 print(goodput_ratios_20.mean())
+                 print(goodput_ratios_20.std())
+                 print(goodput_ratios_total.mean())
+                 print(goodput_ratios_total.std())
                  data_entry = [protocol, bw, delay, delay/10, mult, goodput_ratios_20.mean(), goodput_ratios_20.std(), goodput_ratios_total.mean(), goodput_ratios_total.std()]
                  data.append(data_entry)
 
@@ -111,22 +114,22 @@ for mult in QMULTS:
 
 
 
-   markers, caps, bars = ax.errorbar(cubic_data.index*2, cubic_data['goodput_ratio_20_mean'], yerr=cubic_data['goodput_ratio_20_std'],marker='x',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='cubic')
+   markers, caps, bars = ax.errorbar(cubic_data.index*2, cubic_data['goodput_ratio_total_mean'], yerr=cubic_data['goodput_ratio_total_std'],marker='x',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='cubic')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(orca_data.index*2,orca_data['goodput_ratio_20_mean'], yerr=orca_data['goodput_ratio_20_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
+   markers, caps, bars = ax.errorbar(orca_data.index*2,orca_data['goodput_ratio_total_mean'], yerr=orca_data['goodput_ratio_total_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr3_data.index*2, bbr3_data['goodput_ratio_20_mean'], yerr=bbr3_data['goodput_ratio_20_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='bbrv3')
+   markers, caps, bars = ax.errorbar(bbr3_data.index*2, bbr3_data['goodput_ratio_total_mean'], yerr=bbr3_data['goodput_ratio_total_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='bbrv3')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr_data.index*2,bbr_data['goodput_ratio_20_mean'], yerr=bbr_data['goodput_ratio_20_std'],marker='.',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv1')
+   markers, caps, bars = ax.errorbar(bbr_data.index*2,bbr_data['goodput_ratio_total_mean'], yerr=bbr_data['goodput_ratio_total_std'],marker='.',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv1')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(sage_data.index*2,sage_data['goodput_ratio_20_mean'], yerr=sage_data['goodput_ratio_20_std'],marker='*',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='sage')
+   markers, caps, bars = ax.errorbar(sage_data.index*2,sage_data['goodput_ratio_total_mean'], yerr=sage_data['goodput_ratio_total_std'],marker='*',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='sage')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(pcc_data.index*2,pcc_data['goodput_ratio_20_mean'], yerr=pcc_data['goodput_ratio_20_std'],marker='_',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='vivace')
+   markers, caps, bars = ax.errorbar(pcc_data.index*2,pcc_data['goodput_ratio_total_mean'], yerr=pcc_data['goodput_ratio_total_std'],marker='_',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='vivace')
    [bar.set_alpha(0.5) for bar in bars]
    [cap.set_alpha(0.5) for cap in caps]
 
@@ -145,5 +148,5 @@ for mult in QMULTS:
    # ax.grid()
 
    for format in ['pdf']:
-      plt.savefig('goodput_ratio_async_intra_20_%s.%s' % (mult, format), dpi=1080)
+      plt.savefig('goodput_ratio_async_intra_%s.%s' % (mult, format), dpi=1080)
 
