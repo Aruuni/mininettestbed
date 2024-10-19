@@ -113,7 +113,7 @@ def plot_all(path: str, flows:dict) -> None:
         df_queue['time'] = df_queue['time'] - df_queue['time'].min()
 
         # Convert 'b', 'K', and other units to numeric values if necessary
-        df_queue['root_pkts'] = df_queue['root_pkts'].str.replace('b', '').str.replace('K', '000').astype(float)
+        df_queue['root_pkts'] = df_queue['root_pkts'].str.replace('b', '').str.replace('K', '000').str.replace('M', '000000').str.replace('G', '000000000').astype(float)
         df_queue['root_drp'] = df_queue['root_drp'].fillna(0).astype(float)  # Handle missing drop values
 
         # Convert root_pkts to packets from bytes assuming 1500 bytes per packet
@@ -142,6 +142,7 @@ def plot_all(path: str, flows:dict) -> None:
 
     # Adjust layout and save the figure
     plt.tight_layout(rect=[0, 0, 1, 1], pad=1.0)  
-    output_file = os.path.join(path, 'flow_metrics_with_queues.pdf')
+    output_file = os.path.join(path, (path.split('/fifo/')[1]).split('/run')[0]+'.pdf')
+
     plt.savefig(output_file)
     print(f"Plot saved to {output_file}")
