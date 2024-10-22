@@ -61,29 +61,29 @@ RUNS="1 2 3 4 5"
 
 # FAIRNESS BANDWIDTH
 
-BANDWIDTHS="50 100 150 200 250 300 350 400 450 500"
-DELAYS="20"
-FLOWS="2"
+# BANDWIDTHS="10 20 30 40 50 60 70 80 90 100"
+# DELAYS="20"
+# FLOWS="2"
 
-for bw in $BANDWIDTHS
-do
-    for del in $DELAYS
-    do
-        for qmult in $QMULTS
-        do
-            for flow in $FLOWS
-            do
-                for protocol in $PROTOCOLS
-                do
-                    for run in $RUNS
-                    do
-                        run experiments/fairness_bw_async.py $del $bw $qmult $protocol $run fifo 0 $flow
-                    done
-                done
-            done
-        done
-    done
-done
+# for bw in $BANDWIDTHS
+# do
+#     for del in $DELAYS
+#     do
+#         for qmult in $QMULTS
+#         do
+#             for flow in $FLOWS
+#             do
+#                 for protocol in $PROTOCOLS
+#                 do
+#                     for run in $RUNS
+#                     do
+#                         run experiments/fairness_bw_async.py $del $bw $qmult $protocol $run fifo 0 $flow
+#                     done
+#                 done
+#             done
+#         done
+#     done
+# done
 
 # CUBIC COEXISTANCE/BACKWARDS COMPATIBILITY
 
@@ -139,34 +139,34 @@ done
 
 # RESPONSIVENESS BANDWIDTH/RTT 
 
-# BANDWIDTH="50"
-# DELAY="50"
-# QUEUE="1"
-# AQMS='fifo'
-# FLOWS='1'
+BANDWIDTH="50"
+DELAY="50"
+QUEUE="1"
+AQMS='fifo'
+FLOWS='1'
 
-# for bw in $BANDWIDTH
-# do
-#     for del in $DELAY
-#     do
-#         for qmult in $QUEUE
-#         do
-#             for flow in $FLOWS
-#             do
-#                 for protocol in $PROTOCOLS
-#                 do
-#                     for aqm in $AQMS
-#                     do
-#                         for run in {1..50}
-#                         do
-#                             run experiments/responsiveness_bw_rtt.py $del $bw $qmult $protocol $run $aqm 0 $flow
-#                         done
-#                     done
-#                 done
-#             done
-#         done
-#    done
-# done
+for bw in $BANDWIDTH
+do
+    for del in $DELAY
+    do
+        for qmult in $QUEUE
+        do
+            for flow in $FLOWS
+            do
+                for protocol in $PROTOCOLS
+                do
+                    for aqm in $AQMS
+                    do
+                        for run in {1..1}
+                        do
+                            run experiments/responsiveness_bw_rtt_leo.py $del $bw $qmult $protocol $run $aqm 0 $flow
+                        done
+                    done
+                done
+            done
+        done
+   done
+done
 
 # RESPONSIVENESS LOSS
 

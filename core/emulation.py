@@ -257,7 +257,7 @@ class Emulation:
                 # Create client start up call
                 params = (source_node,destination,duration,"%s/mininettestbed/saved_models/icml_paper_model" % HOME_DIR)
                 command = self.start_aurora_client
-                self.call_second.append(Command(command, params, start_time - previous_start_time))
+                self.call_second.append(Command(command, params, start_time, destination))
                 
             elif protocol == 'tbf' or protocol == 'netem':
                 # Change the tbf rate to the value provided
@@ -265,7 +265,7 @@ class Emulation:
                 nodes_names = params[0]
                 params[0] = self.network.linksBetween(self.network.get(nodes_names[0]), self.network.get(nodes_names[1]))[0]
                 command = self.configure_link
-                self.call_second.append(Command(command, params, start_time - previous_start_time))
+                self.call_second.append(Command(command, params, start_time, 'TBF'))
 
             elif protocol != 'aurora' and protocol not in ORCA:
                 # Create server start up call
@@ -329,6 +329,10 @@ class Emulation:
             t.start()
             wait_threads.append(t)
 
+        def traffic_change_thread(call: Command) -> None:
+            time.sleep(call.waiting_time)
+            call.command(*call.params)
+
 
         for call in self.call_first:
             call.command(*call.params)
@@ -353,6 +357,9 @@ class Emulation:
 
         for call in self.call_second:
             # start all the receivers at the same time, they will individually wait for the correct time
+            if call.node == 'TBF':
+                threading.Thread(target=traffic_change_thread, args=(call,)).start()
+                continue
             threading.Thread(target=host_thread, args=(call,)).start()
         
         #here we wait untill all the waitOutput threads are finished, indicating that all flows are done

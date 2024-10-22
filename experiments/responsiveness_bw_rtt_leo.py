@@ -24,10 +24,10 @@ def  generate_traffic_shape(seed, qsize_in_bytes):
     start_time = CHANGE_PERIOD
     traffic_config = []
     for i in range(int(RUN_LENGTH/CHANGE_PERIOD)):
-        start_time = (CHANGE_PERIOD*i)
-        print(start_time)
+        start_time = (CHANGE_PERIOD*i+7)
+        printDebug2(start_time)
         random_bw = random.randint(1,100) # Mbps
-        random_rtt = random.randint(20,200) # ms
+        random_rtt = random.randint(10,200) # ms
         traffic_config.append(TrafficConf('s2', 's3', start_time, CHANGE_PERIOD, 'tbf', 
                                       (('s2', 's3'), random_bw, None, qsize_in_bytes, False, 'fifo', None, 'change')))
         traffic_config.append(TrafficConf('s1', 's2', start_time, CHANGE_PERIOD, 'netem', 
@@ -48,12 +48,10 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     
     net = Mininet(topo=topo)
 
-    path = "%s/mininettestbed/nooffload/results_responsiveness_bw_rtt/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    path = "%s/mininettestbed/nooffload/results_responsiveness_bw_rtt_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    rmdirp(path)
     mkdirp(path)
  
-
-
-
     #  Configure size of TCP buffers
     #  TODO: check if this call can be put after starting mininet
     #  TCP buffers should account for QSIZE as well
@@ -61,10 +59,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     
 
     net.start()
-
-
     disable_offload(net)
-
     network_config = [NetworkConf('s1', 's2', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
                       NetworkConf('s2', 's3', bw, None, qsize_in_bytes, False, aqm, None)]
     
@@ -94,6 +89,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     # Process raw outputs into csv files
     process_raw_outputs(path)
+    plot_all(path, [{'src': flow.source, 'dst': flow.dest, 'start': flow.start , 'protocol': flow.protocol} for flow in [TrafficConf('c1', 'x1', 0, 300, protocol)]])
 
 if __name__ == '__main__':
 
