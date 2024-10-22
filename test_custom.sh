@@ -2,11 +2,11 @@ source common.sh
 bash setup.sh
 
 PROTOCOLS="bbr"
-BANDWIDTHS="50"
+BANDWIDTHS="1000"
 DELAYS="10"
 RUNS="1"
-QMULTS="4"
-FLOWS="2"
+QMULTS="1"
+FLOWS="1"
 
 for bw in $BANDWIDTHS
 do

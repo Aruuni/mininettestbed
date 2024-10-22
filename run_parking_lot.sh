@@ -2,7 +2,7 @@ source common.sh
 bash setup.sh
 
 
-PROTOCOLS="bbr cubic pcc"
+PROTOCOLS="bbr"
 BANDWIDTHS="100"
 DELAYS="10 20 30 40 50 60 70 80 90 100"
 RUNS="1"  

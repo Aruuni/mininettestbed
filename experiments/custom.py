@@ -59,7 +59,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     #                   NetworkConf('c5', 's1', None, 100, 3*bdp_in_bytes, False, 'fifo', loss),
     #                   NetworkConf('s2', 's3', bw, None, qsize_in_bytes, False, aqm, None)]
     if n_flows == 1:
-        traffic_config = [TrafficConf('c1', 'x1', 0, 60, protocol)]
+        traffic_config = [TrafficConf('c1', 'x1', 0, 100, protocol)]
                         #   TrafficConf('c2', 'x2', 25, 75, protocol),
                         #   TrafficConf('c3', 'x3', 50, 50, protocol),
                         #   TrafficConf('c4', 'x4', 75, 25, protocol)]
