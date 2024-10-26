@@ -100,7 +100,6 @@ def plot_all(path: str, flows:dict) -> None:
         else:
             axs[6].plot(df_ss_client['time'], df_ss_client['rttvar'], label=f'{flow_client} Rttvar')
     
-
     # Now process and plot queue sizes (8th subplot)
     queue_dir = os.path.join(path, 'queues')  # Specify the folder containing the queue files
     queue_files = [f for f in os.listdir(queue_dir) if f.endswith('.txt')]

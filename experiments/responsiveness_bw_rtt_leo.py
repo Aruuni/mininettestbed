@@ -25,7 +25,6 @@ def  generate_traffic_shape(seed, qsize_in_bytes):
     traffic_config = []
     for i in range(int(RUN_LENGTH/CHANGE_PERIOD)):
         start_time = (CHANGE_PERIOD*i+7)
-        printDebug2(start_time)
         random_bw = random.randint(1,100) # Mbps
         random_rtt = random.randint(10,200) # ms
         traffic_config.append(TrafficConf('s2', 's3', start_time, CHANGE_PERIOD, 'tbf', 
@@ -47,7 +46,6 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
     
     net = Mininet(topo=topo)
-
     path = "%s/mininettestbed/nooffload/results_responsiveness_bw_rtt_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
     rmdirp(path)
     mkdirp(path)
