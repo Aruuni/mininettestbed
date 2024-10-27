@@ -68,24 +68,30 @@ def get_rtt_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
         for run in RUNS:
             PATH = ROOT_PATH + '/Dumbell_%smbit_%sms_%spkts_0loss_1flows_22tcpbuf_%s/run%s' % (
                 BW, DELAY, int(QMULT * BDP_IN_PKTS), protocol, run)
-            if os.path.exists(PATH + '/csvs/x1_ss.csv'):
-                rtt_data = pd.read_csv(PATH + '/csvs/x1_ss.csv').reset_index(drop=True)
+            with open(PATH + '/emulation_info.json', 'r') as fin:
+                emulation_info = json.load(fin)
+
+            rtt_capacities = [x[-1][2] for x in filter(lambda elem: elem[5] == 'netem', emulation_info['flows'])]
+            optimal_mean = sum(rtt_capacities) / len(rtt_capacities)
+            print(rtt_capacities)
+            if os.path.exists(PATH + '/csvs/c1_ss.csv'):
+                rtt_data = pd.read_csv(PATH + '/csvs/c1_ss.csv').reset_index(drop=True)
                 rtt_data['time'] = rtt_data['time'].apply(lambda x: int(float(x)))
                 rtt_data = rtt_data[(rtt_data['time'] > start_time) & (rtt_data['time'] < end_time)]
                 rtt_data = rtt_data.drop_duplicates('time').set_index('time')
-                mean_rtt = rtt_data.mean()['rtt']  # Assuming 'rtt' is the column name
-                data.append([protocol, run, mean_rtt])
+                mean_rtt = rtt_data.mean()['srtt']  # Assuming 'rtt' is the column name
+                data.append([protocol, run, mean_rtt, optimal_mean])
 
-    COLUMNS = ['protocol', 'run_number', 'rtt']
+    COLUMNS = ['protocol', 'run_number', 'srtt', 'optimal_srtt']
     return pd.DataFrame(data, columns=COLUMNS)
 
 # Load Goodput Data
-bw_rtt_data = get_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_bw_rtt/fifo", PROTOCOLS, RUNS, BW, DELAY, QMULT)
-loss_data = get_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_loss/fifo", PROTOCOLS, RUNS, BW, DELAY, QMULT)
+bw_rtt_data = get_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_bw_rtt_leo/fifo", PROTOCOLS, RUNS, BW, DELAY, QMULT)
+#loss_data = get_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_loss/fifo", PROTOCOLS, RUNS, BW, DELAY, QMULT)
 
 # Load RTT Data
-rtt_data_bw_rtt = get_rtt_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_bw_rtt/fifo", PROTOCOLS, RUNS, BW, DELAY, QMULT)
-rtt_data_loss = get_rtt_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_loss/fifo", PROTOCOLS, RUNS, BW, DELAY, QMULT)
+rtt_data_bw_rtt = get_rtt_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_bw_rtt_leo/fifo", PROTOCOLS, RUNS, BW, DELAY, QMULT)
+#rtt_data_loss = get_rtt_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_loss/fifo", PROTOCOLS, RUNS, BW, DELAY, QMULT)
 
 # Plotting Goodput CDF
 fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(3, 1.5))
@@ -104,10 +110,10 @@ for protocol in PROTOCOLS:
     cumulative = np.cumsum(values)
     ax.plot(base[:-1], cumulative/50*100, label=f"{protocol}-rtt", c=COLOR[protocol])
 
-    avg_goodputs = loss_data[loss_data['protocol'] == protocol]['average_goodput']
-    values, base = np.histogram(avg_goodputs, bins=BINS)
-    cumulative = np.cumsum(values)
-    ax.plot(base[:-1], cumulative / 50 * 100, label=f"{protocol}-loss", linestyle='dashed', c=COLOR[protocol])
+    # avg_goodputs = loss_data[loss_data['protocol'] == protocol]['average_goodput']
+    # values, base = np.histogram(avg_goodputs, bins=BINS)
+    # cumulative = np.cumsum(values)
+    # ax.plot(base[:-1], cumulative / 50 * 100, label=f"{protocol}-loss", linestyle='dashed', c=COLOR[protocol])
 
 ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percentage of Trials (\%)")
 ax.annotate('optimal', xy=(50, 50), xytext=(45, 20), arrowprops=dict(arrowstyle="->", linewidth=0.5))
@@ -122,18 +128,24 @@ for format in ['pdf']:
 # Plotting RTT CDF
 fig, ax = plt.subplots(figsize=(3, 1.5))
 
+optimals = rtt_data_bw_rtt[rtt_data_bw_rtt['protocol'] == 'orca']['optimal_srtt']
+values, base = np.histogram(optimals, bins=BINS)
+cumulative = np.cumsum(values)
+ax.plot(base[:-1], cumulative/50*100, c='black', label="optimal")
+
 for protocol in PROTOCOLS:
-    rtts = rtt_data_bw_rtt[rtt_data_bw_rtt['protocol'] == protocol]['rtt']
+    rtts = rtt_data_bw_rtt[rtt_data_bw_rtt['protocol'] == protocol]['srtt']
     values, base = np.histogram(rtts, bins=BINS)
     cumulative = np.cumsum(values)
     ax.plot(base[:-1], cumulative / 50 * 100, label=f"{protocol}-rtt", c=COLOR[protocol])
 
-    rtts = rtt_data_loss[rtt_data_loss['protocol'] == protocol]['rtt']
-    values, base = np.histogram(rtts, bins=BINS)
-    cumulative = np.cumsum(values)
-    ax.plot(base[:-1], cumulative / 50 * 100, label=f"{protocol}-loss", linestyle='dashed', c=COLOR[protocol])
+    # rtts = rtt_data_loss[rtt_data_loss['protocol'] == protocol]['rtt']
+    # values, base = np.histogram(rtts, bins=BINS)
+    # cumulative = np.cumsum(values)
+    # ax.plot(base[:-1], cumulative / 50 * 100, label=f"{protocol}-loss", linestyle='dashed', c=COLOR[protocol])
 
 ax.set(xlabel="RTT (ms)", ylabel="Percentage of Trials (\%)")
+ax.annotate('optimal', xy=(50, 50), xytext=(45, 20), arrowprops=dict(arrowstyle="->", linewidth=0.5))
 
 # Legend
 fig.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.50), columnspacing=0.5, handletextpad=0.5, handlelength=1)

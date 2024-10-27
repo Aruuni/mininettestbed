@@ -42,7 +42,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Disable segmentation offloading
     disable_offload(net)
 
-    duration = int(2*delay)
+    duration = int(5*delay)
 
     network_config = [
         NetworkConf('r1a', 'r2a', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
@@ -70,9 +70,9 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     em.set_monitors(monitors)
 
 
-    Timer(delay/2, em.reroute_traffic, args=(n_flows, True)).start()
+    Timer(delay, em.reroute_traffic, args=(n_flows, True)).start()
     printDebug2(f'change to cross path routing happening at time {delay/2} seconds')
-    Timer(delay/2+delay, em.reroute_traffic, args=(n_flows, False)).start()
+    Timer(delay*3, em.reroute_traffic, args=(n_flows, False)).start()
     printDebug2(f'change to original routing happening at time {delay/2+delay} seconds')
 
     em.run()

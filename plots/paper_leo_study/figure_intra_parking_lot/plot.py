@@ -11,7 +11,7 @@ plt.rcParams['text.usetex'] = False
 
 
 ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_parking_lot/fifo" 
-PROTOCOLS = ['cubic', 'bbr', 'sage', 'pcc'] #, 'orca', 'bbr3']
+PROTOCOLS = ['cubic', 'bbr', 'sage', 'pcc', 'orca', 'bbr3']
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 QMULTS = [0.2, 1 ,4]
@@ -71,11 +71,7 @@ for mult in QMULTS:
                 max_bandwidth_between_ribs.set_index('time')
 
                 # Print or return the new DataFrame with time and max_bandwidth
-
-
-
                 total = receiver_spine[['bandwidth']].join(max_bandwidth_between_ribs.set_index('time'), how='inner', lsuffix='1', rsuffix='2')             
-                print(total)
                 # total = total.dropna()
                 # partial = partial.dropna()
 
