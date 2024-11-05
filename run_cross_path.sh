@@ -1,15 +1,12 @@
 source common.sh
 bash setup.sh
 
-
 PROTOCOLS="bbr"
 BANDWIDTHS="100"
-DELAYS="100"
-RUNS="4 5"  
+DELAYS="20"
+RUNS="1 2 3 4 5"
 QMULTS="1"
-AQMS='fifo'
-FLOWS='4'
-
+FLOWS="3"
 
 for bw in $BANDWIDTHS
 do
@@ -21,12 +18,9 @@ do
             do
                 for protocol in $PROTOCOLS
                 do
-                    for aqm in $AQMS
+                    for run in $RUNS
                     do
-                        for run in $RUNS
-                        do
-                            run experiments/parking_lot.py $del $bw $qmult $protocol $run $aqm 0 $flow
-                        done
+                        run experiments/cross_traffic.py $del $bw $qmult $protocol $run fifo 0 $flow
                     done
                 done
             done

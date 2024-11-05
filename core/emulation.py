@@ -493,7 +493,7 @@ class Emulation:
         emulation_info['topology'] = str(self.network.topo)
         flows = []
         for config in self.traffic_config:
-            flow = [config.source, config.dest, self.network.get(config.source).IP(), self.network.get(config.dest).IP(), config.start, config.protocol, config.params]
+            flow = [config.source, config.dest, self.network.get(config.source).IP(), self.network.get(config.dest).IP(), config.start, config.duration, config.protocol, config.params]
             flows.append(flow)
         emulation_info['flows'] = flows
         with open(self.path + "/emulation_info.json", 'w') as fout:

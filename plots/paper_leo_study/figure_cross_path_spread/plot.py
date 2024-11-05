@@ -15,7 +15,7 @@ DELAY = 20
 AQM = "fifo"
 QMULT = 1
 
-PROTOCOLS = ['cubic', 'orca', 'bbr', 'sage', 'pcc'] # 'bbr3',
+PROTOCOLS = ['cubic', 'orca', 'bbr', 'sage', 'pcc', 'bbr3']
 COLOR = {'cubic': '#0C5DA5', 'orca': '#00B945', 'bbr3': '#FF9500', 'bbr': '#FF2C01', 'sage': '#845B97', 'pcc': '#686868'}
 
 FLOWS = 3
@@ -40,23 +40,35 @@ def calculate_rfair(flow_data, window_size=5):
     rfair = numerator / denominator
     
     return 1 - rfair
-    
 
-def jains_fairness_index(x):
-    return (np.sum(x) ** 2) / (len(x) * np.sum(x ** 2))
 
-FAIRNESS_FUNCTION = jains_fairness_index
 
+
+
+import matplotlib.pyplot as plt
 
 def plot_fairness_and_goodput(fairness_data, goodput_data):
     for protocol in PROTOCOLS:
-        plt.figure(figsize=(15, 10))
+        fig, (ax2, ax1) = plt.subplots(2, 1, figsize=(15, 8), gridspec_kw={'height_ratios': [1, 2]}, sharex=True)
 
-        # Create subplots: one for goodput, one for fairness
-        ax1 = plt.subplot(2, 1, 1)
-        ax2 = plt.subplot(2, 1, 2)
+        # Plot fairness for all flows in the first subplot (top)
+        fairness_mean_dumbbell1 = fairness_data[protocol]['fairness_dumbbell1_mean']
+        fairness_mean_dumbbell2 = fairness_data[protocol]['fairness_dumbbell2_mean']
+        fairness_mean_all = fairness_data[protocol]['fairness_all_mean']
+        time = fairness_data[protocol]['time']
 
-        # Plot goodput for all flows in the first subplot
+        ax2.plot(time, fairness_mean_dumbbell1, label='Fairness Dumbbell 1', color='orange')
+        ax2.plot(time, fairness_mean_dumbbell2, label='Fairness Dumbbell 2', color='green')
+        ax2.plot(time, fairness_mean_all, label='Fairness All', color='red')
+
+        # Configure the fairness plot without title
+        ax2.set_ylabel('Fairness Index', fontsize=25)
+        ax2.tick_params(axis='both', which='major', labelsize=20)
+        ax2.legend(fontsize=14, loc='lower right')
+        ax2.grid()
+        ax2.set_xlim(0, 100)
+        ax2.set_ylim(0, 1)
+
         for flow in range(1, len(goodput_data[protocol]) + 1):
             goodput_mean = goodput_data[protocol][flow]['mean']
             goodput_std = goodput_data[protocol][flow]['std']
@@ -68,33 +80,23 @@ def plot_fairness_and_goodput(fairness_data, goodput_data):
                              goodput_mean + goodput_std, 
                              alpha=0.2)  # Shade for std deviation
 
-        # Configure the goodput plot
-        ax1.set_title(f'Goodput for Protocol: {protocol}')
-        ax1.set_xlabel('Time (s)')
-        ax1.set_ylabel('Goodput (Mbps)')
-        ax1.legend()
+        # Configure the goodput plot without title
+        ax1.set_xlabel('Time (s)', fontsize=25)
+        ax1.set_ylabel('Goodput (Mbps)', fontsize=25)
+        ax1.tick_params(axis='both', which='major', labelsize=20)
+        ax1.legend(fontsize=14, loc='lower right')
         ax1.grid()
+        ax1.set_xlim(0, 100)
 
-        # Plot fairness for all flows in the second subplot
-        fairness_mean_dumbbell1 = fairness_data[protocol]['fairness_dumbbell1_mean']
-        fairness_mean_dumbbell2 = fairness_data[protocol]['fairness_dumbbell2_mean']
-        fairness_mean_all = fairness_data[protocol]['fairness_all_mean']
-        time = fairness_data[protocol]['time']
+        # Remove padding between the subplots to make them appear closer together
+        plt.subplots_adjust(hspace=0.05)
+        ax2.get_xaxis().set_visible(True)  # Hide x-axis labels of the top plot
 
-        ax2.plot(time, fairness_mean_dumbbell1, label='Fairness Dumbbell 1', color='orange')
-        ax2.plot(time, fairness_mean_dumbbell2, label='Fairness Dumbbell 2', color='green')
-        ax2.plot(time, fairness_mean_all, label='Fairness All', color='red')
-
-        # Configure the fairness plot
-        ax2.set_title(f'Fairness for Protocol: {protocol}')
-        ax2.set_xlabel('Time (s)')
-        ax2.set_ylabel('Fairness Index')
-        ax2.legend()
-        ax2.grid()
-
-        plt.tight_layout()
-        plt.savefig(f'fairness_goodput_{protocol}.png')  # Save each figure
+        # Tight layout with no extra padding
+        plt.tight_layout(pad=0.5)
+        plt.savefig(f'fairness_goodput_{protocol}.pdf', bbox_inches='tight')
         plt.close()
+
 
 def calculate_jains_index(bandwidths):
     """Calculate Jain's Fairness Index for a given set of bandwidth values."""

@@ -139,43 +139,11 @@ RUNS="1 2 3 4 5"
 
 # RESPONSIVENESS BANDWIDTH/RTT 
 
-BANDWIDTH="50"
-DELAY="50"
-QUEUE="1"
-AQMS='fifo'
-FLOWS='1'
-
-for bw in $BANDWIDTH
-do
-    for del in $DELAY
-    do
-        for qmult in $QUEUE
-        do
-            for flow in $FLOWS
-            do
-                for protocol in $PROTOCOLS
-                do
-                    for aqm in $AQMS
-                    do
-                        for run in {1..1}
-                        do
-                            run experiments/responsiveness_bw_rtt_leo.py $del $bw $qmult $protocol $run $aqm 0 $flow
-                        done
-                    done
-                done
-            done
-        done
-   done
-done
-
-# RESPONSIVENESS LOSS
-
 # BANDWIDTH="50"
-# DELAY="50" 
+# DELAY="50"
 # QUEUE="1"
 # AQMS='fifo'
 # FLOWS='1'
-
 
 # for bw in $BANDWIDTH
 # do
@@ -189,16 +157,48 @@ done
 #                 do
 #                     for aqm in $AQMS
 #                     do
-#                         for run in {1..50}
+#                         for run in {69..69}
 #                         do
-#                             run experiments/responsiveness_loss.py $del $bw $qmult $protocol $run $aqm 0 $flow
+#                             run experiments/responsiveness_bw_rtt_leo.py $del $bw $qmult $protocol $run $aqm 0 $flow
 #                         done
 #                     done
 #                 done
 #             done
 #         done
-#     done
+#    done
 # done
+
+# RESPONSIVENESS LOSS
+
+BANDWIDTH="50"
+DELAY="50" 
+QUEUE="1"
+AQMS='fifo'
+FLOWS='1'
+
+
+for bw in $BANDWIDTH
+do
+    for del in $DELAY
+    do
+        for qmult in $QUEUE
+        do
+            for flow in $FLOWS
+            do
+                for protocol in $PROTOCOLS
+                do
+                    for aqm in $AQMS
+                    do
+                        for run in {69..69}
+                        do
+                            run experiments_mininet/responsiveness_loss.py $del $bw $qmult $protocol $run $aqm 0 $flow
+                        done
+                    done
+                done
+            done
+        done
+    done
+done
 
 # EFFICIENCY/CONVERGENCE 
 

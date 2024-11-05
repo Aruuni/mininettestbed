@@ -70,7 +70,7 @@ def plot_one(QMULT, RUN):
    FIGSIZE = (4, 3)
    COLOR = {'cubic': '#0C5DA5',
              'orca': '#00B945',
-             'aurora': '#FF9500',
+             'bbr3': '#FF9500',
              'bbr': '#FF2C01',
              'sage': '#845B97',
              'pcc': '#686868',
@@ -78,14 +78,14 @@ def plot_one(QMULT, RUN):
    LINESTYLE = 'dashed'
    XLIM = [0,175]
 
-   PROTOCOLS = ['cubic', 'orca', 'aurora', 'bbr', 'sage', 'pcc']
+   PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
 
    BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
    BDP_IN_PKTS = BDP_IN_BYTES / 1500
 
    PROTOCOL_DATA = {'cubic': {'x1': None, 'y1': None,'x2': None, 'y2': None},
                     'orca': {'x1': None, 'y1': None,'x2': None, 'y2': None},
-                    'aurora': {'x1': None, 'y1': None,'x2': None, 'y2': None},
+                    'bbr3': {'x1': None, 'y1': None,'x2': None, 'y2': None},
                     'bbr': {'x1': None, 'y1': None,'x2': None, 'y2': None},
                     'sage': {'x1': None, 'y1': None,'x2': None, 'y2': None},
                     'pcc': {'x1': None, 'y1': None,'x2': None, 'y2': None},

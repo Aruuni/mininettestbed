@@ -20,7 +20,7 @@ do
                 do
                     for run in $RUNS
                     do
-                        run experiments/custom.py $del $bw $qmult $protocol $run fifo 0 $flow
+                        run experiments_mininet/custom.py $del $bw $qmult $protocol $run fifo 0 $flow
                     done
                 done
             done
