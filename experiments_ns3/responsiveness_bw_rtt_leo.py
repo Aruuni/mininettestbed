@@ -16,16 +16,18 @@ import random
 import numpy as np
 from core.config import *
 
+import subprocess
+from multiprocessing import Pool
 
 def  generate_traffic_shape(seed, qsize_in_bytes):
     random.seed(seed)
     RUN_LENGTH = 300 #s
-    CHANGE_PERIOD = 10 #s
+    CHANGE_PERIOD = 15 #s
     start_time = CHANGE_PERIOD
     traffic_config = []
     for i in range(int(RUN_LENGTH/CHANGE_PERIOD)):
-        start_time = (CHANGE_PERIOD*i+7)
-        random_bw = random.randint(1,100) # Mbps
+        start_time = (CHANGE_PERIOD*i)
+        random_bw = random.randint(50,100) # Mbps
         random_rtt = random.randint(10,200) # ms
         traffic_config.append(TrafficConf('s2', 's3', start_time, CHANGE_PERIOD, 'tbf', 
                                       (('s2', 's3'), random_bw, None, qsize_in_bytes, False, 'fifo', None, 'change')))
@@ -34,8 +36,8 @@ def  generate_traffic_shape(seed, qsize_in_bytes):
             
     return traffic_config
 
-
-def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
+def run_simulation(*args):
+    topology, protocol, params, bw, delay, qmult, tcp_buffer_mult, run, aqm, loss, n_flows = args[0]
     if topology == 'Dumbell':
         topo = DumbellTopo(**params)
     else:
@@ -45,23 +47,9 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     bdp_in_bytes = int(bw*(2**20)*2*delay*(10**-3)/8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
     
-    net = Mininet(topo=topo)
-    path = "%s/mininettestbed/nooffload/results_responsiveness_bw_rtt_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
-    rmdirp(path)
+    path = "%s/cctestbed/ns3/results_responsiveness_bw_rtt_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
     mkdirp(path)
  
-    #  Configure size of TCP buffers
-    #  TODO: check if this call can be put after starting mininet
-    #  TCP buffers should account for QSIZE as well
-    tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
-    
-
-    net.start()
-    disable_offload(net)
-    network_config = [NetworkConf('s1', 's2', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
-                      NetworkConf('s2', 's3', bw, None, qsize_in_bytes, False, aqm, None)]
-    
-    # Changes in the network parameters are treated as traffic configurations and are added in the same config
     if n_flows == 1:
         traffic_config = [TrafficConf('c1', 'x1', 0, 300, protocol)]
         traffic_config.extend(generate_traffic_shape(run, qsize_in_bytes))
@@ -69,43 +57,42 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         print("ERROR: number of flows greater than 1")
         exit()
 
-    # TODO: create the scheduled changes in network configuration
-
+    emulation_info = {}
+    emulation_info['topology'] = str(topology)
+    flows = []
+    for config in traffic_config:
+        flow = [config.source, config.dest, "na", "na", config.start, config.duration, config.protocol, config.params]
+        flows.append(flow)
+    emulation_info['flows'] = flows
+    with open(path + "/emulation_info.json", 'w') as fout:
+        json.dump(emulation_info,fout)
     
-    em = Emulation(net, network_config, traffic_config, path)
-
-    em.configure_network()
-    em.configure_traffic()
-    monitors = ['s1-eth1', 's2-eth2', 'sysstat']
-
-    em.set_monitors(monitors)
-    em.run()
-    em.dump_info()
-    net.stop()
-    
-    change_all_user_permissions(path)
-
-    # Process raw outputs into csv files
-    process_raw_outputs(path)
-    plot_all(path, [{'src': flow.source, 'dst': flow.dest, 'start': flow.start , 'protocol': flow.protocol} for flow in [TrafficConf('c1', 'x1', 0, 300, protocol)]])
+    command = f'cd /home/mihai/ns-3-dev; time ./ns3 run --no-build "scratch/CCTestBed.cc --configJSON={path}/emulation_info.json --path={path} --delay={delay} --bandwidth={bw} --seed={run}"'
+    subprocess.run(command, shell=True)
+    plot_all_ns3(path)
 
 if __name__ == '__main__':
 
-    topology = 'Dumbell'
-    
-    delay = int(sys.argv[1])
-    bw = int(sys.argv[2])
-    qmult = float(sys.argv[3])
-    protocol = sys.argv[4]
-    run = int(sys.argv[5])
-    aqm = sys.argv[6]
-    loss = sys.argv[7]
-    n_flows = int(sys.argv[8])
-    params = {'n':n_flows}
+    PROTOCOLS = ['cubic', 'bbr']
+    BWS = [50]
+    DELAYS = [50]
+    QMULTS = [1]
+    RUNS = [1]
+    LOSSES=[0]
 
+    MAX_SIMULATIONS = 8
 
-    print('Loss is %s' % loss)
-    run_emulation(topology, protocol, params, bw, delay, qmult, 22, run, aqm, loss, n_flows) #Qsize should be at least 1 MSS. 
+    pool = Pool(processes=MAX_SIMULATIONS)
 
-    # Plot results
-    # plot_results(path)
+    params_list = [("Dumbell", protocol, {'n':1}, bw, delay, mult, 22, run, "fifo", 0, 1)
+                for protocol in PROTOCOLS
+                for bw in BWS
+                for delay in DELAYS
+                for mult in QMULTS
+                for run in range(1, 8)]
+
+    pool.map(run_simulation, params_list)
+
+    pool.close()
+    pool.join()
+

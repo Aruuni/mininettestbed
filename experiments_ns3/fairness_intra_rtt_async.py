@@ -9,7 +9,7 @@ sys.path.append( mymodule_dir )
 from core.topologies import *
 from mininet.net import Mininet
 from core.analysis import *
-import subprocess
+
 import json
 from core.utils import *
 from core.emulation import *
@@ -31,7 +31,7 @@ def run_simulation(*args):
 
     
 
-    path = "%s/mininettestbed/ns3/results_fairness_intra_rtt_async/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    path = "%s/cctestbed/ns3/results_fairness_intra_rtt_async/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
     #rmdirp(path)
     mkdirp(path)
 
@@ -63,8 +63,6 @@ def run_simulation(*args):
     emulation_info['flows'] = flows
     with open(path + "/emulation_info.json", 'w') as fout:
         json.dump(emulation_info,fout)
-
-    #net.stop()
     
     command = f'cd /home/mihai/ns-3-dev; time ./ns3 run --no-build "scratch/CCTestBed.cc --configJSON={path}/emulation_info.json --path={path} --delay={delay} --bandwidth={bw} --seed={run}"'
     subprocess.run(command, shell=True)
@@ -77,10 +75,11 @@ if __name__ == '__main__':
     BWS = [100]
     DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     QMULTS = [0.2,1,4]
-    RUNS = [1, 2, 3, 4, 5]
+    #RUNS = [1, 2, 3, 4, 5]
+    RUNS = [1]
     LOSSES=[0]
 
-    MAX_SIMULATIONS = 10
+    MAX_SIMULATIONS = 8
 
 
 

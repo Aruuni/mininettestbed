@@ -137,7 +137,7 @@ def plot_all_ns3(path: str) -> None:
 
     # Identify files by prefix and metric
     file_prefixes = set(f.split('-')[0] for f in os.listdir(path) if f.endswith('.csv') and '-' in f)
-    metrics = ['goodput', 'throughput', 'cwnd', 'rtt', 'bif']
+    metrics = ['goodput', 'throughput', 'cwnd', 'rtt', 'bytes']
 
     for prefix in file_prefixes:
         for idx, metric in enumerate(metrics):
@@ -147,14 +147,14 @@ def plot_all_ns3(path: str) -> None:
                 axs[idx].plot(df['time'], df[df.columns[1]], label=f'{prefix} {metric.capitalize()}')
 
     # Queue Size plot
-    queue_file = os.path.join(path, 'queueSize.csv')
-    if os.path.exists(queue_file):
-        df_queue = pd.read_csv(queue_file)
-        df_queue['time'] = pd.to_numeric(df_queue['time'], errors='coerce')
-        df_queue['time'] = df_queue['time'] - df_queue['time'].min()
-        df_queue['root_pkts'] = df_queue['root_pkts'].astype(float) 
+    # queue_file = os.path.join(path, 'queueSize.csv')
+    # if os.path.exists(queue_file):
+    #     df_queue = pd.read_csv(queue_file)
+    #     df_queue['time'] = pd.to_numeric(df_queue['time'], errors='coerce')
+    #     df_queue['time'] = df_queue['time'] - df_queue['time'].min()
+    #     df_queue['root_pkts'] = df_queue['root_pkts'].astype(float) 
 
-        axs[5].plot(df_queue['time'], df_queue['root_pkts'], label='Queue Size')
+    #     axs[5].plot(df_queue['time'], df_queue['root_pkts'], label='Queue Size')
 
     # Titles and labels
     titles = ['Goodput (Mbps)', 'Throughput (Mbps)', 'CWND (MSS)', 'RTT (ms)', 'Bytes In Flight', 'Queue Size (Packets)']

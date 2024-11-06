@@ -55,7 +55,8 @@ parseData(const std::string &file_path) {
         flow.start_time = flow_data[4];
         flow.duration = flow_data[5];
         flow.congestion_control = flow_data[6];
-        if (flow_data[7] == nullptr) {
+        COUT(flow.congestion_control << " " << flow.start_time);
+        if (flow_data[7].is_null()) {
             flow.congestion_control[0] = std::toupper(flow.congestion_control[0]);
             flow.congestion_control = "Tcp" + flow.congestion_control;
             parsedData.flows.push_back(flow);
@@ -74,7 +75,10 @@ parseData(const std::string &file_path) {
                 loss.type = "loss";
                 delay.type = "delay";
                 delay.value = flow_data[7][2];
-                loss.value = flow_data[7][6];
+                if (flow_data[7][6].is_null())
+                    loss.value = 0;
+                else
+                    loss.value = flow_data[7][6];
                 parsedData.changes.push_back(delay);
                 parsedData.changes.push_back(loss);
             }
@@ -89,7 +93,7 @@ ParsedData traffic_config;
 // ./ns3 clean
 // ./ns3 configure --build-profile=optimized 
 // ./ns3 run "scratch/CCTestBed.cc --configJSON=/home/mihai/Desktop/emulation_info.json"
-// ./ns3 run "scratch/CCTestBed.cc --configJSON=/home/mihai/Desktop/emulation_info.json --path=test/"
+// ./ns3 run "scratch/CCTestBed.cc --configJSON=/home/mihai/Desktop/emulation_info.json --path=scratch/test/"
 AsciiTraceHelper ascii;
 std::unordered_map<std::string, std::vector<std::string>> files;
 
@@ -129,14 +133,14 @@ uint32Tracer(Ptr<OutputStreamWrapper> stream, uint32_t, uint32_t newval)
         << std::endl;
 }
 
-static void
-DataRateTracer(Ptr<OutputStreamWrapper> stream, DataRate, DataRate newval)
-{
-    *stream->GetStream() 
-        << Simulator::Now().GetSeconds() 
-        << ", " << newval.GetBitRate() 
-        << std::endl;
-}
+// static void
+// DataRateTracer(Ptr<OutputStreamWrapper> stream, DataRate, DataRate newval)
+// {
+//     *stream->GetStream() 
+//         << Simulator::Now().GetSeconds() 
+//         << ", " << newval.GetBitRate() 
+//         << std::endl;
+// }
 
 static void
 TimeTracer(Ptr<OutputStreamWrapper> stream, Time, Time newval)
@@ -184,7 +188,7 @@ void
 QueueSizeTrace(uint32_t nodeID, uint32_t deviceID)
 {
     Ptr<OutputStreamWrapper> qtrace = ascii.CreateFileStream(outpath + "queueSize.csv");
-    *qtrace->GetStream() << "time,root_pkts " << "\n";
+    *qtrace->GetStream() << "time,root_pkts" << "\n";
     Config::ConnectWithoutContext("/NodeList/" + std::to_string(nodeID) + 
                                   "/DeviceList/" + std::to_string(deviceID) + 
                                   "/$ns3::PointToPointNetDevice/TxQueue/PacketsInQueue", 
@@ -244,7 +248,7 @@ main(int argc, char* argv[])
     double bdpMultiplier{1};
     int bottleneck_bw{10};
     int bottleneck_delay{5};
-    int inter_bottleneck_delay{0};
+    //int inter_bottleneck_delay{0};
     
     CommandLine cmd(__FILE__);
     cmd.Usage("CommandLine example program.\n"
@@ -406,10 +410,10 @@ main(int argc, char* argv[])
     for (uint32_t i = 0; i < senders.GetN(); i++) {
         Ptr<FlowMonitor> flowMonitorS = flowmonHelperSender.Install(senders.Get(i));     
         rxBytes.push_back(0);
-        Ptr<OutputStreamWrapper> th_stream = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + std::to_string(i) + "-throughtput.csv");
+        Ptr<OutputStreamWrapper> th_stream = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + std::to_string(i) + "-throughput.csv");
         *th_stream->GetStream() << "time,throughput" << "\n";
         Simulator::Schedule(Seconds(0.1) + MilliSeconds(1) + Seconds(traffic_config.flows[i].start_time), &TraceThroughput, flowMonitorS, th_stream, i+1, 0, Seconds(0));
-        files["throughtput"].push_back(outpath + traffic_config.flows[i].congestion_control + std::to_string(i) + "-throughtput.csv");
+        files["throughtput"].push_back(outpath + traffic_config.flows[i].congestion_control + std::to_string(i) + "-throughput.csv");
         
         Ptr<OutputStreamWrapper> gp_stream = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + std::to_string(i) + "-goodput.csv");
         *gp_stream->GetStream() << "time,goodput" << "\n";
