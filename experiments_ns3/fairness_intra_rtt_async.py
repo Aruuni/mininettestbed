@@ -14,9 +14,11 @@ import json
 from core.utils import *
 from core.emulation import *
 from core.config import *
+import subprocess
+from multiprocessing import Pool
 
-
-def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
+def run_simulation(*args):
+    topology, protocol, params, bw, delay, qmult, tcp_buffer_mult, run, aqm, loss, n_flows = args[0]
     if topology == 'Dumbell':
         topo = DumbellTopo(**params)
     else:
@@ -32,8 +34,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     path = "%s/mininettestbed/ns3/results_fairness_intra_rtt_async/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
     #rmdirp(path)
     mkdirp(path)
-    network_config = [NetworkConf('s1', 's2', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
-                      NetworkConf('s2', 's3', bw, None, qsize_in_bytes, False, aqm, None)]
+
     
     if n_flows == 1:
         traffic_config = [TrafficConf('c1', 'x1', 0, 60, protocol)]
@@ -57,7 +58,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     emulation_info['topology'] = str(topology)
     flows = []
     for config in traffic_config:
-        flow = [config.source, config.dest, "n/a", "n/a", config.start, config.duration, config.protocol, config.params]
+        flow = [config.source, config.dest, "na", "na", config.start, config.duration, config.protocol, config.params]
         flows.append(flow)
     emulation_info['flows'] = flows
     with open(path + "/emulation_info.json", 'w') as fout:
@@ -65,30 +66,35 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     #net.stop()
     
-    command = f'cd /home/mihai/ns-3-dev; ./ns3 run "scratch/CCTestBed.cc --configJSON={path}/emulation_info.json --path={path}"'
-    printDebug3(command)
+    command = f'cd /home/mihai/ns-3-dev; time ./ns3 run --no-build "scratch/CCTestBed.cc --configJSON={path}/emulation_info.json --path={path} --delay={delay} --bandwidth={bw} --seed={run}"'
     subprocess.run(command, shell=True)
     # Process raw outputs into csv files
     plot_all_ns3(path)
 
-
 if __name__ == '__main__':
 
-    topology = 'Dumbell'
-    
-    delay = int(sys.argv[1])
-    bw = int(sys.argv[2])
-    qmult = float(sys.argv[3])
-    protocol = sys.argv[4]
-    run = int(sys.argv[5])
-    aqm = sys.argv[6]
-    loss = sys.argv[7]
-    n_flows = int(sys.argv[8])
-    params = {'n':n_flows}
+    PROTOCOLS = ['cubic', 'bbr']
+    BWS = [100]
+    DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    QMULTS = [0.2,1,4]
+    RUNS = [1, 2, 3, 4, 5]
+    LOSSES=[0]
+
+    MAX_SIMULATIONS = 10
 
 
-    print('Loss is %s' % loss)
-    run_emulation(topology, protocol, params, bw, delay, qmult, 22, run, aqm, loss, n_flows) #Qsize should be at least 1 MSS.
 
-    # Plot results
-    # plot_results(path)
+    pool = Pool(processes=MAX_SIMULATIONS)
+
+    params_list = [("Dumbell", protocol, {'n':2}, bw, delay, mult, 22, run, "fifo", 0, 2)
+                for protocol in PROTOCOLS
+                for bw in BWS
+                for delay in DELAYS
+                for mult in QMULTS
+                for run in RUNS]
+
+    pool.map(run_simulation, params_list)
+
+    pool.close()
+    pool.join()
+
