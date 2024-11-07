@@ -73,14 +73,14 @@ def run_simulation(*args):
 
 if __name__ == '__main__':
 
-    PROTOCOLS = ['cubic', 'bbr']
+    PROTOCOLS = ['bbr']
     BWS = [50]
     DELAYS = [50]
     QMULTS = [1]
     RUNS = [1]
     LOSSES=[0]
 
-    MAX_SIMULATIONS = 8
+    MAX_SIMULATIONS = 5
 
     pool = Pool(processes=MAX_SIMULATIONS)
 
@@ -89,7 +89,7 @@ if __name__ == '__main__':
                 for bw in BWS
                 for delay in DELAYS
                 for mult in QMULTS
-                for run in range(1, 8)]
+                for run in range(27, 28)] #     [18, 21, 24, 27, 30]
 
     pool.map(run_simulation, params_list)
 
