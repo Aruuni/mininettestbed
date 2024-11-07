@@ -26,51 +26,28 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     qsize_in_bytes = max(int(qmult * fixed_bdp_in_bytes), 1500)
 
     duration = int((2*delay*1000)/1000)
-    print('\033[94mDuration is %s seconds\033[0m' % (duration*2))
     
     net = Mininet(topo=topo)
-    path = "%s/mininettestbed/nooffload/results_fairness_inter_rtt_async/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    path = "%s/cctestbed/nooffload/results_fairness_inter_rtt_async/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
 
-    print(path)
     rmdirp(path)
     mkdirp(path)
 
-
-
-    #  Configure size of TCP buffers
-    #  TODO: check if this call can be put after starting mininet
-    #  TCP buffers should account for QSIZE as well
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
     
 
     net.start()
-
     disable_offload(net)
 
     network_config = [NetworkConf('c1', 's1', None, 2*10, 3*bdp_in_bytes, False, 'fifo', loss),
                       NetworkConf('c2', 's1', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
                       NetworkConf('s2', 's3', bw, None, qsize_in_bytes, False, aqm, None)]
     
-    if n_flows == 1:
-        traffic_config = [TrafficConf('c1', 'x1', 0, 60, protocol)]
-                        #   TrafficConf('c2', 'x2', 25, 75, protocol),
-                        #   TrafficConf('c3', 'x3', 50, 50, protocol),
-                        #   TrafficConf('c4', 'x4', 75, 25, protocol)]
-    elif n_flows == 2:
+
+    if n_flows == 2:
         traffic_config = [TrafficConf('c1', 'x1',  0, 2*duration, protocol),
                            TrafficConf('c2', 'x2', int(duration/2), int(duration/2)+duration, protocol)]
-    elif n_flows == 3:
-        traffic_config = [TrafficConf('c1', 'x1', 0, 100, protocol),
-                         TrafficConf('c2', 'x2', 25, 125, protocol),
-                         TrafficConf('c3', 'x3', 50, 150, protocol)]
-    elif n_flows == 4:
-        traffic_config = [TrafficConf('c1', 'x1', 0, 100, protocol),
-                         TrafficConf('c2', 'x2', 25, 125, protocol),
-                         TrafficConf('c3', 'x3', 50, 150, protocol),
-                         TrafficConf('c4', 'x4', 75, 175, protocol)]
 
-
-    
     em = Emulation(net, network_config, traffic_config, path)
 
     em.configure_network()
@@ -84,9 +61,10 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     
     change_all_user_permissions(path)
 
-    # Process raw outputs into csv files
     process_raw_outputs(path)
-
+    plot_all(path, [{'src': flow.source, 'dst': flow.dest, 'start': flow.start , 'protocol': flow.protocol} for flow in traffic_config])
+    change_all_user_permissions(path)
+    
 if __name__ == '__main__':
 
     topology = 'Dumbell'
@@ -103,6 +81,3 @@ if __name__ == '__main__':
 
     print('Loss is %s' % loss)
     run_emulation(topology, protocol, params, bw, delay, qmult, 22, run, aqm, loss, n_flows) #Qsize should be at least 1 MSS.
-
-    # Plot results
-    # plot_results(path)
