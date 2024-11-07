@@ -2,36 +2,39 @@
 source common.sh
 bash setup.sh
 
-PROTOCOLS="bbr"
+PROTOCOLS="bbr cubic pcc"
+# PROTOCOLS="orca sage"
+# PROTOCOLS="bbr"
+
 QMULTS="0.2 1 4"
 RUNS="1 2 3 4 5"
 
 # FAIRNESS INTRA RTT 
 
-# BANDWIDTHS="100"
-# DELAYS="10 20 30 40 50 60 70 80 90 100"
-# FLOWS="2"
+BANDWIDTHS="100"
+DELAYS="10 20 30 40 50 60 70 80 90 100"
+FLOWS="2"
 
-# for bw in $BANDWIDTHS
-#     do
-#         for del in $DELAYS
-#         do
-#             for qmult in $QMULTS
-#             do
-#                 for flow in $FLOWS
-#                 do
-#                     for protocol in $PROTOCOLS
-#                     do
-#                         for run in $RUNS
-#                         do
-#                             run experiments/fairness_intra_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
-#                         done
-#                     done
-#                 done
-#             done
-#         done
-#     done
-# done
+for bw in $BANDWIDTHS
+    do
+        for del in $DELAYS
+        do
+            for qmult in $QMULTS
+            do
+                for flow in $FLOWS
+                do
+                    for protocol in $PROTOCOLS
+                    do
+                        for run in $RUNS
+                        do
+                            run experiments_mininet/intra_rtt_fairness.py $del $bw $qmult $protocol $run fifo 0 $flow
+                        done
+                    done
+                done
+            done
+        done
+    done
+done
 
 # FAIRNESS INTER RTT
 
