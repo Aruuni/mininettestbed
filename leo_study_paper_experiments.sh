@@ -8,29 +8,19 @@ PROTOCOLS="bbr cubic pcc"
 
 QMULTS="0.2 1 4"
 RUNS="1 2 3 4 5"
+STEPS="10 20 30 40 50 60 70 80 90 100"
 
 # FAIRNESS INTRA RTT 
 
-BANDWIDTHS="100"
-DELAYS="10 20 30 40 50 60 70 80 90 100"
-FLOWS="2"
-
-for bw in $BANDWIDTHS
+for del in $STEPS
+do
+    for qmult in $QMULTS
     do
-        for del in $DELAYS
+        for protocol in $PROTOCOLS
         do
-            for qmult in $QMULTS
+            for run in $RUNS
             do
-                for flow in $FLOWS
-                do
-                    for protocol in $PROTOCOLS
-                    do
-                        for run in $RUNS
-                        do
-                            run experiments_mininet/intra_rtt_fairness.py $del $bw $qmult $protocol $run fifo 0 $flow
-                        done
-                    done
-                done
+                run experiments_mininet/intra_rtt_fairness.py $del "100" $qmult $protocol $run fifo 0 "2"
             done
         done
     done
@@ -38,55 +28,36 @@ done
 
 # FAIRNESS INTER RTT
 
-# BANDWIDTHS="100"
-# DELAYS="100"
-# FLOWS="2"
+for del in $STEPS
+do
+    for qmult in $QMULTS
+    do
+        for protocol in $PROTOCOLS
+        do
+            for run in $RUNS
+            do
+                run eexperiments_mininet/inter_rtt_fairness.py $del "100" $qmult $protocol $run fifo 0 "2"
+            done
+        done
+    done
+done
 
-# for bw in $BANDWIDTHS
-# do
-#     for del in $DELAYS
-#     do
-#         for qmult in $QMULTS
-#         do
-#             for flow in $FLOWS
-#             do
-#                 for protocol in $PROTOCOLS
-#                 do
-#                     for run in $RUNS
-#                     do
-#                         run experiments/fairness_inter_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
-#                     done
-#                 done
-#             done
-#         done
-#     done
-# done
 
 # FAIRNESS BANDWIDTH
 
-# BANDWIDTHS="10 20 30 40 50 60 70 80 90 100"
-# DELAYS="20"
-# FLOWS="2"
-
-# for bw in $BANDWIDTHS
-# do
-#     for del in $DELAYS
-#     do
-#         for qmult in $QMULTS
-#         do
-#             for flow in $FLOWS
-#             do
-#                 for protocol in $PROTOCOLS
-#                 do
-#                     for run in $RUNS
-#                     do
-#                         run experiments/fairness_bw_async.py $del $bw $qmult $protocol $run fifo 0 $flow
-#                     done
-#                 done
-#             done
-#         done
-#     done
-# done
+for bw in $STEPS
+do
+    for qmult in $QMULTS
+    do
+        for protocol in $PROTOCOLS
+        do
+            for run in $RUNS
+            do
+                run eexperiments_mininet/fairness_bw_async.py "20" $bw $qmult $protocol $run fifo 0 "2"
+            done
+        done  
+    done
+done
 
 # CUBIC COEXISTANCE/BACKWARDS COMPATIBILITY
 
@@ -106,7 +77,7 @@ done
 #                 do
 #                     for run in $RUNS
 #                     do
-#                         run experiments/fairness_friendly_rtt_async.py $del $bw $qmult $protocol $run fifo 0 $flow
+#                         run experiments/fairness_friendly_rtt_async.py $del "100" $qmult $protocol $run fifo 0 "2"
 #                     done
 #                 done
 #             done

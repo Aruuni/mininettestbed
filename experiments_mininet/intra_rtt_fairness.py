@@ -61,9 +61,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     change_all_user_permissions(path)
 
 if __name__ == '__main__':
-
     topology = 'Dumbell'
-    
     delay = int(sys.argv[1])
     bw = int(sys.argv[2])
     qmult = float(sys.argv[3])
@@ -73,7 +71,4 @@ if __name__ == '__main__':
     loss = sys.argv[7]
     n_flows = int(sys.argv[8])
     params = {'n':n_flows}
-
-
-    print('Loss is %s' % loss)
     run_emulation(topology, protocol, params, bw, delay, qmult, 22, run, aqm, loss, n_flows) #Qsize should be at least 1 MSS.
