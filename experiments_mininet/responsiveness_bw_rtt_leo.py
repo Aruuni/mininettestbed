@@ -46,13 +46,15 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
     
     net = Mininet(topo=topo)
-    path = "%s/mininettestbed/nooffload/results_responsiveness_bw_rtt_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    path = "%s/cctestbed/mininet/results_responsiveness_bw_rtt_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    
     rmdirp(path)
     mkdirp(path)
- 
-    #  Configure size of TCP buffers
-    #  TODO: check if this call can be put after starting mininet
-    #  TCP buffers should account for QSIZE as well
+    if (protocol == "bbr3"):
+        protocol = "bbr"
+        
+    change_all_user_permissions(path)
+
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
     
 
@@ -86,6 +88,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Process raw outputs into csv files
     process_raw_outputs(path)
     plot_all(path, [{'src': flow.source, 'dst': flow.dest, 'start': flow.start , 'protocol': flow.protocol} for flow in [TrafficConf('c1', 'x1', 0, 300, protocol)]])
+    change_all_user_permissions(path)
 
 if __name__ == '__main__':
 

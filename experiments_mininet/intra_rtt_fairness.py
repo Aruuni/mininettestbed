@@ -24,9 +24,14 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     duration = int((2*delay*1000)/1000)
     
     net = Mininet(topo=topo)
-    path = "%s/cctestbed/nooffload/results_fairness_intra_rtt_async/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    protocol="bbr3"
+    path = "%s/cctestbed/mininet/results_fairness_intra_rtt_async/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    protocol="bbr"
+ 
     rmdirp(path)
     mkdirp(path)
+    if (protocol == "bbr3"):
+        protocol = "bbr"
 
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
 
@@ -71,4 +76,5 @@ if __name__ == '__main__':
     loss = sys.argv[7]
     n_flows = int(sys.argv[8])
     params = {'n':n_flows}
+
     run_emulation(topology, protocol, params, bw, delay, qmult, 22, run, aqm, loss, n_flows) #Qsize should be at least 1 MSS.

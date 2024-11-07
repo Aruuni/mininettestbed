@@ -5,7 +5,7 @@ if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <interval> <experiment_path>"
     exit 1
 fi
-
+sleep 1
 echo "time,srtt,rttvar,cwnd,retr" >> "$2"
 while true; do
     ./ss -tin | sed -En \

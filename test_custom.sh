@@ -1,7 +1,7 @@
 source common.sh
 bash setup.sh
 
-PROTOCOLS="bbr"
+PROTOCOLS="bbr3"
 BANDWIDTHS="1000"
 DELAYS="10"
 RUNS="1"

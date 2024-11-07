@@ -28,10 +28,13 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     duration = int((2*delay*1000)/1000)
     
     net = Mininet(topo=topo)
-    path = "%s/cctestbed/nooffload/results_fairness_inter_rtt_async/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    path = "%s/cctestbed/mininet/results_fairness_inter_rtt_async/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    
 
     rmdirp(path)
     mkdirp(path)
+    if (protocol == "bbr3"):
+        protocol = "bbr"
 
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
     

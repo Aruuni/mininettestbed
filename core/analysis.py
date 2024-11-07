@@ -20,7 +20,7 @@ def process_raw_outputs(path):
         receiver = str(flow[1])
         sender_ip = str(flow[2])
         receiver_ip = str(flow[3])
-        start_time = int(flow[-3])
+        start_time = int(flow[-4])
         
         if flow[-2] in ORCA:
             # Convert sender output into csv

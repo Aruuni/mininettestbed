@@ -58,7 +58,7 @@ def parse_ss_output(file_path, offset=0):
     
     # Convert the 'time' column to relative time (seconds since the minimum timestamp)
     min_time = df['time'].min()
-    df['time'] = df['time'] - min_time + offset
+    df['time'] = df['time'] - min_time + offset +1
     
     return df
 def parse_iperf_output(output):
