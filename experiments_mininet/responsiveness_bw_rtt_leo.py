@@ -69,9 +69,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         print("ERROR: number of flows greater than 1")
         exit()
 
-    # TODO: create the scheduled changes in network configuration
 
-    
     em = Emulation(net, network_config, traffic_config, path)
 
     em.configure_network()
@@ -92,40 +90,14 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 if __name__ == '__main__':
 
     topology = 'Dumbell'
-    
-
-
-
+    delay = int(sys.argv[1])
+    bw = int(sys.argv[2])
+    qmult = float(sys.argv[3])
+    protocol = sys.argv[4]
+    run = int(sys.argv[5])
+    aqm = sys.argv[6]
+    loss = sys.argv[7]
+    n_flows = int(sys.argv[8])
+    params = {'n':n_flows}
     print('Loss is %s' % loss)
     run_emulation(topology, protocol, params, bw, delay, qmult, 22, run, aqm, loss, n_flows) #Qsize should be at least 1 MSS. 
-
-    # Plot results
-    # plot_results(path)
-
-
-    PROTOCOLS = ['cubic', 'bbr']
-    BWS = [100]
-    DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-    QMULTS = [0.2,1,4]
-    #RUNS = [1, 2, 3, 4, 5]
-    RUNS = [1]
-    LOSSES=[0]
-
-    MAX_SIMULATIONS = 8
-
-
-
-    pool = Pool(processes=MAX_SIMULATIONS)
-
-    params_list = [("Dumbell", protocol, {'n':2}, bw, delay, mult, 22, run, "fifo", 0, 2)
-                for protocol in PROTOCOLS
-                for bw in BWS
-                for delay in DELAYS
-                for mult in QMULTS
-                for run in RUNS]
-
-    pool.map(run_simulation, params_list)
-
-    pool.close()
-    pool.join()
-

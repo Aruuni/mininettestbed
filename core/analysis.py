@@ -124,6 +124,25 @@ def plot_all(path: str, flows:dict) -> None:
         axs[7].plot(df_queue['time'], df_queue['root_pkts'], label=f'{queue_file} - root_pkts')
         axs[8].plot(df_queue['time'], df_queue['interval_drops'], linestyle='--', label=f'{queue_file} - root_drp')
 
+    # Set titles and labels for the subplots
+    titles = ['Goodput (Mbps)', 'Throughput (Mbps)', 'Bytes', 'CWND (MSS)',
+              'Retransmits', 'RTT (ms)', 'RTT Variance (ms)', 'Queue Sizes (Packets)', 'Queue drops (Packets)']
+    y_labels = ['Goodput (Mbps)', 'Throughput (Mbps)', 'Bytes', 'CWND (MSS)',
+                'Retransmits (segments)', 'RTT (ms)', 'RTT Variance (ms)', 'Queue Size (pkts)', 'Queue drops (Packets)']
+
+    for i, ax in enumerate(axs):
+        ax.set_title(titles[i])
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel(y_labels[i])
+        ax.legend(loc='upper left')
+
+    # Adjust layout and save the figure
+    plt.tight_layout(rect=[0, 0, 1, 1], pad=1.0)  
+    output_file = os.path.join(path, (path.split('/fifo/')[1]).split('/run')[0]+'.pdf')
+
+    plt.savefig(output_file)
+    print(f"Plot saved to {output_file}")
+
 
 def plot_all_ns3(path: str) -> None:
     """
