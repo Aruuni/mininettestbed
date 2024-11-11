@@ -17,5 +17,6 @@ else
     # Execute if on any other Ubuntu version
     sudo apt update
     sudo apt install -y python3-pip openvswitch-testcontroller mininet moreutils sysstat ethtool iperf3
-    sudo python3 -m pip install mininet numpy matplotlib pandas
+    sudo python3 -m pip install mininet numpy matplotlib pandas --break-system-packages
+
 fi

@@ -2,7 +2,7 @@ import os
 import sys
 
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '..')
+mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
 
 from core.topologies import *
@@ -28,7 +28,7 @@ def  generate_traffic_shape(seed, qsize_in_bytes):
     for i in range(int(RUN_LENGTH/CHANGE_PERIOD)):
         start_time = (CHANGE_PERIOD*i)
         random_bw = random.randint(50,100) # Mbps
-        random_rtt = random.randint(10,200) # ms
+        random_rtt = random.randint(5,100) # ms
         traffic_config.append(TrafficConf('s2', 's3', start_time, CHANGE_PERIOD, 'tbf', 
                                       (('s2', 's3'), random_bw, None, qsize_in_bytes, False, 'fifo', None, 'change')))
         traffic_config.append(TrafficConf('s1', 's2', start_time, CHANGE_PERIOD, 'netem', 
@@ -67,20 +67,19 @@ def run_simulation(*args):
     with open(path + "/emulation_info.json", 'w') as fout:
         json.dump(emulation_info,fout)
     
-    command = f'cd /home/mihai/ns-3-dev; time ./ns3 run --no-build "scratch/CCTestBed.cc --configJSON={path}/emulation_info.json --path={path} --delay={delay} --bandwidth={bw} --seed={run}"'
+    command = f'cd /home/mihai/ns-3-dev; time ./ns3 run --no-build "scratch/CCTestBed.cc --configJSON={path}/emulation_info.json --path={path} --delay={delay} --bandwidth={bw} --seed={run}" >> {path}/output.txt 2>&1'
     subprocess.run(command, shell=True)
-    plot_all_ns3(path)
 
 if __name__ == '__main__':
 
-    PROTOCOLS = ['bbr']
+    PROTOCOLS = ['bbr', 'cubic']
     BWS = [50]
     DELAYS = [50]
     QMULTS = [1]
     RUNS = [1]
     LOSSES=[0]
 
-    MAX_SIMULATIONS = 5
+    MAX_SIMULATIONS = 30
 
     pool = Pool(processes=MAX_SIMULATIONS)
 
@@ -89,7 +88,7 @@ if __name__ == '__main__':
                 for bw in BWS
                 for delay in DELAYS
                 for mult in QMULTS
-                for run in [18, 21, 24, 27, 30]] #     
+                for run in range(1,51)] #     
 
     pool.map(run_simulation, params_list)
 

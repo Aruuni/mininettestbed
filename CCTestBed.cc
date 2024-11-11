@@ -55,7 +55,6 @@ parseData(const std::string &file_path) {
         flow.start_time = flow_data[4];
         flow.duration = flow_data[5];
         flow.congestion_control = flow_data[6];
-        COUT(flow.congestion_control << " " << flow.start_time);
         if (flow_data[7].is_null()) {
             flow.congestion_control[0] = std::toupper(flow.congestion_control[0]);
             flow.congestion_control = "Tcp" + flow.congestion_control;
@@ -95,7 +94,6 @@ ParsedData traffic_config;
 // ./ns3 run "scratch/CCTestBed.cc --configJSON=/home/mihai/Desktop/emulation_info.json"
 // ./ns3 run "scratch/CCTestBed.cc --configJSON=/home/mihai/Desktop/emulation_info.json --path=scratch/test/"
 AsciiTraceHelper ascii;
-std::unordered_map<std::string, std::vector<std::string>> files;
 
 //simulation paramaters
 std::string outpath;
@@ -105,13 +103,11 @@ uint packetSize = 1500;
 static void
 socketTrace(uint32_t idx, std::string varName, std::string path, auto callback)
 {
-    files.insert(std::make_pair(varName, std::vector<std::string>()));
-    Ptr<OutputStreamWrapper> fstream = ascii.CreateFileStream(outpath + traffic_config.flows[idx].congestion_control + std::string(" ") + std::to_string(idx+1) + "-" + varName +".csv");
+    Ptr<OutputStreamWrapper> fstream = ascii.CreateFileStream(outpath + traffic_config.flows[idx].congestion_control + std::string("-") + std::to_string(idx+1) + "-" + varName +".csv");
     *fstream->GetStream() << "time," << varName << "\n";
     Config::ConnectWithoutContext("/NodeList/" + std::to_string(idx) + 
                                 "/$ns3::TcpL4Protocol/SocketList/0/" + path, 
                                 MakeBoundCallback(callback,fstream));
-    files[varName].push_back(outpath + traffic_config.flows[idx].congestion_control + std::string(" ") + std::to_string(idx+1) + "-" + varName + ".csv");
 }
 
 static void
@@ -181,7 +177,7 @@ TraceGoodput(Ptr<OutputStreamWrapper> stream, uint32_t flowID, uint32_t prevRxBy
         << ", "
         << 8 * (rxBytes[flowID] - prevRxBytes) / ((Simulator::Now().GetSeconds() - prevTime.GetSeconds()))
         << std::endl;
-    Simulator::Schedule(Seconds(0.1), &TraceGoodput, stream,  flowID, rxBytes[flowID], Simulator::Now());
+    Simulator::Schedule(Seconds(1), &TraceGoodput, stream,  flowID, rxBytes[flowID], Simulator::Now());
 }
 
 void
@@ -263,7 +259,7 @@ main(int argc, char* argv[])
     cmd.AddValue("bandwidth", "bandwidth in mbps", bottleneck_bw);
     cmd.AddValue("bdp", "multiple of bdp for queues", bdpMultiplier);
     cmd.AddValue("seed", "append a flow", seed);
-    cmd.AddValue("interRTT", "the base flows rtt ", seed);
+    //cmd.AddValue("interRTT", "the base flows rtt ", seed);
     
     cmd.Parse (argc, argv);
 
@@ -371,7 +367,6 @@ main(int argc, char* argv[])
 		rightRouterIFCs.Add(receiverIFC.Get(1));
 		receiverIP.NewNetwork();
 	}
-
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
     ApplicationContainer senderApp, receiverApp;
     // variable tracing / installing the apps
@@ -380,9 +375,10 @@ main(int argc, char* argv[])
         sender.SetAttribute("MaxBytes", UintegerValue(0)); // Unlimited data
         senderApp.Add(sender.Install(senders.Get(i)));
         senderApp.Get(i)->SetStartTime(Seconds(traffic_config.flows[i].start_time)); 
-        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time) + MilliSeconds(1), &socketTrace<decltype(&uint32Tracer)>,  senders.Get(i)->GetId(), "bytes", "BytesInFlight",  &uint32Tracer);
-        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time) + MilliSeconds(1), &socketTrace<decltype(&uint32Tracer)>,  senders.Get(i)->GetId(), "cwnd", "CongestionWindow", &uint32Tracer);
-        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time) + MilliSeconds(1), &socketTrace<decltype(&TimeTracer)>,  senders.Get(i)->GetId(), "rtt", "RTT",  &TimeTracer);
+        // this + TimeStep(1) is very important, as at time traffic_config.flows[i].start_time the node/sockt doesnt technically exist yet
+        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time)+ TimeStep(1), &socketTrace<decltype(&uint32Tracer)>,  senders.Get(i)->GetId(), "bytes", "BytesInFlight",  &uint32Tracer);
+        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time)+ TimeStep(1), &socketTrace<decltype(&uint32Tracer)>,  senders.Get(i)->GetId(), "cwnd", "CongestionWindow", &uint32Tracer);
+        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time)+ TimeStep(1), &socketTrace<decltype(&TimeTracer)>,  senders.Get(i)->GetId(), "rtt", "RTT",  &TimeTracer);
     }
     senderApp.Stop(stopTime);
 
@@ -410,15 +406,13 @@ main(int argc, char* argv[])
     for (uint32_t i = 0; i < senders.GetN(); i++) {
         Ptr<FlowMonitor> flowMonitorS = flowmonHelperSender.Install(senders.Get(i));     
         rxBytes.push_back(0);
-        Ptr<OutputStreamWrapper> th_stream = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + std::to_string(i) + "-throughput.csv");
+        Ptr<OutputStreamWrapper> th_stream = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + std::to_string(i+1) + "-throughput.csv");
         *th_stream->GetStream() << "time,throughput" << "\n";
-        Simulator::Schedule(Seconds(0.1) + MilliSeconds(1) + Seconds(traffic_config.flows[i].start_time), &TraceThroughput, flowMonitorS, th_stream, i+1, 0, Seconds(0));
-        files["throughtput"].push_back(outpath + traffic_config.flows[i].congestion_control + std::to_string(i) + "-throughput.csv");
+        Simulator::Schedule(Seconds(0.1) + Seconds(traffic_config.flows[i].start_time), &TraceThroughput, flowMonitorS, th_stream, i, 0, Seconds(0));
         
-        Ptr<OutputStreamWrapper> gp_stream = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + std::to_string(i) + "-goodput.csv");
+        Ptr<OutputStreamWrapper> gp_stream = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + std::to_string(i+1) + "-goodput.csv");
         *gp_stream->GetStream() << "time,goodput" << "\n";
-        Simulator::Schedule(Seconds(1) + MilliSeconds(1) + Seconds(traffic_config.flows[i].start_time), &TraceGoodput, gp_stream, i, 0, Seconds(0));
-        files["goodput"].push_back(outpath + traffic_config.flows[i].congestion_control + std::to_string(i) + "-goodput.csv");
+        Simulator::Schedule(Seconds(0) + Seconds(traffic_config.flows[i].start_time), &TraceGoodput, gp_stream, i, 0, Seconds(0));
     }
     
     Ptr<FlowMonitor> flowMonitor;
