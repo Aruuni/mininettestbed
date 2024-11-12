@@ -192,3 +192,123 @@ def plot_all_ns3(path: str) -> None:
     plt.savefig(output_file)
     print(f"NS3 experiment plots saved to {output_file}")
 
+def plot_all_ns3_responsiveness(path: str) -> None:
+    """
+    This function plots Goodput, RTT, Throughput, CWND, Bytes In Flight, and Queue Size for each flow from NS3 experiment output files.
+    It also includes TBF bandwidth on the goodput plot and Netem RTT on the RTT plot.
+    
+    Args:
+    path (str): The directory where the NS3 output files are located.
+    """
+    fig, axs = plt.subplots(5, 1, figsize=(17, 30))
+
+    # Identify files by extracting flow name and metric
+    csv_files = [f for f in os.listdir(path) if f.endswith('.csv')]
+    metrics = ['goodput', 'rtt', 'throughput', 'cwnd', 'bytes']
+    file_mapping = {}
+
+    # Create a mapping of flow name to metric files
+    for file in csv_files:
+        if '-' in file and file.endswith('.csv'):
+            parts = file.split('-')
+            if len(parts) < 3:
+                continue  # Skip files that do not match the expected format
+
+            flow_name = f"{parts[0]}-{parts[1]}"  # e.g., TcpBbr-1
+            metric = parts[2].split('.')[0]  # e.g., goodput
+
+            if metric in metrics:
+                if flow_name not in file_mapping:
+                    file_mapping[flow_name] = {}
+                file_mapping[flow_name][metric] = file
+
+    # Load emulation info from JSON
+    emulation_info_file = os.path.join(path, 'emulation_info.json')
+    with open(emulation_info_file, 'r') as f:
+        emulation_info = json.load(f)
+
+    bw_df = pd.DataFrame(columns=["time", "max_bw"])
+    netem_rtt = []
+
+    # Extract TBF and Netem changes
+    for flow in emulation_info['flows']:
+        if flow[6] == 'tbf':
+            bw_df = pd.concat([bw_df, pd.DataFrame([{"time": flow[4], "max_bw": flow[7][1]}])], ignore_index=True)
+        if flow[6] == 'netem' and flow[7]:
+            netem_rtt.append([flow[4], flow[7][2]])
+
+    # Plot each metric for each flow
+    for flow_name, metrics_files in file_mapping.items():
+        if 'goodput' in metrics_files:
+            df = pd.read_csv(os.path.join(path, metrics_files['goodput']))
+            axs[0].plot(df['time'], df['goodput'], label=f'{flow_name} Goodput')
+
+        if 'rtt' in metrics_files:
+            df = pd.read_csv(os.path.join(path, metrics_files['rtt']))
+            axs[1].plot(df['time'], df['rtt'], label=f'{flow_name} RTT')
+
+        if 'throughput' in metrics_files:
+            df = pd.read_csv(os.path.join(path, metrics_files['throughput']))
+            axs[2].plot(df['time'], df['throughput'], label=f'{flow_name} Throughput')
+
+    # Plot both CWND and Bytes In Flight on the same subplot
+    if 'cwnd' in metrics_files or 'bytes' in metrics_files:
+        cwnd_df = pd.read_csv(os.path.join(path, metrics_files['cwnd'])) if 'cwnd' in metrics_files else pd.DataFrame()
+        bytes_df = pd.read_csv(os.path.join(path, metrics_files['bytes'])) if 'bytes' in metrics_files else pd.DataFrame()
+
+        if not cwnd_df.empty and 'cwnd' in cwnd_df.columns:
+            cwnd_df['cwnd_packets'] = cwnd_df['cwnd']
+            axs[3].plot(cwnd_df['time'], cwnd_df['cwnd_packets'], label=f'{flow_name} CWND (packets)')
+
+        if not bytes_df.empty and 'bytes' in bytes_df.columns:
+            bytes_df['bytes_packets'] = bytes_df['bytes']
+            axs[3].plot(bytes_df['time'], bytes_df['bytes_packets'], label=f'{flow_name} Packets in flight', linestyle='--')
+
+    # Process TBF bandwidth for step plot
+    bw_df.sort_values(by="time", inplace=True)
+    if not bw_df.empty:
+        last_time = bw_df['time'].max() + 10  # Extend the step to a reasonable final time
+        last_bw = bw_df['max_bw'].iloc[-1]
+        bw_df = pd.concat([bw_df, pd.DataFrame([{"time": last_time, "max_bw": last_bw}])], ignore_index=True)
+
+    bw_df.set_index('time', inplace=True)
+    axs[0].step(bw_df.index, bw_df['max_bw'], label='Available Bandwidth', color='purple', linestyle='--', where='post')
+
+    # Plot Netem RTT changes as a step function on the RTT plot
+    rtt_df = pd.DataFrame(netem_rtt, columns=["time", "rtt"])
+    rtt_df.sort_values(by="time", inplace=True)
+    if not rtt_df.empty:
+        last_time = rtt_df['time'].max() + 10
+        last_rtt = rtt_df['rtt'].iloc[-1]
+        rtt_df = pd.concat([rtt_df, pd.DataFrame([{"time": last_time, "rtt": last_rtt}])], ignore_index=True)
+
+    rtt_df.set_index('time', inplace=True)
+    axs[1].step(rtt_df.index, rtt_df['rtt'], label='Base RTT', color='purple', linestyle='--', where='post')
+
+    # Queue size plot
+    queue_file = os.path.join(path, 'queueSize.csv')
+    if os.path.exists(queue_file):
+        df_queue = pd.read_csv(queue_file)
+        df_queue['time'] = pd.to_numeric(df_queue['time'], errors='coerce')
+        df_queue['time'] = df_queue['time'] - df_queue['time'].min()
+        df_queue['root_pkts'] = df_queue['root_pkts'].astype(float)
+        axs[4].plot(df_queue['time'], df_queue['root_pkts'], label='Queue Size')
+
+    # Titles and labels
+    titles = ['Goodput (Mbps)', 'RTT (ms)', 'Throughput (Mbps)', 'CWND and in-flight (Packets)', 'Queue Size (Packets)']
+    y_labels = ['Goodput (Mbps)', 'RTT (ms)', 'Throughput (Mbps)', 'Packets', 'Queue Size (packets)']
+
+    for i, ax in enumerate(axs):
+        ax.set_title(titles[i])
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel(y_labels[i])
+        handles, labels = ax.get_legend_handles_labels()
+        if handles:
+            ax.legend(loc='upper left')
+
+    # Adjust layout and save the figure
+    plt.tight_layout(rect=[0, 0, 1, 1], pad=1.0)
+    output_file = os.path.join(path, 'ns3_experiment_results.pdf')
+
+    plt.savefig(output_file)
+    print(f"NS3 experiment plots saved to {output_file}")

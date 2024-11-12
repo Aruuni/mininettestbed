@@ -88,7 +88,8 @@ if __name__ == '__main__':
                 for bw in BWS
                 for delay in DELAYS
                 for mult in QMULTS
-                for run in range(1,51)] #     
+                for run in [1]] #    
+                #for run in range(1,51)] #     
 
     pool.map(run_simulation, params_list)
 
