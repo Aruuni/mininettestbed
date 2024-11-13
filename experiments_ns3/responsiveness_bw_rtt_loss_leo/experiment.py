@@ -29,11 +29,11 @@ def  generate_traffic_shape(seed, qsize_in_bytes):
         start_time = (CHANGE_PERIOD*i)
         random_bw = random.randint(50,100) # Mbps
         random_rtt = random.randint(5,100) # ms
-        random_loss = round(random.uniform(0,0.1),3) 
+        random_loss = round(random.uniform(0,0.005)) 
         traffic_config.append(TrafficConf('s2', 's3', start_time, CHANGE_PERIOD, 'tbf', 
                                       (('s2', 's3'), random_bw, None, qsize_in_bytes, False, 'fifo', None, 'change')))
         traffic_config.append(TrafficConf('s1', 's2', start_time, CHANGE_PERIOD, 'netem', 
-                                      (('s1', 's2'), None, random_rtt, qsize_in_bytes, False, 'fifo', None, 'change')))
+                                      (('s1', 's2'), None, random_rtt, qsize_in_bytes, False, 'fifo', random_loss, 'change')))
             
     return traffic_config
 
@@ -48,7 +48,7 @@ def run_simulation(*args):
     bdp_in_bytes = int(bw*(2**20)*2*delay*(10**-3)/8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
     
-    path = "%s/cctestbed/ns3/results_responsiveness_bw_rtt_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    path = "%s/cctestbed/ns3/results_responsiveness_bw_rtt_loss_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
     mkdirp(path)
  
     if n_flows == 1:
@@ -68,7 +68,8 @@ def run_simulation(*args):
     with open(path + "/emulation_info.json", 'w') as fout:
         json.dump(emulation_info,fout)
     
-    command = f'cd /home/mihai/ns-3-dev; time ./ns3 run --no-build "scratch/CCTestBed.cc --configJSON={path}/emulation_info.json --path={path} --delay={delay} --bandwidth={bw} --seed={run}" >> {path}/output.txt 2>&1'
+    command = f'cd /home/mihai/ns-3-dev; time ./ns3 run --no-build "scratch/CCTestBed.cc --configJSON={path}/emulation_info.json --path={path} --delay={delay} --bandwidth={bw} --seed={run}" > {path}/output.txt 2>&1'
+    printDebug3(command)
     subprocess.run(command, shell=True)
 
 if __name__ == '__main__':

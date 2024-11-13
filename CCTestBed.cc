@@ -109,6 +109,25 @@ socketTrace(uint32_t idx, std::string varName, std::string path, auto callback)
                                 "/$ns3::TcpL4Protocol/SocketList/0/" + path, 
                                 MakeBoundCallback(callback,fstream));
 }
+static void
+uint32Tracer_packets(Ptr<OutputStreamWrapper> stream, uint32_t, uint32_t newval)
+{
+    if (newval == 2147483647){
+            *stream->GetStream() 
+        << Simulator::Now().GetSeconds() 
+        << ", " 
+        << 0 
+        << std::endl;
+        return;
+    }
+
+    *stream->GetStream() 
+        << Simulator::Now().GetSeconds() 
+        << ", " 
+        << newval / packetSize
+        << std::endl;
+}
+
 
 static void
 uint32Tracer(Ptr<OutputStreamWrapper> stream, uint32_t, uint32_t newval)
@@ -129,14 +148,6 @@ uint32Tracer(Ptr<OutputStreamWrapper> stream, uint32_t, uint32_t newval)
         << std::endl;
 }
 
-// static void
-// DataRateTracer(Ptr<OutputStreamWrapper> stream, DataRate, DataRate newval)
-// {
-//     *stream->GetStream() 
-//         << Simulator::Now().GetSeconds() 
-//         << ", " << newval.GetBitRate() 
-//         << std::endl;
-// }
 
 static void
 TimeTracer(Ptr<OutputStreamWrapper> stream, Time, Time newval)
@@ -152,13 +163,13 @@ static void
 TraceThroughput(Ptr<FlowMonitor> monitor, Ptr<OutputStreamWrapper> stream, uint32_t flowID, uint32_t prevTxBytes, Time prevTime) 
 {
     FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats();
-    FlowMonitor::FlowStats statsNode = stats[flowID];
+    FlowMonitor::FlowStats statsNode = stats[flowID+1];
     *stream->GetStream() 
         << Simulator::Now().GetSeconds() 
         << ", "
-        << 8 * (statsNode.txBytes - prevTxBytes) / (1000000 * (Simulator::Now().GetSeconds() - prevTime.GetSeconds()))
-        //<< 8 * (statsNode.txBytes - prevTxBytes) / ((Simulator::Now().GetSeconds() - prevTime.GetSeconds()))
-        << std::endl;
+        //<< 8 * (statsNode.txBytes - prevTxBytes) / (1000000 * (Simulator::Now().GetSeconds() - prevTime.GetSeconds()))
+        //<< std::to_string(statsNode.bytesDropped[3])
+        << "\n";
     Simulator::Schedule(Seconds(0.1), &TraceThroughput, monitor, stream, flowID, statsNode.txBytes, Simulator::Now());
 }
 
@@ -175,7 +186,7 @@ TraceGoodput(Ptr<OutputStreamWrapper> stream, uint32_t flowID, uint32_t prevRxBy
     *stream->GetStream() 
         << Simulator::Now().GetSeconds() 
         << ", "
-        << 8 * (rxBytes[flowID] - prevRxBytes) / ((Simulator::Now().GetSeconds() - prevTime.GetSeconds()))
+        << 8 * (rxBytes[flowID] - prevRxBytes) / (1000000 * (Simulator::Now().GetSeconds() - prevTime.GetSeconds()))
         << std::endl;
     Simulator::Schedule(Seconds(1), &TraceGoodput, stream,  flowID, rxBytes[flowID], Simulator::Now());
 }
@@ -193,13 +204,13 @@ QueueSizeTrace(uint32_t nodeID, uint32_t deviceID)
 
 //commented to supress a warning for debug mode, they do work 
 static void
-delay_change(NetDeviceContainer dev, uint32_t delay) 
+delay_change(NetDeviceContainer dev, double delay) 
 {
     dev.Get(0)->GetChannel()->GetObject<PointToPointChannel>()->SetAttribute("Delay", StringValue(std::to_string(delay)+"ms"));
 }
 
 static void
-delay_changer(NetDeviceContainer dev, uint32_t time, uint32_t delay) 
+delay_changer(NetDeviceContainer dev, uint32_t time, double delay) 
 {
     Simulator::Schedule(Seconds(time), &delay_change, dev, delay);
 }
@@ -226,7 +237,7 @@ error_change(NetDeviceContainer dev, double errorrate)
 {
     Ptr<RateErrorModel> em = CreateObject<RateErrorModel>();
     em->SetAttribute("ErrorRate", DoubleValue(errorrate));
-    dev.Get(0)->SetAttribute("ReceiveErrorModel", PointerValue(em));;
+    dev.Get(1)->SetAttribute("ReceiveErrorModel", PointerValue(em));
 }
 static void
 error_changer(NetDeviceContainer dev, uint32_t time, double errorrate) 
@@ -271,7 +282,8 @@ main(int argc, char* argv[])
     }
      
     outpath = outpath + "/";
-    system(("mkdir -p "+ outpath).c_str());
+    COUT(system(("mkdir -p "+ outpath).c_str()))
+       // exit(1);
     Time stopTime = Seconds(startTime);
     
     SeedManager::SetSeed(seed);
@@ -376,8 +388,8 @@ main(int argc, char* argv[])
         senderApp.Add(sender.Install(senders.Get(i)));
         senderApp.Get(i)->SetStartTime(Seconds(traffic_config.flows[i].start_time)); 
         // this + TimeStep(1) is very important, as at time traffic_config.flows[i].start_time the node/sockt doesnt technically exist yet
-        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time)+ TimeStep(1), &socketTrace<decltype(&uint32Tracer)>,  senders.Get(i)->GetId(), "bytes", "BytesInFlight",  &uint32Tracer);
-        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time)+ TimeStep(1), &socketTrace<decltype(&uint32Tracer)>,  senders.Get(i)->GetId(), "cwnd", "CongestionWindow", &uint32Tracer);
+        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time)+ TimeStep(1), &socketTrace<decltype(&uint32Tracer_packets)>,  senders.Get(i)->GetId(), "bytes", "BytesInFlight",  &uint32Tracer_packets);
+        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time)+ TimeStep(1), &socketTrace<decltype(&uint32Tracer_packets)>,  senders.Get(i)->GetId(), "cwnd", "CongestionWindow", &uint32Tracer_packets);
         Simulator::Schedule(Seconds(traffic_config.flows[i].start_time)+ TimeStep(1), &socketTrace<decltype(&TimeTracer)>,  senders.Get(i)->GetId(), "rtt", "RTT",  &TimeTracer);
     }
     senderApp.Stop(stopTime);
@@ -392,27 +404,31 @@ main(int argc, char* argv[])
     receiverApp.Start(Seconds(0.1));
     receiverApp.Stop(stopTime);
 
+    //Ptr<RateErrorModel> em = CreateObject<RateErrorModel>();
+    //em->SetAttribute("ErrorRate", DoubleValue(0.00001));
+    //routerDevices.Get(1)->SetAttribute("ReceiveErrorModel", PointerValue(em));
+    
     for (const auto& change : traffic_config.changes) {
         if (change.type == "bw")
-            data_rate_changer(senderDevices, change.time, (uint32_t)change.value);
+            data_rate_changer(routerDevices, change.time, (uint32_t)change.value);
         if (change.type == "delay")
-            delay_changer(senderDevices, change.time, (uint32_t)change.value);
-        if (change.type == "loss")
-            error_changer(senderDevices, change.time, change.value);
+            delay_changer(senderDevices, change.time, (double)change.value/2);
+        //if (change.type == "loss")
+            //error_changer(routerDevices, change.time, change.value);
     }
-     
+
     
     FlowMonitorHelper flowmonHelperSender;
     for (uint32_t i = 0; i < senders.GetN(); i++) {
         Ptr<FlowMonitor> flowMonitorS = flowmonHelperSender.Install(senders.Get(i));     
         rxBytes.push_back(0);
-        Ptr<OutputStreamWrapper> th_stream = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + std::to_string(i+1) + "-throughput.csv");
+        Ptr<OutputStreamWrapper> th_stream = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + "-" + std::to_string(i+1) + "-throughput.csv");
         *th_stream->GetStream() << "time,throughput" << "\n";
         Simulator::Schedule(Seconds(0.1) + Seconds(traffic_config.flows[i].start_time), &TraceThroughput, flowMonitorS, th_stream, i, 0, Seconds(0));
         
-        Ptr<OutputStreamWrapper> gp_stream = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + std::to_string(i+1) + "-goodput.csv");
+        Ptr<OutputStreamWrapper> gp_stream = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + "-" + std::to_string(i+1) + "-goodput.csv");
         *gp_stream->GetStream() << "time,goodput" << "\n";
-        Simulator::Schedule(Seconds(0) + Seconds(traffic_config.flows[i].start_time), &TraceGoodput, gp_stream, i, 0, Seconds(0));
+        Simulator::Schedule(MilliSeconds(bottleneck_delay) + Seconds(traffic_config.flows[i].start_time), &TraceGoodput, gp_stream, i, 0, Seconds(0));
     }
     
     Ptr<FlowMonitor> flowMonitor;
@@ -423,5 +439,7 @@ main(int argc, char* argv[])
 
     Simulator::Stop(stopTime + TimeStep(1));
     Simulator::Run();
+    flowMonitor->SerializeToXmlFile(outpath + "flowmonitor.xml", false, true);
+    Simulator::Destroy();
     exit(0);
 }
