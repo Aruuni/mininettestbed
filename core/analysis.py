@@ -41,7 +41,7 @@ def process_raw_outputs(path):
             df = parse_aurora_output(path+"/%s_output.txt" % receiver, start_time)
             df.to_csv("%s/%s.csv" %  (csv_path, receiver),index=False)
         # WILL ONLY WORK WITH SYSTEM CC
-        else:
+        elif flow[-2] in IPERF:
             # Convert sender output into csv
             df = parse_iperf_json(path+"/%s_output.txt" % sender, start_time)
             df.to_csv("%s/%s.csv" % (csv_path,sender), index=False)
@@ -195,7 +195,7 @@ def plot_all_ns3(path: str) -> None:
 def plot_all_ns3_responsiveness(path: str) -> None:
     """
     This function plots Goodput, RTT, Throughput, CWND, Bytes In Flight, and Queue Size for each flow from NS3 experiment output files.
-    It also includes TBF bandwidth on the goodput plot and Netem RTT on the RTT plot.
+    It also includes TBF bandwidth on the goodput plot and Netem RTT on the RTT plot. Netem loss is plotted on a secondary y-axis of the Goodput plot.
     
     Args:
     path (str): The directory where the NS3 output files are located.
@@ -227,15 +227,17 @@ def plot_all_ns3_responsiveness(path: str) -> None:
     with open(emulation_info_file, 'r') as f:
         emulation_info = json.load(f)
 
-    bw_df = pd.DataFrame(columns=["time", "max_bw"])
+    netem_bw = []
     netem_rtt = []
+    netem_loss = []
 
     # Extract TBF and Netem changes
     for flow in emulation_info['flows']:
         if flow[6] == 'tbf':
-            bw_df = pd.concat([bw_df, pd.DataFrame([{"time": flow[4], "max_bw": flow[7][1]}])], ignore_index=True)
+            netem_bw.append([flow[4],flow[7][1]])
         if flow[6] == 'netem' and flow[7]:
             netem_rtt.append([flow[4], flow[7][2]])
+            netem_loss.append([flow[4], flow[7][6]* 100])
 
     # Plot each metric for each flow
     for flow_name, metrics_files in file_mapping.items():
@@ -264,10 +266,11 @@ def plot_all_ns3_responsiveness(path: str) -> None:
             bytes_df['bytes_packets'] = bytes_df['bytes']
             axs[3].plot(bytes_df['time'], bytes_df['bytes_packets'], label=f'{flow_name} Packets in flight', linestyle='--')
 
-    # Process TBF bandwidth for step plot
+   
+    bw_df = pd.DataFrame(netem_bw, columns=["time", "max_bw"])
     bw_df.sort_values(by="time", inplace=True)
     if not bw_df.empty:
-        last_time = bw_df['time'].max() + 10  # Extend the step to a reasonable final time
+        last_time = bw_df['time'].max() + 10
         last_bw = bw_df['max_bw'].iloc[-1]
         bw_df = pd.concat([bw_df, pd.DataFrame([{"time": last_time, "max_bw": last_bw}])], ignore_index=True)
 
@@ -284,6 +287,19 @@ def plot_all_ns3_responsiveness(path: str) -> None:
 
     rtt_df.set_index('time', inplace=True)
     axs[1].step(rtt_df.index, rtt_df['rtt'], label='Base RTT', color='purple', linestyle='--', where='post')
+
+    # Plot Netem loss on the right y-axis of the Goodput plot
+    loss_df = pd.DataFrame(netem_loss, columns=["time", "loss"])
+    loss_df.sort_values(by="time", inplace=True)
+    if not loss_df.empty:
+        last_time = loss_df['time'].max() + 10
+        last_loss = loss_df['loss'].iloc[-1]
+        loss_df = pd.concat([loss_df, pd.DataFrame([{"time": last_time, "loss": last_loss}])], ignore_index=True)
+
+    ax_loss = axs[0].twinx()
+    ax_loss.step(loss_df['time'], loss_df['loss'], label='Loss (%)', color='green', linestyle='--', where='post')
+    ax_loss.set_ylabel('Loss (%)', color='green')
+    ax_loss.legend(loc='upper right')
 
     # Queue size plot
     queue_file = os.path.join(path, 'queueSize.csv')
