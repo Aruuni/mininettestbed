@@ -19,7 +19,6 @@ from core.config import *
 import subprocess
 from multiprocessing import Pool
 
-
 def plot_run(*args):
     topology, protocol, params, bw, delay, qmult, tcp_buffer_mult, run, aqm, loss, n_flows = args[0]
     if topology == 'Dumbell':
@@ -30,20 +29,20 @@ def plot_run(*args):
     bdp_in_bytes = int(bw*(2**20)*2*delay*(10**-3)/8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
     
-    path = "%s/cctestbed/ns3/results_responsiveness_bw_rtt_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    path = "%s/cctestbed/mininet/results_responsiveness_loss/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
 
-    plot_all_ns3_responsiveness(path)
+    plot_all_mininet_responsiveness(path)
 
 if __name__ == '__main__':
 
-    PROTOCOLS = ['bbr', 'cubic']
+    PROTOCOLS = ['bbr', 'cubic', 'pcc']
     BWS = [50]
     DELAYS = [50]
     QMULTS = [1]
     RUNS = [1]
     LOSSES=[0]
 
-    MAX_SIMULATIONS = 4
+    MAX_SIMULATIONS = 11
 
     pool = Pool(processes=MAX_SIMULATIONS)
 
@@ -59,13 +58,3 @@ if __name__ == '__main__':
 
     pool.close()
     pool.join()
-
-
-
-
-
-
-
-
-
-

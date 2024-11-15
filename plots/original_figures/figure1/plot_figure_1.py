@@ -10,7 +10,7 @@ import numpy as np
 plt.rcParams['text.usetex'] = False
 
 
-ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_fairness_intra_rtt_async/fifo" 
+ROOT_PATH = "/home/mihai/cctestbed/mininet/results_fairness_intra_rtt_async/fifo" 
 PROTOCOLS = ['cubic', 'bbr', 'orca', 'sage', 'bbr3', 'pcc']
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
@@ -86,10 +86,6 @@ for mult in QMULTS:
               goodput_ratios_total = np.concatenate(goodput_ratios_total, axis=0)
 
               if len(goodput_ratios_20) > 0 and len(goodput_ratios_total) > 0:
-                 print(goodput_ratios_20.mean())
-                 print(goodput_ratios_20.std())
-                 print(goodput_ratios_total.mean())
-                 print(goodput_ratios_total.std())
                  data_entry = [protocol, bw, delay, delay/10, mult, goodput_ratios_20.mean(), goodput_ratios_20.std(), goodput_ratios_total.mean(), goodput_ratios_total.std()]
                  data.append(data_entry)
 

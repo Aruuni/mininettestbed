@@ -71,7 +71,7 @@ DELAY = 50
 QMULT = 1
 RUNS = list(range(1,51))
 
-bw_rtt_data = get_df("/home/mihai/cctestbed/nooffload/results_responsiveness_bw_rtt_leo/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
+bw_rtt_data = get_df("/home/mihai/cctestbed/mininet/results_responsiveness_bw_rtt_leo/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
 #loss_data =  get_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_loss/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
 
 BINS = 50
@@ -102,6 +102,7 @@ for protocol in PROTOCOLS:
 
 ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percentage of Trials (\%)")
 ax.annotate('optimal', xy=(50, 50), xytext=(45, 20), arrowprops=dict(arrowstyle="->", linewidth=0.5))
+ax.set_xlim(0, None)
 
 fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.50),columnspacing=0.5,handletextpad=0.5, handlelength=1)
 for format in ['pdf']:

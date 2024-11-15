@@ -117,9 +117,9 @@ if __name__ == "__main__":
             LINEWIDTH = 1
 
             if mode == 'inverse':
-                ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_friendly_intra_rtt_async_inverse/fifo" 
+                ROOT_PATH = "/home/mihai/cctestbed/mininet/results_friendly_intra_rtt_async_inverse/fifo" 
             else:
-                ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_friendly_intra_rtt_async/fifo" 
+                ROOT_PATH = "/home/mihai/cctestbed/mininet/results_friendly_intra_rtt_async/fifo" 
             for FLOWS in [2]:
                data = {protocol: {i: pd.DataFrame([], columns=['time', 'mean', 'std']) for i in range(1, 5)} for protocol in PROTOCOLS}
 

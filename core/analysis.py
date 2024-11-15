@@ -237,7 +237,7 @@ def plot_all_ns3_responsiveness(path: str) -> None:
             netem_bw.append([flow[4],flow[7][1]])
         if flow[6] == 'netem' and flow[7]:
             netem_rtt.append([flow[4], flow[7][2]])
-            netem_loss.append([flow[4], flow[7][6]* 100])
+            netem_loss.append([flow[4], (lambda x: x * 100 if x is not None else None)(flow[7][6])])
 
     # Plot each metric for each flow
     for flow_name, metrics_files in file_mapping.items():
@@ -321,6 +321,9 @@ def plot_all_ns3_responsiveness(path: str) -> None:
         handles, labels = ax.get_legend_handles_labels()
         if handles:
             ax.legend(loc='upper left')
+                # Set x-ticks to show every 25 seconds
+        ax.set_xticks(range(0, 325, 25))
+        ax.grid(True)
 
     # Adjust layout and save the figure
     plt.tight_layout(rect=[0, 0, 1, 1], pad=1.0)
@@ -328,3 +331,167 @@ def plot_all_ns3_responsiveness(path: str) -> None:
 
     plt.savefig(output_file)
     print(f"NS3 experiment plots saved to {output_file}")
+    plt.close()
+
+def plot_all_mininet_responsiveness(path: str) -> None:
+    """
+    This function plots Goodput, RTT, Throughput, CWND, Retransmissions, and Queue Size for Mininet experiment output files.
+    It also includes TBF bandwidth, Netem RTT, and Netem loss changes from emulation_info.json.
+    
+    Args:
+    path (str): The directory where the Mininet output files are located.
+    """
+    fig, axs = plt.subplots(7, 1, figsize=(17, 35))
+
+    # File paths
+    ss_file = os.path.join(path, 'csvs', 'c1_ss.csv')
+    goodput_file = os.path.join(path, 'csvs', 'x1.csv')
+    throughput_file = os.path.join(path, 'csvs', 'c1.csv')
+    emulation_info_file = os.path.join(path, 'emulation_info.json')
+    queue_dir = os.path.join(path, 'queues')
+
+    # Load data
+    ss_df = pd.read_csv(ss_file)
+    goodput_df = pd.read_csv(goodput_file)
+    throughput_df = pd.read_csv(throughput_file)
+
+    # Load emulation info from JSON
+    with open(emulation_info_file, 'r') as f:
+        emulation_info = json.load(f)
+
+    netem_bw = []
+    netem_rtt = []
+    netem_loss = []
+
+    # Extract TBF and Netem changes
+    for flow in emulation_info['flows']:
+        if flow[6] == 'tbf':
+            netem_bw.append([flow[4], flow[7][1]])  # Time and bandwidth
+        if flow[6] == 'netem' and flow[7]:
+            netem_rtt.append([flow[4], flow[7][2]])  # Time and RTT
+            netem_loss.append([flow[4], (flow[7][6])])  # Time and loss
+
+    # Plot Goodput
+    axs[0].plot(goodput_df['time'], goodput_df['bandwidth'], label='Goodput (Mbps)')
+    axs[0].set_title('Goodput (Mbps)')
+    axs[0].set_xlabel('Time (s)')
+    axs[0].set_ylabel('Goodput (Mbps)')
+    axs[0].grid(True)
+
+    # Plot bandwidth changes (TBF) as a step function
+    if netem_bw:
+        bw_df = pd.DataFrame(netem_bw, columns=["time", "max_bw"])
+        bw_df.sort_values(by="time", inplace=True)
+        last_time = bw_df['time'].max() + 10
+        last_bw = bw_df['max_bw'].iloc[-1]
+        bw_df = pd.concat([bw_df, pd.DataFrame([{"time": last_time, "max_bw": last_bw}])], ignore_index=True)
+        axs[0].step(bw_df['time'], bw_df['max_bw'], label='Available Bandwidth', color='purple', linestyle='--', where='post')
+        axs[2].step(bw_df['time'], bw_df['max_bw'], label='Available Bandwidth', color='purple', linestyle='--', where='post')
+
+    axs[0].legend(loc='upper left')
+
+    # Plot RTT
+    axs[1].plot(ss_df['time'], ss_df['srtt'], label='RTT (ms)')
+    axs[1].set_title('RTT (ms)')
+    axs[1].set_xlabel('Time (s)')
+    axs[1].set_ylabel('RTT (ms)')
+    axs[1].grid(True)
+
+    # Plot RTT changes (Netem) as a step function
+    if netem_rtt:
+        rtt_df = pd.DataFrame(netem_rtt, columns=["time", "rtt"])
+        rtt_df.sort_values(by="time", inplace=True)
+        last_time = rtt_df['time'].max() + 10
+        last_rtt = rtt_df['rtt'].iloc[-1]
+        rtt_df = pd.concat([rtt_df, pd.DataFrame([{"time": last_time, "rtt": last_rtt}])], ignore_index=True)
+        axs[1].step(rtt_df['time'], rtt_df['rtt'], label='Base RTT', color='purple', linestyle='--', where='post')
+
+    axs[1].legend(loc='upper left')
+
+    # Plot Throughput
+    axs[2].plot(throughput_df['time'], throughput_df['bandwidth'], label='Throughput (Mbps)',)
+    axs[2].set_title('Throughput (Mbps)')
+    axs[2].set_xlabel('Time (s)')
+    axs[2].set_ylabel('Throughput (Mbps)')
+    axs[2].grid(True)
+    axs[2].legend(loc='upper left')
+
+    # Plot CWND
+    axs[3].plot(ss_df['time'], ss_df['cwnd'], label='CWND (packets)')
+    axs[3].set_title('CWND (packets)')
+    axs[3].set_xlabel('Time (s)')
+    axs[3].set_ylabel('CWND (packets)')
+    axs[3].grid(True)
+    axs[3].legend(loc='upper left')
+
+    # Plot Retransmissions
+    axs[4].plot(throughput_df['time'], throughput_df['retr'], label='Retransmissions')
+    axs[4].set_title('Retransmissions')
+    axs[4].set_xlabel('Time (s)')
+    axs[4].set_ylabel('Retransmissions')
+    axs[4].grid(True)
+    axs[4].legend(loc='upper left')
+
+    # Plot Netem loss on the right y-axis of the Goodput plot
+    if netem_loss:
+        loss_df = pd.DataFrame(netem_loss, columns=["time", "loss"])
+        loss_df.sort_values(by="time", inplace=True)
+        last_time = loss_df['time'].max() + 10
+        last_loss = loss_df['loss'].iloc[-1]
+        loss_df = pd.concat([loss_df, pd.DataFrame([{"time": last_time, "loss": last_loss}])], ignore_index=True)
+
+        ax_loss = axs[0].twinx()
+        ax_loss.step(loss_df['time'], loss_df['loss'], label='Loss (%)', color='green', linestyle='--', where='post')
+        ax_loss.set_ylabel('Loss (%)', color='green')
+        ax_loss.legend(loc='upper right')
+    # Specify the file you want to plot
+    target_queue_file = 's2-eth2.txt'
+    queue_path = os.path.join(queue_dir, target_queue_file)
+
+    # Check if the file exists before proceeding
+    if os.path.exists(queue_path):
+        df_queue = pd.read_csv(queue_path)
+
+        # Clean and preprocess the data
+        df_queue['time'] = pd.to_numeric(df_queue['time'], errors='coerce')
+        df_queue['time'] = df_queue['time'] - df_queue['time'].min()
+        df_queue['root_pkts'] = df_queue['root_pkts'].str.replace('b', '').str.replace('K', '000').str.replace('M', '000000').str.replace('G', '000000000').astype(float)
+        df_queue['root_pkts'] = pd.to_numeric(df_queue['root_pkts'], errors='coerce').fillna(0) / 1500  # Convert to packets
+
+        # Plot Queue Size
+        axs[5].plot(df_queue['time'], df_queue['root_pkts'], label='Queue Size (packets) - s2-eth2.txt')
+        axs[5].set_title('Queue Size (Packets)')
+        axs[5].set_xlabel('Time (s)')
+        axs[5].set_ylabel('Queue Size (Packets)')
+        axs[5].grid(True)
+        axs[5].legend(loc='upper left')
+
+        # Clean and preprocess the data for drops
+        df_queue['root_drp'] = df_queue['root_drp'].fillna(0).astype(float)  # Handle missing drop values
+        df_queue['root_drp'] = pd.to_numeric(df_queue['root_drp'], errors='coerce').fillna(0)
+        df_queue['interval_drops'] = df_queue['root_drp'].diff().fillna(0)
+
+        # Plot Queue Drops
+        axs[6].plot(df_queue['time'], df_queue['interval_drops'], label='Queue Drops - s2-eth2.txt')
+        axs[6].set_title('Queue Drops (Packets)')
+        axs[6].set_xlabel('Time (s)')
+        axs[6].set_ylabel('Drops (Packets)')
+        axs[6].grid(True)
+        axs[6].legend(loc='upper left')
+    else:
+        print(f"File {target_queue_file} not found in the 'queues' directory.")
+
+
+    # Set x-ticks and adjust layout
+    for ax in axs:
+        ax.set_xticks(range(0, int(max(ss_df['time'].max(), goodput_df['time'].max(), throughput_df['time'].max())) + 1, 25))
+        ax.grid(True)
+
+    plt.tight_layout(rect=[0, 0, 1, 1], pad=1.0)
+    output_file = os.path.join(path, os.path.join(path, (path.split('/fifo/')[1]).split('/run')[0]+'.pdf'))
+    plt.savefig(output_file)
+    print(f"Mininet experiment plots saved to {output_file}")
+    plt.close()        
+    
+    
+    

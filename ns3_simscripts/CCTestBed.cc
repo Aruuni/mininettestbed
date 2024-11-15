@@ -233,16 +233,16 @@ data_rate_changer(NetDeviceContainer dev, double time, uint32_t datarate)
 }
 
 static void
-error_change(NetDeviceContainer dev, double errorrate) 
+error_change(Ptr<RateErrorModel> em, double errorrate) 
 {
-    Ptr<RateErrorModel> em = CreateObject<RateErrorModel>();
     em->SetAttribute("ErrorRate", DoubleValue(errorrate));
-    dev.Get(1)->SetAttribute("ReceiveErrorModel", PointerValue(em));
 }
+
+
 static void
-error_changer(NetDeviceContainer dev, uint32_t time, double errorrate) 
+error_changer(Ptr<RateErrorModel> em, uint32_t time, double errorrate) 
 {
-    Simulator::Schedule(Seconds(time), &error_change, dev, errorrate);
+    Simulator::Schedule(Seconds(time), &error_change, em, errorrate);
 }
 
 int 
@@ -404,17 +404,18 @@ main(int argc, char* argv[])
     receiverApp.Start(Seconds(0.1));
     receiverApp.Stop(stopTime);
 
-    //Ptr<RateErrorModel> em = CreateObject<RateErrorModel>();
-    //em->SetAttribute("ErrorRate", DoubleValue(0.00001));
-    //routerDevices.Get(1)->SetAttribute("ReceiveErrorModel", PointerValue(em));
+    Ptr<RateErrorModel> em = CreateObject<RateErrorModel>();
+    em->SetAttribute("ErrorRate", DoubleValue(0));
+    em->SetAttribute("ErrorUnit", EnumValue(RateErrorModel::ERROR_UNIT_PACKET));
+    routerDevices.Get(1)->SetAttribute("ReceiveErrorModel", PointerValue(em));
     
     for (const auto& change : traffic_config.changes) {
         if (change.type == "bw")
             data_rate_changer(routerDevices, change.time, (uint32_t)change.value);
         if (change.type == "delay")
             delay_changer(senderDevices, change.time, (double)change.value/2);
-        //if (change.type == "loss")
-            //error_changer(routerDevices, change.time, change.value);
+        if (change.type == "loss")
+            error_changer(em, change.time, change.value);
     }
 
     

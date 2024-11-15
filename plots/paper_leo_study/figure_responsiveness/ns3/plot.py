@@ -33,16 +33,16 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
             bw_capacities = [x[-1][1] for x in bw_capacities]
             optimal_mean = sum(bw_capacities) / len(bw_capacities)
 
-            if os.path.exists(f'{PATH}/Tcp{protocol.capitalize()}0-goodput.csv'):
-                receiver = pd.read_csv(f'{PATH}/Tcp{protocol.capitalize()}0-goodput.csv').reset_index(drop=True)
-                print(f'{PATH}/csvs/Tcp{protocol.capitalize()}0-goodput.csv')
+            if os.path.exists(f'{PATH}/Tcp{protocol.capitalize()}-1-goodput.csv'):
+                receiver = pd.read_csv(f'{PATH}/Tcp{protocol.capitalize()}-1-goodput.csv').reset_index(drop=True)
+                print(f'{PATH}/Tcp{protocol.capitalize()}-1-goodput.csv')
                 receiver['time'] = receiver['time'].apply(lambda x: int(float(x)))
 
                 receiver = receiver[
                     (receiver['time'] > start_time) & (receiver['time'] < end_time)]
 
                 receiver = receiver.drop_duplicates('time')
-                receiver['goodput'] = receiver['goodput']/1e6
+                receiver['goodput'] = receiver['goodput']
                 receiver = receiver.set_index('time')
                 protocol_mean = receiver.mean()['goodput']
                 data.append([protocol, run, protocol_mean, optimal_mean])
@@ -71,7 +71,7 @@ QMULT = 1
 RUNS = list(range(1,51))
 
 bw_rtt_data = get_df("/home/mihai/cctestbed/ns3/results_responsiveness_bw_rtt_leo/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
-#loss_data =  get_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_loss/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
+loss_data =  get_df("/home/mihai/cctestbed/ns3/results_responsiveness_bw_rtt_loss_leo/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
 
 BINS = 50
 fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.5))
@@ -92,15 +92,15 @@ for protocol in PROTOCOLS:
     # plot the cumulative function
     ax.plot(base[:-1], cumulative/50*100, label="%s-rtt" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), c=COLOR[protocol])
 
-    # avg_goodputs = loss_data[loss_data['protocol'] == protocol]['average_goodput']
-    # values, base = np.histogram(avg_goodputs, bins=BINS)
-    # # evaluate the cumulative
-    # cumulative = np.cumsum(values)
-    # # plot the cumulative function
-    # ax.plot(base[:-1], cumulative / 50 * 100, label="%s-loss" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), linestyle='dashed', c=COLOR[protocol])
+    avg_goodputs = loss_data[loss_data['protocol'] == protocol]['average_goodput']
+    values, base = np.histogram(avg_goodputs, bins=BINS)
+    # evaluate the cumulative
+    cumulative = np.cumsum(values)
+    # plot the cumulative function
+    ax.plot(base[:-1], cumulative / 50 * 100, label="%s-loss" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), linestyle='dashed', c=COLOR[protocol])
 
 ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percentage of Trials (\%)")
-ax.annotate('optimal', xy=(50, 50), xytext=(45, 20), arrowprops=dict(arrowstyle="->", linewidth=0.5))
+#ax.annotate('optimal', xy=(50, 50), xytext=(45, 20), arrowprops=dict(arrowstyle="->", linewidth=0.5))
 
 fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.50),columnspacing=0.5,handletextpad=0.5, handlelength=1)
 for format in ['pdf']:

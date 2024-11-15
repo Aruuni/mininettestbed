@@ -102,7 +102,18 @@ for protocol in $PROTOCOLS
 do
     for run in {1..50}
     do
-        run experiments_mininet/responsiveness_bw_rtt_leo.py "50" "50" "1" $protocol $run fifo 0 "1"
+        run experiments_mininet/responsiveness_bw_rtt_leo/experiment.py "50" "50" "1" $protocol $run fifo 0 "1"
+    done
+done
+
+
+# RESPONSIVENESS BANDWIDTH/RTT/LOSS FOR LEO PAPER
+
+for protocol in $PROTOCOLS
+do
+    for run in {1..50}
+    do
+        run experiments_mininet/responsiveness_bw_rtt_leo/experiment.py "50" "50" "1" $protocol $run fifo 0 "1"
     done
 done
 
@@ -112,7 +123,7 @@ for protocol in $PROTOCOLS
 do
     for run in {1..50}
     do
-        run experiments_mininet/responsiveness_bw_rtt.py "50" "50" "1" $protocol $run fifo 0 "1"
+        run experiments_mininet/responsiveness_bw_rtt/experiment.py "50" "50" "1" $protocol $run fifo 0 "1"
     done
 done
 
@@ -123,7 +134,7 @@ for protocol in $PROTOCOLS
 do
     for run in {1..50}
     do
-        run experiments_mininet/responsiveness_loss.py "50" "50" "1" $protocol $run fifo 0 "1"
+        run experiments_mininet/responsiveness_loss/experiment.py "50" "50" "1" $protocol $run fifo 0 "1"
     done
 done
 
@@ -152,7 +163,6 @@ do
 done
 
 # PARKING LOT TOPOLOGY
-
 
 for del in $STEPS
 do

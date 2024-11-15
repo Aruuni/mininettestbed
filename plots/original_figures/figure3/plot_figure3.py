@@ -10,7 +10,7 @@ import numpy as np
 plt.rcParams['text.usetex'] = False
 
 
-ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_fairness_inter_rtt_async/fifo" 
+ROOT_PATH = "/home/mihai/cctestbed/mininet/results_fairness_inter_rtt_async/fifo" 
 PROTOCOLS = ['cubic', 'bbr', 'orca', 'sage', 'bbr3', 'pcc']
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]

@@ -81,7 +81,7 @@ if __name__ == '__main__':
     RUNS = [1]
     LOSSES=[0]
 
-    MAX_SIMULATIONS = 10
+    MAX_SIMULATIONS = 8
 
     pool = Pool(processes=MAX_SIMULATIONS)
 
