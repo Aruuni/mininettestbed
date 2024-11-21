@@ -29,8 +29,7 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
             # Compute the average optimal throughput
             with open(PATH + '/emulation_info.json', 'r') as fin:
                 emulation_info = json.load(fin)
-
-            bw_capacities = list(filter(lambda elem: elem[5] == 'tbf', emulation_info['flows']))
+            bw_capacities = list(filter(lambda elem: elem[6] == 'tbf', emulation_info['flows']))
             bw_capacities = [x[-1][1] for x in bw_capacities]
             optimal_mean = sum(bw_capacities) / len(bw_capacities)
 
@@ -63,14 +62,14 @@ COLOR = {'cubic': '#0C5DA5',
              'pcc': '#686868',
              }
 
-PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
+PROTOCOLS = ['cubic','bbr', 'pcc']
 BW = 50
 DELAY = 50
 QMULT = 1
 RUNS = list(range(1,51))
 
-bw_rtt_data = get_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_bw_rtt/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
-loss_data =  get_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_loss/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
+bw_rtt_data = get_df("/home/mihai/cctestbed/mininet/results_responsiveness_bw_rtt/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
+#loss_data =  get_df("/home/mihai/mininettestbed/nooffload/results_responsiveness_loss/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
 
 BINS = 50
 fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.5))
@@ -91,12 +90,12 @@ for protocol in PROTOCOLS:
     # plot the cumulative function
     ax.plot(base[:-1], cumulative/50*100, label="%s-rtt" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), c=COLOR[protocol])
 
-    avg_goodputs = loss_data[loss_data['protocol'] == protocol]['average_goodput']
-    values, base = np.histogram(avg_goodputs, bins=BINS)
-    # evaluate the cumulative
-    cumulative = np.cumsum(values)
-    # plot the cumulative function
-    ax.plot(base[:-1], cumulative / 50 * 100, label="%s-loss" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), linestyle='dashed', c=COLOR[protocol])
+    # avg_goodputs = loss_data[loss_data['protocol'] == protocol]['average_goodput']
+    # values, base = np.histogram(avg_goodputs, bins=BINS)
+    # # evaluate the cumulative
+    # cumulative = np.cumsum(values)
+    # # plot the cumulative function
+    # ax.plot(base[:-1], cumulative / 50 * 100, label="%s-loss" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), linestyle='dashed', c=COLOR[protocol])
 
 ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percentage of Trials (\%)")
 ax.annotate('optimal', xy=(50, 50), xytext=(45, 20), arrowprops=dict(arrowstyle="->", linewidth=0.5))

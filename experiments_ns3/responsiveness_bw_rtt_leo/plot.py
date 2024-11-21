@@ -36,7 +36,7 @@ def plot_run(*args):
 
 if __name__ == '__main__':
 
-    PROTOCOLS = ['bbr', 'cubic']
+    PROTOCOLS = ['bbr', 'bbr3', 'cubic']
     BWS = [50]
     DELAYS = [50]
     QMULTS = [1]
@@ -52,8 +52,8 @@ if __name__ == '__main__':
                 for bw in BWS
                 for delay in DELAYS
                 for mult in QMULTS
-                #for run in [1]] #    
-                for run in range(1,51)] #     
+                for run in [1]] #    
+                #for run in range(1,51)] #     
 
     pool.map(plot_run, params_list)
 

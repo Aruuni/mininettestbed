@@ -32,7 +32,7 @@ def  generate_traffic_shape(seed, qsize_in_bytes):
         traffic_config.append(TrafficConf('s2', 's3', start_time, CHANGE_PERIOD, 'tbf', 
                                       (('s2', 's3'), random_bw, None, qsize_in_bytes, False, 'fifo', None, 'change')))
         traffic_config.append(TrafficConf('s1', 's2', start_time, CHANGE_PERIOD, 'netem', 
-                                      (('s1', 's2'), None, random_rtt, qsize_in_bytes, False, 'fifo', None, 'change')))
+                                      (('s1', 's2'), None, random_rtt, qsize_in_bytes, False, 'fifo', random_loss, 'change')))
             
     return traffic_config
 
@@ -48,7 +48,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
     
     net = Mininet(topo=topo)
-    path = "%s/cctestbed/mininet/results_responsiveness_bw_rtt_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
+    path = "%s/cctestbed/mininet/results_responsiveness_bw_rtt_loss_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
     
     rmdirp(path)
     mkdirp(path)

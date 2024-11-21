@@ -27,7 +27,6 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
             PATH = ROOT_PATH + '/Dumbell_%smbit_%sms_%spkts_0loss_1flows_22tcpbuf_%s/run%s' % (
             BW, DELAY, int(QMULT * BDP_IN_PKTS), protocol, run)
             # Compute the average optimal throughput
-            print(PATH)
             with open(PATH + '/emulation_info.json', 'r') as fin:
                 emulation_info = json.load(fin)
             bw_capacities = list(filter(lambda elem: elem[6] == 'tbf', emulation_info['flows']))
@@ -63,8 +62,8 @@ COLOR = {'cubic': '#0C5DA5',
              'pcc': '#686868',
              }
 
-#PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
-PROTOCOLS = ['cubic', 'bbr']
+PROTOCOLS = ['cubic', 'orca', 'bbr', 'sage', 'pcc']
+#PROTOCOLS = ['cubic', 'bbr']
 
 BW = 50
 DELAY = 50

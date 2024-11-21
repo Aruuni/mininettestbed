@@ -63,7 +63,7 @@ COLOR = {'cubic': '#0C5DA5',
              }
 
 #PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
-PROTOCOLS = ['cubic', 'bbr']
+PROTOCOLS = ['cubic', 'bbr', 'bbr3']
 
 BW = 50
 DELAY = 50
