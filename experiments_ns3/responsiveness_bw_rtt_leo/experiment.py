@@ -44,7 +44,6 @@ def run_simulation(*args):
     else:
         print("ERROR: topology \'%s\' not recognised" % topology)
 
-    #TODO  check this 
     bdp_in_bytes = int(bw*(2**20)*2*delay*(10**-3)/8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
     
