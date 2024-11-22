@@ -83,6 +83,9 @@ def disable_offload(net):
                 os.system('sudo ethtool -K %s lro off' % intf_name)
                 os.system('sudo ethtool -K %s ufo off' % intf_name)
 
+def printGreen(string):
+    start = "\033[32m" # green
+    print(f"{start}{string}{RESET}")
 
 
 RESET = "\033[0m"
@@ -100,18 +103,18 @@ def printDebug3(string):
 
 
 
-def printIperf3(string):
+def printBlueBackground(string):
     start = "\033[104m" # background blue
     print(f"{start}{string}{RESET}")
-def printIperf3SS(string):
+def printBlue(string):
     start = "\033[94m" # blue
     print(f"{start}{string}{RESET}")
 
 
-def printOrca(string):
+def printGreenBackground(string):
     start = "\033[102m" # backgroundgreen
     print(f"{start}{string}{RESET}")
-def printOrcaSS(string):
+def printGreen(string):
     start = "\033[32m" # green
     print(f"{start}{string}{RESET}")
 

@@ -405,7 +405,7 @@ class Emulation:
         """
         node = self.network.get(node_name)
         cmd = f"iperf3 -p {port} -i {monitor_interval} --one-off --json -s"
-        printIperf3(f"Sending command '{cmd}' to host {node.name}")
+        printBlueBackground(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
 
     def start_iperf_client(self, node_name: str, destination_name: str, duration: int, protocol: str, monitor_interval=1, port=5201):
@@ -417,11 +417,11 @@ class Emulation:
         node = self.network.get(node_name)
 
         sscmd = f"./ss_script.sh 0.1 {self.path}/{node.name}_ss.csv &" 
-        printIperf3SS(f'Sending command {sscmd} to host {node.name}')
+        printBlue(f'Sending command {sscmd} to host {node.name}')
         node.cmd(sscmd)
 
         iperfCmd = f"iperf3 -p {port} -i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}" 
-        printIperf3(f'Sending command {iperfCmd} to host {node.name}')
+        printBlueBackground(f'Sending command {iperfCmd} to host {node.name}')
         node.sendCmd(iperfCmd)
 
 
@@ -432,11 +432,11 @@ class Emulation:
         node = self.network.get(node_name)
         
         sscmd = f"./ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
-        printOrca(f"Sending command '{sscmd}' to host {node.name}")
+        printGreenBackground(f"Sending command '{sscmd}' to host {node.name}")
         node.cmd(sscmd)
         
         orcacmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {ORCA_INSTALL_FOLDER}/sender.sh {port} {self.orca_flows_counter} {duration}"  
-        printOrcaSS(f"Sending command '{orcacmd}' to host {node.name}")
+        printGreen(f"Sending command '{orcacmd}' to host {node.name}")
         node.sendCmd(orcacmd)
 
         # global flow counter for orca flows
@@ -450,7 +450,7 @@ class Emulation:
         destination = self.network.get(destination_name)
 
         orcacmd = f"sudo -u {USERNAME} {ORCA_INSTALL_FOLDER}/receiver.sh {destination.IP()} {port} {0}"
-        printOrca(f"Sending command '{orcacmd}' to host {node.name}")
+        printGreenBackground(f"Sending command '{orcacmd}' to host {node.name}")
         node.sendCmd(orcacmd)
 
 
