@@ -27,7 +27,7 @@ def  generate_traffic_shape(seed, qsize_in_bytes):
         start_time = (CHANGE_PERIOD*i)
         random_bw = random.randint(50,100) # Mbps
         random_rtt = random.randint(5,100) # ms
-        random_loss = round(random.uniform(0,5),2) # ms
+        random_loss = round(random.uniform(0,0.01),4) 
 
         traffic_config.append(TrafficConf('s2', 's3', start_time, CHANGE_PERIOD, 'tbf', 
                                       (('s2', 's3'), random_bw, None, qsize_in_bytes, False, 'fifo', None, 'change')))

@@ -5,7 +5,7 @@ USERNAME = "mihai"
 if not USERNAME:
     raise ValueError("You MUST set your username in core/config.py")
 
-HOME_DIR = "/its/home/mm2350"
+HOME_DIR = "/home/mihai"
 ORCA_INSTALL_FOLDER ="%s/Orca" % HOME_DIR
 SAGE_INSTALL_FOLDER ="%s/sage" % HOME_DIR
 PCC_USPACE_INSTALL_FOLDER = '%s/PCC-Uspace' % HOME_DIR

@@ -497,7 +497,26 @@ def plot_all_mininet_responsiveness(path: str) -> None:
         bw_df = pd.concat([bw_df, pd.DataFrame([{"time": last_time, "max_bw": last_bw}])], ignore_index=True)
         axs[0].step(bw_df['time'], bw_df['max_bw'], label='Available Bandwidth', color='purple', linestyle='--', where='post')
         axs[2].step(bw_df['time'], bw_df['max_bw'], label='Available Bandwidth', color='purple', linestyle='--', where='post')
+    # Plot RTT changes (Netem) as a step function
+    if netem_rtt:
+        rtt_df = pd.DataFrame(netem_rtt, columns=["time", "rtt"])
+        rtt_df.sort_values(by="time", inplace=True)
+        last_time = rtt_df['time'].max() + 10
+        last_rtt = rtt_df['rtt'].iloc[-1]
+        rtt_df = pd.concat([rtt_df, pd.DataFrame([{"time": last_time, "rtt": last_rtt}])], ignore_index=True)
+        axs[1].step(rtt_df['time'], rtt_df['rtt'], label='Base RTT', color='purple', linestyle='--', where='post')
+    # Plot Netem loss on the right y-axis of the Goodput plot
+    if netem_loss:
+        loss_df = pd.DataFrame(netem_loss, columns=["time", "loss"])
+        loss_df.sort_values(by="time", inplace=True)
+        last_time = loss_df['time'].max() + 10
+        last_loss = loss_df['loss'].iloc[-1]
+        loss_df = pd.concat([loss_df, pd.DataFrame([{"time": last_time, "loss": last_loss}])], ignore_index=True)
 
+        ax_loss = axs[0].twinx()
+        ax_loss.step(loss_df['time'], loss_df['loss'], label='Loss (%)', color='green', linestyle='--', where='post')
+        ax_loss.set_ylabel('Loss (%)', color='green')
+        ax_loss.legend(loc='upper right')
     axs[0].legend(loc='upper left')
 
     # Plot RTT
@@ -507,14 +526,7 @@ def plot_all_mininet_responsiveness(path: str) -> None:
     axs[1].set_ylabel('RTT (ms)')
     axs[1].grid(True)
 
-    # Plot RTT changes (Netem) as a step function
-    if netem_rtt:
-        rtt_df = pd.DataFrame(netem_rtt, columns=["time", "rtt"])
-        rtt_df.sort_values(by="time", inplace=True)
-        last_time = rtt_df['time'].max() + 10
-        last_rtt = rtt_df['rtt'].iloc[-1]
-        rtt_df = pd.concat([rtt_df, pd.DataFrame([{"time": last_time, "rtt": last_rtt}])], ignore_index=True)
-        axs[1].step(rtt_df['time'], rtt_df['rtt'], label='Base RTT', color='purple', linestyle='--', where='post')
+
 
     axs[1].legend(loc='upper left')
 
@@ -542,18 +554,7 @@ def plot_all_mininet_responsiveness(path: str) -> None:
     axs[4].grid(True)
     axs[4].legend(loc='upper left')
 
-    # Plot Netem loss on the right y-axis of the Goodput plot
-    if netem_loss:
-        loss_df = pd.DataFrame(netem_loss, columns=["time", "loss"])
-        loss_df.sort_values(by="time", inplace=True)
-        last_time = loss_df['time'].max() + 10
-        last_loss = loss_df['loss'].iloc[-1]
-        loss_df = pd.concat([loss_df, pd.DataFrame([{"time": last_time, "loss": last_loss}])], ignore_index=True)
 
-        ax_loss = axs[0].twinx()
-        ax_loss.step(loss_df['time'], loss_df['loss'], label='Loss (%)', color='green', linestyle='--', where='post')
-        ax_loss.set_ylabel('Loss (%)', color='green')
-        ax_loss.legend(loc='upper right')
     # Specify the file you want to plot
     target_queue_file = 's2-eth2.txt'
     queue_path = os.path.join(queue_dir, target_queue_file)
@@ -621,12 +622,8 @@ def plot_all_ns3_responsiveness_extra(path: str) -> None:
         "bytes": os.path.join(path, "TcpBbr-1-bytes.csv"),
         "retransmits": os.path.join(path, "TcpBbr-1-retransmits.csv"),
 
-        "root_pkts": os.path.join(path, "queueSize_0_0.csv"),
-        "root_pkts1": os.path.join(path, "queueSize_1_0.csv"),
-        "root_pkts2": os.path.join(path, "queueSize_2_0.csv"),
-        "root_pkts3": os.path.join(path, "queueSize_2_1.csv"),
-        "root_pkts4": os.path.join(path, "queueSize_3_0.csv"),
-        "root_pkts5": os.path.join(path, "queueSize_3_1.csv"),
+        "root_pkts": os.path.join(path, "queueSize.csv"),
+
 
 
         # "nextRoundDelivered": os.path.join(path,"TcpBbr-1-nextRoundDelivered.csv"),
@@ -709,44 +706,11 @@ def plot_all_ns3_responsiveness_extra(path: str) -> None:
     # Plot Queue Size on axs[4]
     if "root_pkts" in data and "time" in data["root_pkts"].columns:
         queue_data = data["root_pkts"]
-        queue_data1 = data["root_pkts1"]
-        queue_data2 = data["root_pkts2"]
-        queue_data3 = data["root_pkts3"]
-        queue_data4 = data["root_pkts4"]
-        queue_data5 = data["root_pkts5"]
-
         queue_data["time"] = pd.to_numeric(queue_data["time"], errors="coerce")
         queue_data["time"] = queue_data["time"] - queue_data["time"].min()
-
-        queue_data2["time"] = pd.to_numeric(queue_data2["time"], errors="coerce")
-        queue_data2["time"] = queue_data2["time"] - queue_data2["time"].min()
-        
-        queue_data3["time"] = pd.to_numeric(queue_data3["time"], errors="coerce")
-        queue_data3["time"] = queue_data3["time"] - queue_data3["time"].min()
-
-        queue_data1["time"] = pd.to_numeric(queue_data1["time"], errors="coerce")
-        queue_data1["time"] = queue_data1["time"] - queue_data1["time"].min()
-
-        queue_data4["time"] = pd.to_numeric(queue_data4["time"], errors="coerce")
-        queue_data4["time"] = queue_data4["time"] - queue_data4["time"].min()
-
-        queue_data5["time"] = pd.to_numeric(queue_data5["time"], errors="coerce")
-        queue_data5["time"] = queue_data5["time"] - queue_data5["time"].min()
-
-
         queue_data["root_pkts"] = queue_data["root_pkts"].astype(float)  # Ensure numeric values
-        queue_data1["root_pkts"] = queue_data1["root_pkts"].astype(float)  # Ensure numeric values
-        queue_data2["root_pkts"] = queue_data2["root_pkts"].astype(float)  # Ensure numeric values
-        queue_data3["root_pkts"] = queue_data3["root_pkts"].astype(float)  # Ensure numeric values
-        queue_data4["root_pkts"] = queue_data4["root_pkts"].astype(float)  # Ensure numeric values
-        queue_data5["root_pkts"] = queue_data5["root_pkts"].astype(float)  # Ensure numeric values
-
         axs[4].plot(queue_data["time"], queue_data["root_pkts"], label="Queue Size n0 d0 (Packets)")
-        axs[4].plot(queue_data1["time"], queue_data1["root_pkts"], label="Queue Size n1 d0(Packets)")
-        axs[4].plot(queue_data2["time"], queue_data2["root_pkts"], label="Queue Size n2 d0(Packets)")
-        axs[4].plot(queue_data3["time"], queue_data3["root_pkts"], label="Queue Size n2 d1 (Packets)")
-        axs[4].plot(queue_data4["time"], queue_data4["root_pkts"], label="Queue Size n3 d0 (Packets)")
-        axs[4].plot(queue_data5["time"], queue_data5["root_pkts"], label="Queue Size n3 d1 (Packets)")
+
         axs[4].set_title("Queue Size (Packets)")
         axs[4].set_xlabel("Time (s)")
         axs[4].set_ylabel("Queue Size (Packets)")

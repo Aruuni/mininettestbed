@@ -35,7 +35,6 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
 
             if os.path.exists(f'{PATH}/Tcp{protocol.capitalize()}-1-goodput.csv'):
                 receiver = pd.read_csv(f'{PATH}/Tcp{protocol.capitalize()}-1-goodput.csv').reset_index(drop=True)
-                print(f'{PATH}/Tcp{protocol.capitalize()}-1-goodput.csv')
                 receiver['time'] = receiver['time'].apply(lambda x: int(float(x)))
 
                 receiver = receiver[
@@ -102,6 +101,6 @@ for protocol in PROTOCOLS:
 ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percentage of Trials (\%)")
 #ax.annotate('optimal', xy=(50, 50), xytext=(45, 20), arrowprops=dict(arrowstyle="->", linewidth=0.5))
 
-fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.50),columnspacing=0.5,handletextpad=0.5, handlelength=1)
+fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.25),columnspacing=0.5,handletextpad=0.5, handlelength=1)
 for format in ['pdf']:
     fig.savefig("joined_goodput_cdf_ns3.%s" % (format), dpi=720)

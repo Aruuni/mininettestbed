@@ -2,7 +2,7 @@ import os
 import sys
  
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '..')
+mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
  
 from core.topologies import *
@@ -25,7 +25,6 @@ def  generate_traffic_shape(seed, qsize_in_bytes):
     traffic_config = []
     for i in range(int(RUN_LENGTH/CHANGE_PERIOD)):
         start_time = (CHANGE_PERIOD*i)
-        print(start_time)
         random_bw = random.randint(1,100) # Mbps
         random_rtt = random.randint(20,200) # ms
         traffic_config.append(TrafficConf('s2', 's3', start_time, CHANGE_PERIOD, 'tbf', 

@@ -62,7 +62,7 @@ COLOR = {'cubic': '#0C5DA5',
              'pcc': '#686868',
              }
 
-PROTOCOLS = ['cubic', 'orca', 'bbr', 'sage', 'pcc']
+PROTOCOLS = ['cubic', 'orca', 'bbr', 'bbr3', 'sage', 'pcc']
 #PROTOCOLS = ['cubic', 'bbr']
 
 BW = 50
@@ -100,9 +100,9 @@ for protocol in PROTOCOLS:
     # ax.plot(base[:-1], cumulative / 50 * 100, label="%s-loss" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), linestyle='dashed', c=COLOR[protocol])
 
 ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percentage of Trials (\%)")
-ax.annotate('optimal', xy=(50, 50), xytext=(45, 20), arrowprops=dict(arrowstyle="->", linewidth=0.5))
+ax.annotate('optimal', xy=(76, 50), xytext=(45, 20), arrowprops=dict(arrowstyle="->", linewidth=0.5))
 ax.set_xlim(0, None)
 
-fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.50),columnspacing=0.5,handletextpad=0.5, handlelength=1)
+fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.25),columnspacing=0.5,handletextpad=0.5, handlelength=1)
 for format in ['pdf']:
     fig.savefig("joined_goodput_cdf_mininet.%s" % (format), dpi=720)
