@@ -38,12 +38,6 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     if (protocol == "bbr3"):
         protocol = "bbr"
 
-
-
-
-    #  Configure size of TCP buffers
-    #  TODO: check if this call can be put after starting mininet
-    #  TCP buffers should account for QSIZE as well
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
     
 
@@ -88,10 +82,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     net.stop()
     
     change_all_user_permissions(path)
-
-    # Process raw outputs into csv files
     process_raw_outputs(path)
-    plot_all(path, [{'src': flow.source, 'dst': flow.dest, 'start': flow.start , 'protocol': flow.protocol} for flow in traffic_config])
 
 if __name__ == '__main__':
 
@@ -110,6 +101,3 @@ if __name__ == '__main__':
 
     print('Loss is %s' % loss)
     run_emulation(topology, protocol, params, bw, delay, qmult, 22, run, aqm, loss, n_flows) #Qsize should be at least 1 MSS.
-
-    # Plot results
-    # plot_results(path)

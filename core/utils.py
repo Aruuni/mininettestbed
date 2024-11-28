@@ -119,7 +119,7 @@ def printGreen(string):
     print(f"{start}{string}{RESET}")
 
 
-def printSage(string):
+def printRed(string):
     start = "\033[31m" # red
     print(f"{start}{string}{RESET}")
 

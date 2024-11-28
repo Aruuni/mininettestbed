@@ -76,7 +76,6 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     change_all_user_permissions(path)
 
     process_raw_outputs(path)
-    plot_all(path, [{'src': flow.source, 'dst': flow.dest, 'start': flow.start , 'protocol': flow.protocol} for flow in traffic_config])
     change_all_user_permissions(path)
 
 if __name__ == '__main__':

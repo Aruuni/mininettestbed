@@ -31,11 +31,11 @@ def plot_run(*args):
     
     path = "%s/cctestbed/mininet/results_responsiveness_loss/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
 
-    plot_all_mininet_responsiveness(path)
+    plot_all_mn(path)
 
 if __name__ == '__main__':
 
-    PROTOCOLS = ['bbr', 'cubic', 'pcc']
+    PROTOCOLS = ['bbr', 'cubic',  'pcc', 'bbr3', 'orca', 'sage']
     BWS = [50]
     DELAYS = [50]
     QMULTS = [1]
