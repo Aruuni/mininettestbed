@@ -75,7 +75,7 @@ QMULT = 1
 RUNS = list(range(1,51))
 
 bw_rtt_data = get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_leo/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
-loss_data =  get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_loss/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
+loss_data =  get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_loss_leo/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
 
 BINS = 50
 fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.5))

@@ -31,18 +31,19 @@ def plot_run(*args):
     
     path = "%s/cctestbed/ns3/results_responsiveness_bw_rtt_loss_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
 
-    plot_all_ns3_responsiveness(path)
+    plot_all_ns3_responsiveness_extra(path)
 
 if __name__ == '__main__':
 
-    PROTOCOLS = ['bbr', 'bbr3', 'cubic']
+    #PROTOCOLS = ['bbr', 'bbr3', 'cubic']
+    PROTOCOLS = ['cubic']
     BWS = [50]
     DELAYS = [50]
     QMULTS = [1]
     RUNS = [1]
     LOSSES=[0]
 
-    MAX_SIMULATIONS = 4
+    MAX_SIMULATIONS = 8
 
     pool = Pool(processes=MAX_SIMULATIONS)
 
@@ -52,7 +53,7 @@ if __name__ == '__main__':
                 for delay in DELAYS
                 for mult in QMULTS
                 #for run in [1]] #    
-                for run in range(1,51)] #     
+                 for run in range(1,51)] #     
 
     pool.map(plot_run, params_list)
 

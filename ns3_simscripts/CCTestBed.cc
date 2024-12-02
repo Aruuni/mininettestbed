@@ -235,6 +235,7 @@ data_rate_changer(NetDeviceContainer dev, double time, uint32_t datarate)
 static void
 error_change(Ptr<RateErrorModel> em, double errorrate) 
 {
+    
     em->SetAttribute("ErrorRate", DoubleValue(errorrate));
 }
 

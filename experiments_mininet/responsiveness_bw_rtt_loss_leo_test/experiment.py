@@ -90,6 +90,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Process raw outputs into csv files
     process_raw_outputs(path)
     change_all_user_permissions(path)
+    plot_all_mn(path)
 
 if __name__ == '__main__':
 

@@ -283,7 +283,7 @@ def plot_all_ns3_responsiveness(path: str) -> None:
             netem_bw.append([flow[4],flow[7][1]])
         if flow[6] == 'netem' and flow[7]:
             netem_rtt.append([flow[4], flow[7][2]])
-            netem_loss.append([flow[4], (lambda x: x * 100 if x is not None else None)(flow[7][6])])
+            netem_loss.append([flow[4], (lambda x: x if x is not None else None)(flow[7][6])])
 
     # Plot each metric for each flow
     for flow_name, metrics_files in file_mapping.items():
@@ -391,13 +391,13 @@ def plot_all_ns3_responsiveness_extra(path: str) -> None:
     """
     # Identify and load all CSV files
     files = {
-        "goodput": os.path.join(path, "TcpBbr-1-goodput.csv"),
-        "rtt": os.path.join(path, "TcpBbr-1-rtt.csv"),
-        "lastrtt": os.path.join(path, "TcpBbr-1-lastrtt.csv"),
-        "throughput": os.path.join(path, "TcpBbr-1-throughput.csv"),
-        "cwnd": os.path.join(path, "TcpBbr-1-cwnd.csv"),
-        "bytes": os.path.join(path, "TcpBbr-1-bytes.csv"),
-        "retransmits": os.path.join(path, "TcpBbr-1-retransmits.csv"),
+        "goodput": os.path.join(path, "TcpCubic-1-goodput.csv"),
+        "rtt": os.path.join(path, "TcpCubic-1-rtt.csv"),
+        "lastrtt": os.path.join(path, "TcpCubic-1-lastrtt.csv"),
+        "throughput": os.path.join(path, "TcpCubic-1-throughput.csv"),
+        "cwnd": os.path.join(path, "TcpCubic-1-cwnd.csv"),
+        "bytes": os.path.join(path, "TcpCubic-1-bytes.csv"),
+        "retransmits": os.path.join(path, "TcpCubic-1-retransmits.csv"),
 
         "root_pkts": os.path.join(path, "queueSize.csv"),
 

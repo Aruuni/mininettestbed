@@ -100,7 +100,7 @@ for protocol in PROTOCOLS:
 
 ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percentage of Trials (\%)")
 #ax.annotate('optimal', xy=(50, 50), xytext=(45, 20), arrowprops=dict(arrowstyle="->", linewidth=0.5))
-
+ax.set_xlim(0, None)
 fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.25),columnspacing=0.5,handletextpad=0.5, handlelength=1)
 for format in ['pdf']:
-    fig.savefig("joined_goodput_cdf_ns3.%s" % (format), dpi=720)
+    fig.savefig("joined_goodput_leo_cdf_ns3.%s" % (format), dpi=720)

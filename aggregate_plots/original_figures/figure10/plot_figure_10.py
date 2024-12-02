@@ -119,10 +119,10 @@ for protocol in PROTOCOLS:
 
 
     # Set x-axis scale and limits
-    ax.set_xscale('log')  # Logarithmic scale
-    ax.xaxis.set_major_formatter(FuncFormatter(
-    lambda x, _: f"{x:.3f}".rstrip('0').rstrip('.') if x < 1 else f"{x:.1f}".rstrip('0').rstrip('.')))
-    ax.set_xlim(0.001, 100)
+    # ax.set_xscale('log')  # Logarithmic scale
+    # ax.xaxis.set_major_formatter(FuncFormatter(
+    # lambda x, _: f"{x:.3f}".rstrip('0').rstrip('.') if x < 1 else f"{x:.1f}".rstrip('0').rstrip('.')))
+    # ax.set_xlim(0.001, 100)
     #ax.tick_params(axis='x', labelsize=2)  # Set label size (e.g., 8)
     avg_goodputs = loss_data[loss_data['protocol'] == protocol]['average_retr_rate']
     values, base = np.histogram(avg_goodputs, bins=BINS)
@@ -135,4 +135,4 @@ ax.set(xlabel="Average Retr. Rate (Mbps)", ylabel="Percentage of Trials (\%)")
 
 fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.50),columnspacing=0.5,handletextpad=0.5, handlelength=1)
 for format in ['pdf']:
-    fig.savefig("joined_retr_cdf.%s" % format, dpi=720)
+    fig.savefig("joined_retr_cdf_nonlog.%s" % format, dpi=720)
