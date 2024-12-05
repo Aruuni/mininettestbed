@@ -4,11 +4,140 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/ipv4-global-routing-helper.h"
-#include "ns3/icmpv4-l4-protocol.h"
+#include "ns3/flow-monitor-module.h"
+#include "ns3/flow-monitor-helper.h"
+#include "ns3/traffic-control-module.h"
+#include <iostream>
+#include <fstream>
+#include <cstdio>
+#include <iomanip>
+#include <unordered_map>
+#include <sys/stat.h>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
 
 #define COUT(log) std::cout << log << std::endl;
 
 using namespace ns3;
+AsciiTraceHelper ascii;
+std::string outpath = "/home/mihai/ns-3-dev/scratch/cross_path/";
+
+
+struct Change {
+    double time;
+    std::string type;
+    double value;
+};
+
+struct Flow {
+    std::string src;
+    std::string dest;
+    int start_time;
+    int duration;
+    std::string congestion_control;
+};
+
+struct ParsedData {
+    std::vector<Flow> flows;
+    std::vector<Change> changes;
+};
+
+ParsedData parseData(const std::string &file_path) {
+
+    ParsedData parsedData;
+    std::ifstream file(file_path);
+    json data;
+    file >> data;
+
+    for (const auto &flow_data : data["flows"]) {
+        Flow flow;
+        flow.src = flow_data[0];
+        flow.dest = flow_data[1];
+        flow.start_time = flow_data[4];
+        flow.duration = flow_data[5];
+        flow.congestion_control = flow_data[6];
+        if (flow_data[7].is_null()) {
+            flow.congestion_control[0] = std::toupper(flow.congestion_control[0]);
+            flow.congestion_control = "Tcp" + flow.congestion_control;
+            parsedData.flows.push_back(flow);
+        }
+        else{
+            if (flow.congestion_control == "tbf"){
+                Change change;
+                change.time = flow.start_time;
+                change.type = "bw";
+                change.value = flow_data[7][1];
+                parsedData.changes.push_back(change);
+            }
+            else if (flow.congestion_control == "netem"){
+                Change delay, loss;
+                loss.time = delay.time = flow.start_time;
+                loss.type = "loss";
+                delay.type = "delay";
+                delay.value = flow_data[7][2];
+                if (flow_data[7][6].is_null())
+                    loss.value = 0;
+                else
+                    loss.value = flow_data[7][6];
+                parsedData.changes.push_back(delay);
+                parsedData.changes.push_back(loss);
+            }
+        }
+    }
+    return parsedData;
+}
+
+static void
+uint32Tracer(Ptr<OutputStreamWrapper> stream, uint32_t, uint32_t newval)
+{
+    if (newval == 2147483647){
+            *stream->GetStream() 
+        << Simulator::Now().GetSeconds() 
+        << ", " 
+        << 0 
+        << std::endl;
+        return;
+    }
+
+    *stream->GetStream() 
+        << Simulator::Now().GetSeconds() 
+        << ", " 
+        << newval 
+        << std::endl;
+}
+
+
+static void
+doubleTracer(Ptr<OutputStreamWrapper> stream, double, double newval)
+{
+    *stream->GetStream() 
+        << Simulator::Now().GetSeconds() 
+        << ", " 
+        << newval 
+        << std::endl;
+}
+static void
+DataRateTracer(Ptr<OutputStreamWrapper> stream, DataRate, DataRate newval)
+{
+    *stream->GetStream() 
+        << Simulator::Now().GetSeconds() 
+        << ", " << newval.GetBitRate() 
+        << std::endl;
+}
+
+static void
+TimeTracer(Ptr<OutputStreamWrapper> stream, Time, Time newval)
+{
+    *stream->GetStream() 
+        << Simulator::Now().GetSeconds() 
+        << ", " 
+        << newval.GetMilliSeconds() 
+        << std::endl;
+}
+
+ParsedData traffic_config;
+
 
 std::vector<double> rxBytes;
 std::vector<double> rxBytes2;
@@ -39,49 +168,46 @@ TraceGoodput2(Ptr<OutputStreamWrapper> stream, uint32_t flowID, uint32_t prevRxB
         << std::endl;
     Simulator::Schedule(Seconds(1), &TraceGoodput2, stream, flowID, rxBytes2[flowID], Simulator::Now());
 }
-void RerouteTraffic(uint32_t numClients, 
-                    Ptr<Node> router1_1, Ptr<Node> router2_1, 
-                    Ptr<Node> router1_2, Ptr<Node> router2_2,
-                    const Ipv4InterfaceContainer& bottleneckInterfaces_1,
-                    const Ipv4InterfaceContainer& crossInterfaces1,
-                    const Ipv4InterfaceContainer& crossInterfaces2) 
+
+static void
+socketTrace(uint32_t idx, std::string varName, std::string path, auto callback)
+{
+    Ptr<OutputStreamWrapper> fstream = ascii.CreateFileStream(outpath + "bbr" + std::string("-") + std::to_string(idx+1) + "-" + varName +".csv");
+    *fstream->GetStream() << "time," << varName << std::endl;
+    Config::ConnectWithoutContext("/NodeList/" + std::to_string(idx) + 
+                                "/$ns3::TcpL4Protocol/SocketList/0/" + path, 
+                                MakeBoundCallback(callback,fstream));
+}
+
+
+void RerouteTraffic(uint32_t numClients, std::vector<Ipv4InterfaceContainer> clients, std::vector<Ipv4InterfaceContainer> servers, 
+                    Ptr<Node> router1_2, Ptr<Node> router2_2, const Ipv4InterfaceContainer& interfaces1, const Ipv4InterfaceContainer& interfaces2, bool back) 
 {
     Ipv4StaticRoutingHelper routingHelper;
-
-    // Remove specific routes from Router 1_2 and Router 2_2
     Ptr<Ipv4StaticRouting> router1_2Routing = routingHelper.GetStaticRouting(router1_2->GetObject<Ipv4>());
-    router1_2Routing->RemoveRoute(5);
-    router1_2Routing->RemoveRoute(6);
-    COUT(crossInterfaces2.Get(0).second);
-    router1_2Routing->AddNetworkRouteTo(Ipv4Address("10.4.0.0"), Ipv4Mask("255.255.255.0"), crossInterfaces1.GetAddress(1), crossInterfaces1.Get(1).second);
-    router1_2Routing->AddNetworkRouteTo(Ipv4Address("10.4.1.0"), Ipv4Mask("255.255.255.0"), crossInterfaces1.GetAddress(1), crossInterfaces1.Get(1).second);
-
     Ptr<Ipv4StaticRouting> router2_2Routing = routingHelper.GetStaticRouting(router2_2->GetObject<Ipv4>());
-    router2_2Routing->RemoveRoute(5);
-    router2_2Routing->RemoveRoute(6);
-    router2_2Routing->AddNetworkRouteTo(Ipv4Address("10.2.0.0"), Ipv4Mask("255.255.255.0"), crossInterfaces2.GetAddress(1), crossInterfaces1.Get(1).second);
-    router2_2Routing->AddNetworkRouteTo(Ipv4Address("10.2.1.0"), Ipv4Mask("255.255.255.0"), crossInterfaces2.GetAddress(1), crossInterfaces1.Get(1).second);
+    
+    for (uint32_t i = 0; i < numClients; ++i) {
+        router1_2Routing->RemoveRoute(router1_2Routing->GetNRoutes()-1);
+        router2_2Routing->RemoveRoute(router2_2Routing->GetNRoutes()-1);
+    }
 
-    // // Update Router 1_1 to forward Dumbbell 2 traffic through its bottleneck link
-    // Ptr<Ipv4StaticRouting> router1_1Routing = routingHelper.GetStaticRouting(router1_1->GetObject<Ipv4>());
-    // router1_1Routing->AddNetworkRouteTo(Ipv4Address("10.4.0.0"), Ipv4Mask("255.255.255.0"),
-    //                                     bottleneckInterfaces_1.GetAddress(1), 1);
 
-    // // Update Router 2_1 to forward return traffic for Dumbbell 2 through its bottleneck link
-    // Ptr<Ipv4StaticRouting> router2_1Routing = routingHelper.GetStaticRouting(router2_1->GetObject<Ipv4>());
-    // router2_1Routing->AddNetworkRouteTo(Ipv4Address("10.2.0.0"), Ipv4Mask("255.255.255.0"),
-    //                                     bottleneckInterfaces_1.GetAddress(0), 1);
+    if (back){
+        for (uint32_t i = 0; i < numClients; ++i) {
+            router1_2Routing->AddNetworkRouteTo(servers[i].GetAddress(1), Ipv4Mask("255.255.255.0"), interfaces1.GetAddress(1), interfaces1.Get(0).second);
+            router2_2Routing->AddNetworkRouteTo(clients[i].GetAddress(0), Ipv4Mask("255.255.255.0"), interfaces2.GetAddress(1), interfaces2.Get(1).second);
+            //COUT(servers[i].GetAddress(0) <<  " " << interfaces1.GetAddress(1) << " " << interfaces2.Get(1).second);
 
-    // // Ensure that cross-routing through Dumbbell 1 works both ways
-    // Ptr<Ipv4StaticRouting> router1_2CrossRouting = routingHelper.GetStaticRouting(router1_2->GetObject<Ipv4>());
-    // router1_2CrossRouting->AddNetworkRouteTo(Ipv4Address("10.3.0.0"), Ipv4Mask("255.255.255.0"),
-    //                                          crossInterfaces1.GetAddress(1), 1);
+        }
+    }
+    else if (!back){
+        for (uint32_t i = 0; i < numClients; ++i) {
 
-    // Ptr<Ipv4StaticRouting> router2_2CrossRouting = routingHelper.GetStaticRouting(router2_2->GetObject<Ipv4>());
-    // router2_2CrossRouting->AddNetworkRouteTo(Ipv4Address("10.3.1.0"), Ipv4Mask("255.255.255.0"),
-    //                                          crossInterfaces2.GetAddress(1), 1);
-
-    COUT("Traffic successfully rerouted through Dumbbell 1 bottleneck.");
+            router1_2Routing->AddNetworkRouteTo(servers[i].GetAddress(1), Ipv4Mask("255.255.255.0"), interfaces1.GetAddress(1), numClients+1);
+            router2_2Routing->AddNetworkRouteTo(clients[i].GetAddress(0), Ipv4Mask("255.255.255.0"), interfaces2.GetAddress(0), 1);
+        }
+    }
 }
 
 
@@ -89,12 +215,41 @@ int main(int argc, char *argv[]) {
     Config::SetDefault("ns3::TcpL4Protocol::SocketType", TypeIdValue(TypeId::LookupByName("ns3::TcpBbr")));
     double duration = 40.0;
     uint32_t numClients = 2;
+    uint32_t queue_size = 9000;
     std::string bottleneckBw = "10Mbps";
     std::string bottleneckDelay = "10ms";
+    int packetSize = 1448;
+        
+    // linux default send 4096   16384   4194304
+    // linux default recv 4096   131072  6291456
+    Config::SetDefault("ns3::TcpSocket::SndBufSize", UintegerValue(4194304));
+    Config::SetDefault("ns3::TcpSocket::RcvBufSize", UintegerValue(4194304));
+    Config::SetDefault("ns3::TcpSocket::InitialCwnd", UintegerValue(10)); 
+    Config::SetDefault("ns3::TcpSocket::InitialSlowStartThreshold", UintegerValue(10)); 
+    Config::SetDefault("ns3::TcpSocket::DelAckCount", UintegerValue(0));
+    Config::SetDefault("ns3::TcpSocket::SegmentSize", UintegerValue(packetSize));
+    Config::SetDefault("ns3::TcpSocketState::EnablePacing", BooleanValue(true));
+    Config::SetDefault("ns3::TcpL4Protocol::RecoveryType", TypeIdValue(TypeId::LookupByName("ns3::TcpClassicRecovery")));    
+    Config::SetDefault("ns3::TcpSocketBase::Sack", BooleanValue(true)); 
+
+
 
     CommandLine cmd;
     cmd.AddValue("numClients", "Number of client-server pairs", numClients);
+    // cmd.AddValue("configJSON", "json cofig file", json_file);
+    // cmd.AddValue("path", "output directory", outpath);
+    // cmd.AddValue("delay", "delay in ms", bottleneck_delay);
+    // cmd.AddValue("bandwidth", "bandwidth in mbps", bottleneck_bw);
+    // cmd.AddValue("queuesize", "multiple of bdp for queues", queue_size);
+    // cmd.AddValue("seed", "append a flow", seed);
+    // cmd.AddValue("delay2", "the base flows rtt ", bottleneck_delay2);
     cmd.Parse(argc, argv);
+    // SeedManager::SetSeed(seed);
+
+
+
+
+
 
     NodeContainer clients_1;
     clients_1.Create(numClients);
@@ -110,18 +265,19 @@ int main(int argc, char *argv[]) {
     Ptr<Node> router1_2 = CreateObject<Node>();
     Ptr<Node> router2_2 = CreateObject<Node>();
 
-    PointToPointHelper clientLink, bottleneckLink, serverLink, infLink;
+    PointToPointHelper clientLink, bottleneckLink, serverLink;
     clientLink.SetDeviceAttribute("DataRate", StringValue("100Gbps"));
-    clientLink.SetChannelAttribute("Delay", StringValue("0ms"));
+    clientLink.SetChannelAttribute("Delay", StringValue(bottleneckDelay));
+    clientLink.SetQueue("ns3::DropTailQueue", "MaxSize", QueueSizeValue(QueueSize(std::to_string(queue_size) + "p")));
 
     bottleneckLink.SetDeviceAttribute("DataRate", StringValue(bottleneckBw));
-    bottleneckLink.SetChannelAttribute("Delay", StringValue(bottleneckDelay));
+    bottleneckLink.SetChannelAttribute("Delay", StringValue("0ms"));
+    bottleneckLink.SetQueue("ns3::DropTailQueue", "MaxSize", QueueSizeValue(QueueSize(std::to_string(queue_size) + "p")));
 
     serverLink.SetDeviceAttribute("DataRate", StringValue("100Gbps"));
     serverLink.SetChannelAttribute("Delay", StringValue("0ms"));
+    serverLink.SetQueue("ns3::DropTailQueue", "MaxSize", QueueSizeValue(QueueSize(std::to_string(queue_size) + "p")));
 
-    infLink.SetDeviceAttribute("DataRate", StringValue("10Mbps"));
-    infLink.SetChannelAttribute("Delay", StringValue("10ms"));
 
     InternetStackHelper internet;
     internet.InstallAll();
@@ -141,18 +297,15 @@ int main(int argc, char *argv[]) {
         Ipv4InterfaceContainer iface_1 = ipv4_1.Assign(link_1);
         clientInterfaces_1.push_back(iface_1);
         ipv4_1.NewNetwork();
-        COUT("Client_1_" << i + 1 << " IP: " << iface_1.GetAddress(0));
-
 
         NetDeviceContainer link_2 = clientLink.Install(clients_2.Get(i), router1_2);
         Ipv4InterfaceContainer iface_2 = ipv4_2.Assign(link_2);
         clientInterfaces_2.push_back(iface_2);
         ipv4_2.NewNetwork();
-        COUT("Client_2_" << i + 1 << " IP: " << iface_2.GetAddress(0));
     }
 
     NetDeviceContainer bottleneckDevices_1 = bottleneckLink.Install(router1_1, router2_1);
-    NetDeviceContainer bottleneckDevices_2 = infLink.Install(router1_2, router2_2);
+    NetDeviceContainer bottleneckDevices_2 = bottleneckLink.Install(router1_2, router2_2);
 
     ipv4_1.SetBase("11.1.0.0", "255.255.255.0");
     ipv4_2.SetBase("11.2.0.0", "255.255.255.0");
@@ -167,13 +320,11 @@ int main(int argc, char *argv[]) {
         Ipv4InterfaceContainer iface_1 = ipv4_1.Assign(link_1);
         serverInterfaces_1.push_back(iface_1);
         ipv4_1.NewNetwork();
-        COUT("Server_1_" << i + 1 << " IP: " << iface_1.GetAddress(1));
 
         NetDeviceContainer link_2 = serverLink.Install(router2_2, servers_2.Get(i));
         Ipv4InterfaceContainer iface_2 = ipv4_2.Assign(link_2);
         serverInterfaces_2.push_back(iface_2);
         ipv4_2.NewNetwork();
-        COUT("Server_2_" << i + 1 << " IP: " << iface_2.GetAddress(1));
     }
     
     // Create cross-links
@@ -192,72 +343,45 @@ int main(int argc, char *argv[]) {
     Ipv4StaticRoutingHelper routingHelper;
 
     for (uint32_t i = 0; i < numClients; ++i) {
-        // Client 1 (Node 0): Route to Server 1 via Router 1
         Ptr<Ipv4StaticRouting> clientRouting_1 = routingHelper.GetStaticRouting(clients_1.Get(i)->GetObject<Ipv4>());
-        clientRouting_1->AddNetworkRouteTo(serverInterfaces_1[i].GetAddress(1), Ipv4Mask("255.255.255.0"),
-                                            //via
-                                            bottleneckInterfaces_1.GetAddress(0), 1);
-
-        // Router 1 (Node 2): Forward traffic to Router 2 via bottleneck link
         Ptr<Ipv4StaticRouting> router1Routing_1 = routingHelper.GetStaticRouting(router1_1->GetObject<Ipv4>());
-        router1Routing_1->AddNetworkRouteTo(serverInterfaces_1[i].GetAddress(1), Ipv4Mask("255.255.255.0"),
-                                            //via
-                                            bottleneckInterfaces_1.GetAddress(1), numClients+1);
-        router1Routing_1->AddNetworkRouteTo(serverInterfaces_2[i].GetAddress(1), Ipv4Mask("255.255.255.0"),
-                                            //via
-                                            bottleneckInterfaces_1.GetAddress(1), numClients+1);
-        router1Routing_1->AddNetworkRouteTo(clientInterfaces_2[i].GetAddress(0), Ipv4Mask("255.255.255.0"),
-                                            //via
-                                            crossInterfaces1.GetAddress(0), crossInterfaces1.Get(0).second);
-
-        // Router 2 (Node 3): Forward traffic to Server 1
         Ptr<Ipv4StaticRouting> router2Routing_1 = routingHelper.GetStaticRouting(router2_1->GetObject<Ipv4>());
-        router2Routing_1->AddNetworkRouteTo(clientInterfaces_1[i].GetAddress(0), Ipv4Mask("255.255.255.0"),
-                                            //via
-                                            bottleneckInterfaces_1.GetAddress(0), 1);
-        router2Routing_1->AddNetworkRouteTo(clientInterfaces_2[i].GetAddress(0), Ipv4Mask("255.255.255.0"),
-                                            //via
-                                            bottleneckInterfaces_1.GetAddress(0), 1);
-        router2Routing_1->AddNetworkRouteTo(serverInterfaces_2[i].GetAddress(0), Ipv4Mask("255.255.255.0"),
-                                            //via
-                                            crossInterfaces2.GetAddress(0), crossInterfaces2.Get(0).second);
-
-        // Server 1 (Node 1): Return traffic to Client 1 via Router 2
         Ptr<Ipv4StaticRouting> serverRouting_1 = routingHelper.GetStaticRouting(servers_1.Get(i)->GetObject<Ipv4>());
-        serverRouting_1->AddNetworkRouteTo(clientInterfaces_1[i].GetAddress(0), Ipv4Mask("255.255.255.0"),
-                                            //via
-                                            bottleneckInterfaces_1.GetAddress(1), 1);
-    }
 
-    for (uint32_t i = 0; i < numClients; ++i) {
-        // Client 2 (Node 4): Route to Server 2 via Router 1
+        clientRouting_1->AddNetworkRouteTo(serverInterfaces_1[i].GetAddress(1), Ipv4Mask("255.255.255.0"), bottleneckInterfaces_1.GetAddress(0), 1);
+
+        router1Routing_1->AddNetworkRouteTo(serverInterfaces_1[i].GetAddress(1), Ipv4Mask("255.255.255.0"), bottleneckInterfaces_1.GetAddress(1), numClients+1);
+        router1Routing_1->AddNetworkRouteTo(serverInterfaces_2[i].GetAddress(1), Ipv4Mask("255.255.255.0"), bottleneckInterfaces_1.GetAddress(1), numClients+1);  
+        router1Routing_1->AddNetworkRouteTo(clientInterfaces_2[i].GetAddress(0), Ipv4Mask("255.255.255.0"), crossInterfaces1.GetAddress(0), crossInterfaces1.Get(0).second); 
+
+        router2Routing_1->AddNetworkRouteTo(clientInterfaces_1[i].GetAddress(0), Ipv4Mask("255.255.255.0"), bottleneckInterfaces_1.GetAddress(0), 1);
+        router2Routing_1->AddNetworkRouteTo(clientInterfaces_2[i].GetAddress(0), Ipv4Mask("255.255.255.0"), bottleneckInterfaces_1.GetAddress(0), 1);
+        router2Routing_1->AddNetworkRouteTo(serverInterfaces_2[i].GetAddress(0), Ipv4Mask("255.255.255.0"), crossInterfaces2.GetAddress(0), crossInterfaces2.Get(0).second);
+
+        serverRouting_1->AddNetworkRouteTo(clientInterfaces_1[i].GetAddress(0), Ipv4Mask("255.255.255.0"), bottleneckInterfaces_1.GetAddress(1), 1);
+
         Ptr<Ipv4StaticRouting> clientRouting_2 = routingHelper.GetStaticRouting(clients_2.Get(i)->GetObject<Ipv4>());
-        clientRouting_2->AddNetworkRouteTo(serverInterfaces_2[i].GetAddress(1), Ipv4Mask("255.255.255.0"),
-                                            //via
-                                            bottleneckInterfaces_1.GetAddress(0), 1);
-
-        // Router 1 (Node 6): Forward traffic to Router 2 via bottleneck link
-        Ptr<Ipv4StaticRouting> router1Routing_2 = routingHelper.GetStaticRouting(router1_2->GetObject<Ipv4>());
-        router1Routing_2->AddNetworkRouteTo(serverInterfaces_2[i].GetAddress(1), Ipv4Mask("255.255.255.0"),
-                                            // via
-                                            bottleneckInterfaces_2.GetAddress(1), numClients+1);
-
-
-        // Router 2 (Node 7): Forward traffic to Server 2
+        Ptr<Ipv4StaticRouting> router1Routing_2 = routingHelper.GetStaticRouting(router1_2->GetObject<Ipv4>());  
         Ptr<Ipv4StaticRouting> router2Routing_2 = routingHelper.GetStaticRouting(router2_2->GetObject<Ipv4>());
-        router2Routing_2->AddNetworkRouteTo(clientInterfaces_2[i].GetAddress(0), Ipv4Mask("255.255.255.0"),
-                                            //via
-                                            bottleneckInterfaces_2.GetAddress(0), 1);
-
-        // Server 2 (Node 5): Return traffic to Client 2 via Router 2
         Ptr<Ipv4StaticRouting> serverRouting_2 = routingHelper.GetStaticRouting(servers_2.Get(i)->GetObject<Ipv4>());
-        serverRouting_2->AddNetworkRouteTo(clientInterfaces_2[i].GetAddress(0), Ipv4Mask("255.255.255.0"),
-                                            //via
-                                            bottleneckInterfaces_1.GetAddress(1), 1);
+
+        clientRouting_2->AddNetworkRouteTo(serverInterfaces_2[i].GetAddress(1), Ipv4Mask("255.255.255.0"), bottleneckInterfaces_1.GetAddress(0), 1);
+
+        router1Routing_2->AddNetworkRouteTo(serverInterfaces_2[i].GetAddress(1), Ipv4Mask("255.255.255.0"), bottleneckInterfaces_2.GetAddress(1), numClients+1);
+
+        router2Routing_2->AddNetworkRouteTo(clientInterfaces_2[i].GetAddress(0), Ipv4Mask("255.255.255.0"), bottleneckInterfaces_2.GetAddress(0), 1);
+
+        serverRouting_2->AddNetworkRouteTo(clientInterfaces_2[i].GetAddress(0), Ipv4Mask("255.255.255.0"), bottleneckInterfaces_1.GetAddress(1), 1);
     }
+
+
+
+
+
     AsciiTraceHelper ascii;
-    Ipv4GlobalRoutingHelper::PrintRoutingTableAllAt(Seconds(1), ascii.CreateFileStream("scratch/cross_path/routes_before.txt"));
-    Ipv4GlobalRoutingHelper::PrintRoutingTableAllAt(Seconds(30), ascii.CreateFileStream("scratch/cross_path/routes_after.txt"));
+    Ipv4GlobalRoutingHelper::PrintRoutingTableAllAt(Seconds(1), ascii.CreateFileStream("scratch/cross_path/routes_seconds_1.txt"));
+    Ipv4GlobalRoutingHelper::PrintRoutingTableAllAt(Seconds(15), ascii.CreateFileStream("scratch/cross_path/routes_seconds_15.txt"));
+    Ipv4GlobalRoutingHelper::PrintRoutingTableAllAt(Seconds(35), ascii.CreateFileStream("scratch/cross_path/routes_seconds_35.txt"));
     // Set up applications
     uint16_t basePort = 8080;
     rxBytes.resize(numClients, 0);
@@ -279,6 +403,10 @@ int main(int argc, char *argv[]) {
         ApplicationContainer clientApps_2 = bulkSend_2.Install(clients_2.Get(i));
         clientApps_2.Start(Seconds(0.1));
         clientApps_2.Stop(Seconds(duration));
+
+        Simulator::Schedule(Seconds(0.1) + MilliSeconds(1), &socketTrace<decltype(&TimeTracer)>, clients_1.Get(i)->GetId(), "rtt", "RTT",  &TimeTracer);
+        Simulator::Schedule(Seconds(0.1) + MilliSeconds(1), &socketTrace<decltype(&TimeTracer)>, clients_2.Get(i)->GetId(), "rtt", "RTT",  &TimeTracer);
+
 
         PacketSinkHelper packetSinkHelper_1("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), basePort + i));
         ApplicationContainer serverApps_1 = packetSinkHelper_1.Install(servers_1.Get(i));
@@ -304,9 +432,9 @@ int main(int argc, char *argv[]) {
         Simulator::Schedule(Seconds(1), &TraceGoodput2, goodputStream_2, i, 0, Seconds(0));
     }
 
-Simulator::Schedule(Seconds(30), &RerouteTraffic, numClients, 
-                    router1_1, router2_1, router1_2, router2_2,
-                    bottleneckInterfaces_1, crossInterfaces1, crossInterfaces2);
+    Simulator::Schedule(Seconds(10), &RerouteTraffic, numClients, clientInterfaces_2, serverInterfaces_2, router1_2, router2_2, crossInterfaces1, crossInterfaces2, true);
+    Simulator::Schedule(Seconds(30), &RerouteTraffic, numClients, clientInterfaces_2, serverInterfaces_2, router1_2, router2_2, bottleneckInterfaces_2, bottleneckInterfaces_2, false);
+
     bottleneckLink.EnablePcap("scratch/cross_path/r12_r11_bottleneckDevices_1", bottleneckDevices_1, true);
     bottleneckLink.EnablePcap("scratch/cross_path/r22_r21_bottleneckDevices_2", bottleneckDevices_2, true);
 
