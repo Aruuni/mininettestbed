@@ -29,20 +29,20 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
                 BW, DELAY, int(QMULT * BDP_IN_PKTS), protocol, run)
 
             # Compute the average optimal throughput
-            if os.path.exists(PATH + '/csvs/x1.csv'):
-                receiver = pd.read_csv(PATH + '/csvs/x1.csv').reset_index(drop=True)
+            if os.path.exists(PATH + '/TcpBbr-1-goodput.csv'):
+                receiver = pd.read_csv(PATH + '/TcpBbr-1-goodput.csv').reset_index(drop=True)
                 receiver['time'] = receiver['time'].apply(lambda x: int(float(x)))
                 receiver = receiver[(receiver['time'] > start_time) & (receiver['time'] < end_time)]
                 receiver = receiver.drop_duplicates('time')
                 receiver = receiver.set_index('time')
-                protocol_mean = receiver.mean()['bandwidth']
+                protocol_mean = receiver.mean()['goodput']
                 data.append([protocol, run, protocol_mean])
 
     return pd.DataFrame(data, columns=['protocol', 'run_number', 'average_goodput'])
 
 
 # Configuration
-PROTOCOL = ['cubic']  # Only BBR protocol
+PROTOCOL = ['bbr']  # Only BBR protocol
 BW = 50
 DELAY = 50
 QMULT = 1
@@ -50,15 +50,15 @@ RUNS = list(range(1, 51))
 
 # File paths (replace these paths with your actual file paths)
 HOME_DIR = os.getenv("HOME")  # Adjust this if needed
-bw_rtt_path = f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_leo/fifo"
-loss_path = f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_loss_leo/fifo"
+#bw_rtt_path = f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_leo/fifo"
+loss_path = f"{HOME_DIR}/cctestbed/ns3/results_responsiveness_bw_rtt_loss_leo/fifo"
 
 # Load data
-bw_rtt_data = get_df(bw_rtt_path, PROTOCOL, RUNS, BW, DELAY, QMULT)
+#bw_rtt_data = get_df(bw_rtt_path, PROTOCOL, RUNS, BW, DELAY, QMULT)
 loss_data = get_df(loss_path, PROTOCOL, RUNS, BW, DELAY, QMULT)
 
 # Group data by run number
-bbr_bw_rtt_avg = bw_rtt_data.groupby('run_number')['average_goodput'].mean()
+#bbr_bw_rtt_avg = bw_rtt_data.groupby('run_number')['average_goodput'].mean()
 bbr_loss_avg = loss_data.groupby('run_number')['average_goodput'].mean()
 
 # Plotting
@@ -66,8 +66,8 @@ fig, ax = plt.subplots(figsize=(8, 5))
 
 # Plot average goodput for BW-RTT experiment
 ax.plot(
-    bbr_bw_rtt_avg.index,
-    bbr_bw_rtt_avg.values,
+    # bbr_bw_rtt_avg.index,
+    # bbr_bw_rtt_avg.values,
     label=f'{PROTOCOL[0]} (BW-RTT)',
     color=COLOR['bbr']
 )
@@ -89,5 +89,4 @@ ax.legend()
 
 # Save and show the plot
 plt.tight_layout()
-plt.savefig("bbr_goodput_per_run.png", dpi=300)
-plt.show()
+plt.savefig("bbr_goodput_per_run_ns3.png", dpi=300)

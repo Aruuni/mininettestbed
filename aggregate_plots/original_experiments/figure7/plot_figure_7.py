@@ -111,10 +111,8 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                     if os.path.exists(f"{PATH}/csvs/c{(n + 1)}_ss.csv"):
                                         # Compute the avg and std rtt across all samples of both flows
                                         sender = pd.read_csv(PATH + f"/csvs/c{(n + 1)}_ss.csv")
-
-                                        min_time = sender['time'].min()
-
-                                        sender['time'] = sender['time'] - min_time      
+                                       # print(PATH)
+                                        
                                         sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
 
                                         #print(sender.head(10))
@@ -124,6 +122,7 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                         if len(sender) > 0:
                                             delay_flows.append(sender)
                                         delay_mean = sender.mean().values[0]
+                                        print(delay_mean)
                                         delay_std = sender.std().values[0]
                                     else:
                                         sender = None
@@ -323,12 +322,12 @@ def get_aqm_data(aqm, delay, qmult):
             aqm, BW, delay, int(qmult * BDP_IN_PKTS), 4, protocol, run)
             for n in range(4):
                 if protocol != 'aurora':
-                    if os.path.exists(PATH + '/c%s_ss.csv' % (n+1)) :
+                    if os.path.exists(PATH + f"/csvs/c{(n+1)}_ss.csv") :
                         # Compute the avg and std rtt across all samples of both flows
-                        sender = pd.read_csv(PATH + '/c%s_ss.csv' % (n+1), names=['time', 'rtt', 'cwnd', 'minrtt'], header=None)
+                        sender = pd.read_csv(PATH + f"/csvs/c{(n+1)}_ss.csv")
                         sender = sender.drop(index=0)
 
-                        sender = sender[['time', 'rtt']]
+                        sender = sender[['time', 'srtt']]
 
                         min_time = sender['time'].min()
                         sender['time'] = sender['time'] - min_time
@@ -461,7 +460,7 @@ def plot_data(data, filename, ylim=None):
 
 if __name__ == "__main__":
     ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_aqm"
-    PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
+    PROTOCOLS = ['cubic', 'bbr', 'sage', 'pcc'] # 'bbr3', 
     DELAYS = [10,100]
     RUNS = [1, 2, 3, 4, 5]
     QMULTS = [0.2,1,4]

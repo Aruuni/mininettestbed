@@ -64,8 +64,12 @@ def plot_all_mn(path: str) -> None:
         emulation_info = json.load(f)
     flows = []
     for flow in emulation_info['flows']:
-        if flow[7] == None:
-            flows.append([flow[0], flow[1]])  
+        try:
+            if flow[7] == None:
+                flows.append([flow[0], flow[1]])  
+        except IndexError:
+            if flow[6] == None:
+                flows.append([flow[0], flow[1]])  
 
     for flow in flows:
         flow_client = flow[0]  # Client flow name like 'c1', 'c2', etc.
@@ -170,7 +174,7 @@ def plot_all_mn(path: str) -> None:
             axs[5].set_title("Rttvar from SS (ms)")
 
     queue_dir = os.path.join(path, 'queues')  # Specify the folder containing the queue files
-    queue_files = [f for f in os.listdir(queue_dir) if f.endswith('s2-eth2.txt')]
+    queue_files = [f for f in os.listdir(queue_dir) if f.endswith('eth1.txt')]
 
     for queue_file in queue_files:
         queue_path = os.path.join(queue_dir, queue_file)
@@ -231,15 +235,7 @@ def plot_all_mn(path: str) -> None:
     plt.close()
 
 def plot_all_ns3_responsiveness(path: str) -> None:
-    """
-    This function plots Goodput, RTT, Throughput, CWND, Bytes In Flight, and Queue Size for each flow from NS3 experiment output files.
-    It also includes TBF bandwidth on the goodput plot and Netem RTT on the RTT plot. Netem loss is plotted on a secondary y-axis of the Goodput plot.
-    
-    Args:
-    path (str): The directory where the NS3 output files are located.
-    """
     fig, axs = plt.subplots(5, 1, figsize=(17, 30))
-    # Set global font sizes
     plt.rcParams.update({
         'font.size': 16,         # General font size
         'axes.titlesize': 20,    # Title font size
@@ -248,76 +244,57 @@ def plot_all_ns3_responsiveness(path: str) -> None:
         'ytick.labelsize': 16,   # Y-axis tick font size
         'legend.fontsize': 20,   # Legend font size
     })
-    # Identify files by extracting flow name and metric
+
     csv_files = [f for f in os.listdir(path) if f.endswith('.csv')]
     metrics = ['goodput', 'rtt', 'throughput', 'cwnd', 'bytes']
     file_mapping = {}
 
-    # Create a mapping of flow name to metric files
     for file in csv_files:
         if '-' in file and file.endswith('.csv'):
             parts = file.split('-')
-            if len(parts) < 3:
-                continue  # Skip files that do not match the expected format
-
-            flow_name = f"{parts[0]}-{parts[1]}"  # e.g., TcpBbr-1
-            metric = parts[2].split('.')[0]  # e.g., goodput
-
-            if metric in metrics:
-                if flow_name not in file_mapping:
-                    file_mapping[flow_name] = {}
-                file_mapping[flow_name][metric] = file
-
-    # Load emulation info from JSON
+            if len(parts) >= 3:  # Ensure the file has the expected format
+                flow_name = f"{parts[0]}-{parts[1]}"  # e.g., TcpBbr-1
+                metric = parts[2].split('.')[0]  # Extract metric (e.g., goodput)
+                if metric in metrics:
+                    if flow_name not in file_mapping:
+                        file_mapping[flow_name] = {}
+                    file_mapping[flow_name][metric] = os.path.join(path, file)
+    
     emulation_info_file = os.path.join(path, 'emulation_info.json')
     with open(emulation_info_file, 'r') as f:
         emulation_info = json.load(f)
 
-    netem_bw = []
-    netem_rtt = []
-    netem_loss = []
+    netem_bw, netem_rtt, netem_loss = [], [], []
 
-    # Extract TBF and Netem changes
     for flow in emulation_info['flows']:
         if flow[6] == 'tbf':
             netem_bw.append([flow[4],flow[7][1]])
         if flow[6] == 'netem' and flow[7]:
             netem_rtt.append([flow[4], flow[7][2]])
-            netem_loss.append([flow[4], (lambda x: x if x is not None else None)(flow[7][6])])
+            netem_loss.append([flow[4], (lambda x: x*100 if x is not None else None)(flow[7][6])])
 
-    # Plot each metric for each flow
     for flow_name, metrics_files in file_mapping.items():
         if 'goodput' in metrics_files:
             df = pd.read_csv(os.path.join(path, metrics_files['goodput']))
             axs[0].plot(df['time'], df['goodput'], label=f'{flow_name} Goodput')
-            axs[0].set_xlim(df['time'].min(), df['time'].max())  # Adjust x-axis to data range
 
         if 'rtt' in metrics_files:
             df = pd.read_csv(os.path.join(path, metrics_files['rtt']))
             axs[1].plot(df['time'], df['rtt'], label=f'{flow_name} RTT')
-            axs[1].set_xlim(df['time'].min(), df['time'].max())  # Adjust x-axis to data range
 
         if 'throughput' in metrics_files:
             df = pd.read_csv(os.path.join(path, metrics_files['throughput']))
             axs[2].plot(df['time'], df['throughput'], label=f'{flow_name} Throughput')
-            axs[2].set_xlim(df['time'].min(), df['time'].max())  # Adjust x-axis to data range
-    # Plot both CWND and Bytes In Flight on the same subplot
-    if 'cwnd' in metrics_files or 'bytes' in metrics_files:
-        cwnd_df = pd.read_csv(os.path.join(path, metrics_files['cwnd'])) if 'cwnd' in metrics_files else pd.DataFrame()
-        bytes_df = pd.read_csv(os.path.join(path, metrics_files['bytes'])) if 'bytes' in metrics_files else pd.DataFrame()
+    
+        if 'cwnd' in metrics_files or 'bytes' in metrics_files:
+            cwnd_df = pd.read_csv(os.path.join(path, metrics_files['cwnd'])) if 'cwnd' in metrics_files else pd.DataFrame()
+            bytes_df = pd.read_csv(os.path.join(path, metrics_files['bytes'])) if 'bytes' in metrics_files else pd.DataFrame()
+            axs[3].plot(cwnd_df['time'], cwnd_df['cwnd']/1500, label=f'{flow_name} CWND (packets)')
+            axs[3].plot(bytes_df['time'], bytes_df['bytes']/1500, label=f'{flow_name} Packets in flight', linestyle='--')
 
-        if not cwnd_df.empty and 'cwnd' in cwnd_df.columns:
-            cwnd_df['cwnd_packets'] = cwnd_df['cwnd']
-            axs[3].plot(cwnd_df['time'], cwnd_df['cwnd_packets'], label=f'{flow_name} CWND (packets)')
-            axs[3].set_xlim(df['time'].min(), df['time'].max())  # Adjust x-axis to data range
-        if not bytes_df.empty and 'bytes' in bytes_df.columns:
-            bytes_df['bytes_packets'] = bytes_df['bytes']
-            axs[3].plot(bytes_df['time'], bytes_df['bytes_packets'], label=f'{flow_name} Packets in flight', linestyle='--')
-
-   
-    bw_df = pd.DataFrame(netem_bw, columns=["time", "max_bw"])
-    bw_df.sort_values(by="time", inplace=True)
-    if not bw_df['max_bw'][0] == None:
+    if netem_bw:    
+        bw_df = pd.DataFrame(netem_bw, columns=["time", "max_bw"])
+        bw_df.sort_values(by="time", inplace=True)
         last_time = bw_df['time'].max() + 10
         last_bw = bw_df['max_bw'].iloc[-1]
         bw_df = pd.concat([bw_df, pd.DataFrame([{"time": last_time, "max_bw": last_bw}])], ignore_index=True)
@@ -325,9 +302,9 @@ def plot_all_ns3_responsiveness(path: str) -> None:
         bw_df.set_index('time', inplace=True)
         axs[0].step(bw_df.index, bw_df['max_bw'], label='Available Bandwidth', color='black', linestyle='--', where='post')
 
-    rtt_df = pd.DataFrame(netem_rtt, columns=["time", "rtt"])
-    rtt_df.sort_values(by="time", inplace=True)
-    if not rtt_df['rtt'][0] == None:
+    if netem_rtt:
+        rtt_df = pd.DataFrame(netem_rtt, columns=["time", "rtt"])
+        rtt_df.sort_values(by="time", inplace=True)
         last_time = rtt_df['time'].max() + 10
         last_rtt = rtt_df['rtt'].iloc[-1]
         rtt_df = pd.concat([rtt_df, pd.DataFrame([{"time": last_time, "rtt": last_rtt}])], ignore_index=True)
@@ -335,10 +312,9 @@ def plot_all_ns3_responsiveness(path: str) -> None:
         rtt_df.set_index('time', inplace=True)
         axs[1].step(rtt_df.index, rtt_df['rtt'], label='Base RTT', color='black', linestyle='--', where='post')
 
-    # Plot Netem loss on the right y-axis of the Goodput plot
-    loss_df = pd.DataFrame(netem_loss, columns=["time", "loss"])
-    loss_df.sort_values(by="time", inplace=True)
-    if not loss_df['loss'][0] == None:
+    if netem_loss:
+        loss_df = pd.DataFrame(netem_loss, columns=["time", "loss"])
+        loss_df.sort_values(by="time", inplace=True)
         last_time = loss_df['time'].max() + 10
         last_loss = loss_df['loss'].iloc[-1]
         loss_df = pd.concat([loss_df, pd.DataFrame([{"time": last_time, "loss": last_loss}])], ignore_index=True)
@@ -359,21 +335,29 @@ def plot_all_ns3_responsiveness(path: str) -> None:
         df_queue['root_pkts'] = df_queue['root_pkts'].astype(float)
         axs[4].plot(df_queue['time'], df_queue['root_pkts'], label='Queue Size')
         axs[4].set_xlim(df['time'].min(), df['time'].max())  # Adjust x-axis to data range
-    # Titles and labels
-    titles = ['Goodput (Mbps)', 'RTT (ms)', 'Throughput (Mbps)', 'CWND and in-flight (Packets)', 'Queue Size (Packets)']
-    y_labels = ['Goodput (Mbps)', 'RTT (ms)', 'Throughput (Mbps)', 'Packets', 'Queue Size (packets)']
 
     for i, ax in enumerate(axs):
-        ax.set_title(titles[i])
-        ax.set_xlabel('Time (s)', fontsize=16)
-        ax.set_ylabel(y_labels[i])
-        handles, labels = ax.get_legend_handles_labels()
-        if handles:
-            ax.legend(loc='upper left')
-                # Set x-ticks to show every 25 seconds
-        ax.set_xticks(range(0, 325, 25))
+        ax.set_xlabel('Time (s)')
+        ax.legend(loc='upper left')
         ax.grid(True)
 
+        # Dynamically set x limits based on data
+        all_x_values = []
+        for line in ax.get_lines():
+            all_x_values.extend(line.get_xdata())
+        if all_x_values:
+            x_min = 0  # Start from 0
+            x_max = max(all_x_values)  # Maximum value in the data
+            ax.set_xlim(x_min, x_max)
+
+        # Dynamically set y limits
+        y_min, y_max = 0, ax.get_ylim()[1]  # Start from 0 to current max of y-axis
+        ax.set_ylim(y_min, y_max)
+
+        # Adjust time ticks dynamically
+        time_max = x_max
+        time_interval = max(1, int(time_max / 20))  # Adjust ticks to ~20 intervals
+        ax.xaxis.set_major_locator(plt.MultipleLocator(time_interval))
     # Adjust layout and save the figure
     plt.tight_layout(rect=[0, 0, 1, 1], pad=1.0)
     output_file = os.path.join(path, 'ns3_experiment_results.pdf')

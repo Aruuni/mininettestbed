@@ -81,7 +81,7 @@ def plot_all_delays(QMULT):
     LINESTYLE = 'dashed'
 
     PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
-    DELAYS = [10]  # Adjust delay for simplicity in this example
+    DELAYS = [10, 20, 30, 40, 50, 60 , 70, 80, 90, 100]  # Adjust delay for simplicity in this example
 
     for DELAY in DELAYS:
         BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
@@ -135,5 +135,5 @@ def plot_all_delays(QMULT):
 
 
 if __name__ == "__main__":
-    for mult in [1]:
+    for mult in [0.2, 1, 4]:
         plot_all_delays(mult)

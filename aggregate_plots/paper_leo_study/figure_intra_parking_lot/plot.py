@@ -3,14 +3,18 @@ import matplotlib.pyplot as plt
 from matplotlib.transforms import offset_copy
 import scienceplots
 plt.style.use('science')
-import os
+import os, sys
 from matplotlib.ticker import ScalarFormatter
 import numpy as np
 
 plt.rcParams['text.usetex'] = False
 
+script_dir = os.path.dirname( __file__ )
+mymodule_dir = os.path.join( script_dir, '../../..')
+sys.path.append( mymodule_dir )
+from core.config import *
 
-ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_parking_lot/fifo" 
+ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_parking_lot/fifo" 
 PROTOCOLS = ['cubic', 'bbr', 'sage', 'pcc', 'orca', 'bbr3']
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]

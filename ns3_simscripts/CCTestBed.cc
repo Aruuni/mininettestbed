@@ -235,7 +235,6 @@ data_rate_changer(NetDeviceContainer dev, double time, uint32_t datarate)
 static void
 error_change(Ptr<RateErrorModel> em, double errorrate) 
 {
-    
     em->SetAttribute("ErrorRate", DoubleValue(errorrate));
 }
 
@@ -291,13 +290,12 @@ main(int argc, char* argv[])
     // linux default send 4096   16384   4194304
     // linux default recv 4096   131072  6291456
     Config::SetDefault("ns3::TcpSocket::SndBufSize", UintegerValue(4194304));
-    Config::SetDefault("ns3::TcpSocket::RcvBufSize", UintegerValue(4194304));
+    Config::SetDefault("ns3::TcpSocket::RcvBufSize", UintegerValue(6291456));
     Config::SetDefault("ns3::TcpSocket::InitialCwnd", UintegerValue(10)); 
     Config::SetDefault("ns3::TcpSocket::InitialSlowStartThreshold", UintegerValue(10)); 
     Config::SetDefault("ns3::TcpSocket::DelAckCount", UintegerValue(1));
     Config::SetDefault("ns3::TcpSocket::SegmentSize", UintegerValue(packetSize));
     Config::SetDefault("ns3::TcpSocketState::EnablePacing", BooleanValue(true));
-    Config::SetDefault("ns3::TcpL4Protocol::RecoveryType", TypeIdValue(TypeId::LookupByName("ns3::TcpClassicRecovery")));    
     Config::SetDefault("ns3::TcpSocketBase::Sack", BooleanValue(true)); 
 
     NodeContainer senders, receivers, routers;

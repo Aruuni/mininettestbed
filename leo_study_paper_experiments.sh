@@ -5,7 +5,8 @@ bash setup.sh
 # PROTOCOLS="bbr cubic pcc"
 # PROTOCOLS="orca sage"
 # PROTOCOLS="bbr3"
-PROTOCOLS="cubic"
+PROTOCOLS="bbr"
+
 QMULTS="0.2 1 4"
 RUNS="1 2 3 4 5"
 STEPS="10 20 30 40 50 60 70 80 90 100"
@@ -111,9 +112,9 @@ cSTEPS="90"
 
 for protocol in $PROTOCOLS
 do
-    for run in {1..3}
+    for run in {1..50}
     do
-        run experiments_mininet/responsiveness_bw_rtt_loss_leo_test/experiment.py "50" "50" "1" $protocol $run fifo 0 "1"
+        run experiments_mininet/responsiveness_bw_rtt_loss_leo/experiment.py "50" "50" "1" $protocol $run fifo 0 "1"
     done
 done
 
