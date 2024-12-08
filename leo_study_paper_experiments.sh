@@ -5,12 +5,11 @@ bash setup.sh
 # PROTOCOLS="bbr cubic pcc"
 # PROTOCOLS="orca sage"
 # PROTOCOLS="bbr3"
-PROTOCOLS="bbr"
+PROTOCOLS="cubic"
 
 QMULTS="0.2 1 4"
 RUNS="1 2 3 4 5"
 STEPS="10 20 30 40 50 60 70 80 90 100"
-cSTEPS="90"
 
 
 # # FAIRNESS INTRA RTT 
@@ -108,15 +107,15 @@ cSTEPS="90"
 # done
 
 
-# RESPONSIVENESS BANDWIDTH/RTT/LOSS FOR LEO PAPER
+# # RESPONSIVENESS BANDWIDTH/RTT/LOSS FOR LEO PAPER
 
-for protocol in $PROTOCOLS
-do
-    for run in {1..50}
-    do
-        run experiments_mininet/responsiveness_bw_rtt_loss_leo/experiment.py "50" "50" "1" $protocol $run fifo 0 "1"
-    done
-done
+# for protocol in $PROTOCOLS
+# do
+#     for run in {1..50}
+#     do
+#         run experiments_mininet/responsiveness_bw_rtt_loss_leo/experiment.py "50" "50" "1" $protocol $run fifo 0 "1"
+#     done
+# done
 
 # # RESPONSIVENESS BW RTT 
 
@@ -183,16 +182,16 @@ done
 
 # Fairness Cross path Inter
 
-# for del in $STEPS
-# do
-#     for qmult in $QMULTS
-#     do
-#         for protocol in $PROTOCOLS
-#         do
-#             for run in $RUNS
-#             do
-#                 run experiments_mininet/inter_rtt_fairness.py $del "100" $qmult $protocol $run fifo 0 "2"
-#             done
-#         done
-#     done
-# done
+for del in $STEPS
+do
+    for qmult in $QMULTS
+    do
+        for protocol in $PROTOCOLS
+        do
+            for run in $RUNS
+            do
+                run experiments_mininet/cross_path_fairness_inter_rtt/experiment.py $del "100" $qmult $protocol $run fifo 0 "2"
+            done
+        done
+    done
+done

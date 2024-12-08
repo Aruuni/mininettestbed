@@ -23,35 +23,35 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         print("ERROR: topology \'%s\' not recognised" % topology)
         return
         
-    bdp_in_bytes = int(bw * (2**20) * 2 * delay * (10**-3) / 8)
-    qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1510)
+    bdp_in_bytes_1 = int(bw * (2**20) * 2 * 5 * (10**-3) / 8)
+    qsize_in_bytes_1 = max(int(qmult * bdp_in_bytes_1), 1510)
+
+    bdp_in_bytes_2 = int(bw * (2**20) * 2 * delay * (10**-3) / 8)
+    qsize_in_bytes_2 = max(int(qmult * bdp_in_bytes_2), 1510)
     
     net = Mininet(topo=topo)
-    path = f"{HOME_DIR}/cctestbed/mininet/fairness_cross_traffic/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
+    path = f"{HOME_DIR}/cctestbed/mininet/cross_traffic_fairness_inter_rtt/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes_2/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
 
     rmdirp(path)
     mkdirp(path)
+
     if (protocol == "bbr3"):
         protocol = "bbr"
         
-    # Configure size of TCP buffers
-    tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
+    tcp_buffers_setup(bdp_in_bytes_2 + qsize_in_bytes_2, multiplier=tcp_buffer_mult)
     
-    # Set up Mininet
     net.start()
-
-    # Disable segmentation offloading
     disable_offload(net)
 
     duration = 300
 
     network_config = [
-        NetworkConf('r2a', 'r3a', bw, None, qsize_in_bytes, False, aqm, None),
-        NetworkConf('r2b', 'r3b', bw, None, qsize_in_bytes, False, aqm, None),
+        NetworkConf('r2a', 'r3a', bw, None, qsize_in_bytes_1, False, aqm, None),
+        NetworkConf('r2b', 'r3b', bw, None, qsize_in_bytes_2, False, aqm, None),
     ]
     for i in range(0, n_flows):
-        network_config.append(NetworkConf(f'c1_{i+1}', 'r1a', None, 50, 3*bdp_in_bytes, False, 'fifo', loss))
-        network_config.append(NetworkConf(f'c2_{i+1}', 'r1b', None, delay, 3*bdp_in_bytes, False, 'fifo', loss))
+        network_config.append(NetworkConf(f'c1_{i+1}', 'r1a', None, 5, 3*bdp_in_bytes_1, False, 'fifo', loss))
+        network_config.append(NetworkConf(f'c2_{i+1}', 'r1b', None, delay, 3*bdp_in_bytes_2, False, 'fifo', loss))
 
     printDebug3(network_config)
     traffic_config = [
@@ -60,14 +60,12 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         TrafficConf(f'c2_{i+1}', f'x2_{i+1}', 0, duration, protocol) for i in range(n_flows)
     ] 
 
-    em = Emulation(net, network_config, traffic_config, path, 0.1)
-    em.configure_routing(n_flows)
-    # Use tbf and netem to set up the network links as per config
-    em.configure_network()
+    em = Emulation(net, network_config, traffic_config, path, 1)
 
-    # Schedule start and termination of traffic events 
+    em.configure_routing(n_flows)
+    em.configure_network()
     em.configure_traffic()
-    # Set up system monitoring on the outgoing router's network interfaces and set up sysstat monitoring for all nodes
+
     monitors = ['r2a-eth1', 'r2b-eth1', 'sysstat']
  
     em.set_monitors(monitors)
@@ -79,14 +77,12 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     printDebug2(f'change to original routing happening at time {200} seconds')
 
     em.run()
-   # CLI(net)
-
     em.dump_info()
     net.stop()
     
     change_all_user_permissions(path)
-
     process_raw_outputs(path)
+    plot_all_mn(path)
     change_all_user_permissions(path)
         
 if __name__ == '__main__':
