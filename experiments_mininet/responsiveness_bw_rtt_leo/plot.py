@@ -33,7 +33,6 @@ def plot_run(*args):
 if __name__ == '__main__':
 
     PROTOCOLS = ['bbr', 'cubic',  'pcc' , 'bbr3', 'orca', 'sage']
-    #PROTOCOLS = ['pcc'] # , 'bbr3', 'orca', 'sage']
 
     BWS = [50]
     DELAYS = [50]

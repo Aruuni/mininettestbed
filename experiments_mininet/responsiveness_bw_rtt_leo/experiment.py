@@ -43,13 +43,12 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     else:
         print("ERROR: topology \'%s\' not recognised" % topology)
 
-    #TODO  check this 
     bdp_in_bytes = int(bw*(2**20)*2*delay*(10**-3)/8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
     
     net = Mininet(topo=topo)
-    path = "%s/cctestbed/mininet/results_responsiveness_bw_rtt_leo/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
-    
+    path = f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_leo/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
+
     rmdirp(path)
     mkdirp(path)
     if (protocol == "bbr3"):
@@ -87,7 +86,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     
     change_all_user_permissions(path)
 
-    # Process raw outputs into csv files
+    plot_all_mn(path)
     process_raw_outputs(path)
     change_all_user_permissions(path)
 
