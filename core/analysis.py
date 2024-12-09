@@ -259,7 +259,6 @@ def plot_all_ns3_responsiveness(path: str) -> None:
                     if flow_name not in file_mapping:
                         file_mapping[flow_name] = {}
                     file_mapping[flow_name][metric] = os.path.join(path, file)
-    
     emulation_info_file = os.path.join(path, 'emulation_info.json')
     with open(emulation_info_file, 'r') as f:
         emulation_info = json.load(f)
@@ -340,7 +339,7 @@ def plot_all_ns3_responsiveness(path: str) -> None:
         ax.set_xlabel('Time (s)')
         ax.legend(loc='upper left')
         ax.grid(True)
-
+        x_max = 0
         # Dynamically set x limits based on data
         all_x_values = []
         for line in ax.get_lines():
