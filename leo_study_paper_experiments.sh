@@ -3,17 +3,18 @@ source common.sh
 bash setup.sh
 
 # PROTOCOLS="bbr cubic pcc"
-# PROTOCOLS="orca sage"
+PROTOCOLS="orca sage"
 # PROTOCOLS="bbr3"
-PROTOCOLS="cubic"
 
 # QMULTS="0.2 1 4"
 # RUNS="1 2 3 4 5"
 # STEPS="10 20 30 40 50 60 70 80 90 100"
+hSTEPS="5 10 15 20 25 30 35 40 45 50"
 
-QMULTS="1"
-RUNS="1"
-STEPS="10"
+
+QMULTS="0.2 1 4"
+RUNS="1 2 3 4 5"
+
 
 
 # # FAIRNESS INTRA RTT 
@@ -186,7 +187,7 @@ STEPS="10"
 
 # Fairness Cross path Inter
 
-for del in $STEPS
+for del in $hSTEPS
 do
     for qmult in $QMULTS
     do

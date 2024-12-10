@@ -23,10 +23,10 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         print("ERROR: topology \'%s\' not recognised" % topology)
         return
         
-    bdp_in_bytes_1 = int(bw * (2**20) * 20 * (10**-3) / 8)
+    bdp_in_bytes_1 = int(bw * (2**20) * 2 * 25 * (10**-3) / 8)
     qsize_in_bytes_1 = max(int(qmult * bdp_in_bytes_1), 1510)
 
-    bdp_in_bytes_2 = int(bw * (2**20) *  delay * (10**-3) / 8)
+    bdp_in_bytes_2 = int(bw * (2**20) * 2 * delay * (10**-3) / 8)
     qsize_in_bytes_2 = max(int(qmult * bdp_in_bytes_2), 1510)
     
     net = Mininet(topo=topo)
@@ -50,7 +50,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         NetworkConf('r2b', 'r3b', bw, None, qsize_in_bytes_2, False, aqm, None),
     ]
     for i in range(0, n_flows):
-        network_config.append(NetworkConf(f'c1_{i+1}', 'r1a', None, 20, 3*bdp_in_bytes_1, False, 'fifo', loss))
+        network_config.append(NetworkConf(f'c1_{i+1}', 'r1a', None, 50, 3*bdp_in_bytes_1, False, 'fifo', loss))
         network_config.append(NetworkConf(f'c2_{i+1}', 'r1b', None, 2*delay, 3*bdp_in_bytes_2, False, 'fifo', loss))
 
     printDebug3(network_config)
