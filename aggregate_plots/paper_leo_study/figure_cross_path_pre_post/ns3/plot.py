@@ -3,22 +3,28 @@ import matplotlib.pyplot as plt
 from matplotlib.transforms import offset_copy
 import scienceplots
 plt.style.use('science')
-import os
+import os, sys
 from matplotlib.ticker import ScalarFormatter
 import numpy as np
 plt.style.use('science')
 import matplotlib as mpl
 
-ROOT_PATH = "/home/mihai/cctestbed/mininet/fairness_cross_traffic"
+plt.rcParams['text.usetex'] = False
+script_dir = os.path.dirname( __file__ )
+mymodule_dir = os.path.join( script_dir, '../../../..')
+sys.path.append( mymodule_dir )
+from core.config import *
+from core.utils import *
 
-BWS = [50]
-DELAYS = [15, 30, 45, 60, 75, 90]
+ROOT_PATH = f"{HOME_DIR}/cctestbed/ns3/cross_path_fairness_inter_rtt"
+
+BWS = [100]
+DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 AQM = "fifo"
 QMULTS = [0.2, 1, 4]
 
-#PROTOCOLS = ['cubic', 'orca', 'bbr', 'sage', 'pcc', 'bbr3']
+PROTOCOLS = ['cubic', 'bbr', 'bbr3']
 
-PROTOCOLS = ['bbr']
 COLOR = {'cubic': '#0C5DA5', 'orca': '#00B945', 'bbr3': '#FF9500', 'bbr': '#FF2C01', 'sage': '#845B97', 'pcc': '#686868'}
 
 FLOWS = 2
@@ -44,6 +50,12 @@ def calculate_rfair(flow_data, window_size=5):
     return 1 - rfair
 
 
+def calculate_jains_index(bandwidths):
+    """Calculate Jain's Fairness Index for a given set of bandwidth values."""
+    n = len(bandwidths)
+    sum_bw = sum(bandwidths)
+    sum_bw_sq = sum(bw ** 2 for bw in bandwidths)
+    return (sum_bw ** 2) / (n * sum_bw_sq) if sum_bw_sq != 0 else 0
 
 
 
@@ -99,12 +111,6 @@ def plot_fairness_and_goodput(fairness_data, goodput_data):
         plt.close()
 
 
-def calculate_jains_index(bandwidths):
-    """Calculate Jain's Fairness Index for a given set of bandwidth values."""
-    n = len(bandwidths)
-    sum_bw = sum(bandwidths)
-    sum_bw_sq = sum(bw ** 2 for bw in bandwidths)
-    return (sum_bw ** 2) / (n * sum_bw_sq) if sum_bw_sq != 0 else 0
 
 if __name__ == "__main__":
     for mult in QMULTS:
@@ -126,15 +132,16 @@ if __name__ == "__main__":
                         #print(PATH)
                         for dumbbell in range(1, 3):
                             for flow in range(1, FLOWS + 1):
-                                flow_path = f'{PATH}/csvs/x{dumbbell}_{flow}.csv'
+                                flow_path = f'{PATH}/Tcp{protocol.upper()}-{dumbbell}_{flow}-goodput.csv'
                                 if os.path.exists(flow_path):
-                                    receiver_total = pd.read_csv(flow_path)[['time', 'bandwidth']]
+                                    receiver_total = pd.read_csv(flow_path)[['time', 'goodput']]
                                     receiver_total['time'] = receiver_total['time'].astype(float).astype(int)
                                     receiver_total = receiver_total.drop_duplicates('time').set_index('time')
                                     receivers_goodput[flow + (FLOWS * (dumbbell - 1))] = receiver_total
                                     receivers[flow + (FLOWS * (dumbbell - 1))].append(receiver_total)
                             #print(receivers)
                         combined_goodput = pd.concat([receivers_goodput[i] for i in range(1, FLOWS*2 + 1)], axis=1)
+                        printRed(combined_goodput)
                         combined_goodput.columns = [f'bandwidth_{i}' for i in range(1, FLOWS*2 + 1)]
                         CHANGE1 = 100
                         CHANGE2 = 200
@@ -172,18 +179,14 @@ if __name__ == "__main__":
                     if len(fairness_after) > 0 and len(fairness_values_cross) > 0:
                         data_entry = [protocol, bw, delay, mult, fairness_values_cross.mean(), fairness_values_cross.std(), fairness_after.mean(), fairness_after.std()]
                         data.append(data_entry)
-        #print(data)
         summary_data = pd.DataFrame(data,
                               columns=['protocol', 'bandwidth', 'delay', 'qmult', 'fairness_values_cross_mean',
                                        'fairness_values_cross_std', 'fairness_after_mean', 'fairness_after_std'])
 
 
-        # cubic_data = summary_data[summary_data['protocol'] == 'cubic'].set_index('delay')
-        # orca_data = summary_data[summary_data['protocol'] == 'orca'].set_index('delay')
-        # bbr_data = summary_data[summary_data['protocol'] == 'bbr'].set_index('delay')
-        # sage_data = summary_data[summary_data['protocol'] == 'sage'].set_index('delay')
-        # pcc_data = summary_data[summary_data['protocol'] == 'pcc'].set_index('delay')
-        bbr3_data = summary_data[summary_data['protocol'] == 'bbr'].set_index('delay')
+        cubic_data = summary_data[summary_data['protocol'] == 'cubic'].set_index('delay')
+        bbr_data = summary_data[summary_data['protocol'] == 'bbr'].set_index('delay')
+        bbr3_data = summary_data[summary_data['protocol'] == 'bbr3'].set_index('delay')
 
 
 

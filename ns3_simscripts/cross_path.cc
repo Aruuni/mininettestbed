@@ -127,14 +127,14 @@ uint32Tracer(Ptr<OutputStreamWrapper> stream, uint32_t, uint32_t newval)
 //         << std::endl;
 // }
 
-// void
-// QueueSizeTrace(uint32_t nodeID, uint32_t deviceID)
-// {
-//     Ptr<OutputStreamWrapper> qtrace = ascii.CreateFileStream(outpath + "queueSize.csv");
-//     *qtrace->GetStream() << "time,root_pkts" << std::endl;
-//     Config::ConnectWithoutContext("/NodeList/" + std::to_string(nodeID) + "/DeviceList/" + std::to_string(deviceID) + 
-//                                   "/$ns3::PointToPointNetDevice/TxQueue/PacketsInQueue", MakeBoundCallback(&uint32Tracer, qtrace));
-// }
+void
+QueueSizeTrace(uint32_t nodeID, uint32_t deviceID)
+{
+    Ptr<OutputStreamWrapper> qtrace = ascii.CreateFileStream(outpath + "queueSize-" + std::to_string(nodeID) + "_" + std::to_string(deviceID) + ".csv");
+    *qtrace->GetStream() << "time,root_pkts" << std::endl;
+    Config::ConnectWithoutContext("/NodeList/" + std::to_string(nodeID) + "/DeviceList/" + std::to_string(deviceID) + 
+                                  "/$ns3::PointToPointNetDevice/TxQueue/PacketsInQueue", MakeBoundCallback(&uint32Tracer, qtrace));
+}
 
 static void
 TimeTracer(Ptr<OutputStreamWrapper> stream, Time, Time newval)
@@ -148,7 +148,6 @@ TimeTracer(Ptr<OutputStreamWrapper> stream, Time, Time newval)
 
 ParsedData traffic_config;
 
-
 std::vector<double> rxBytes;
 std::vector<double> rxBytes2;
 
@@ -158,6 +157,20 @@ void ReceivedPacket(uint32_t flowID, Ptr<const Packet> p, const Address& addr) {
 void ReceivedPacket2(uint32_t flowID, Ptr<const Packet> p, const Address& addr) {
     rxBytes2[flowID] += p->GetSize();
 }
+static void
+TraceThroughput(Ptr<FlowMonitor> monitor, Ptr<OutputStreamWrapper> stream, uint32_t flowID, uint32_t prevTxBytes, Time prevTime) 
+{
+    FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats();
+    FlowMonitor::FlowStats statsNode = stats[flowID];
+    *stream->GetStream() 
+        << Simulator::Now().GetSeconds() 
+        << ", "
+        << 8 * (statsNode.txBytes - prevTxBytes) / (1000000 * (Simulator::Now().GetSeconds() - prevTime.GetSeconds()))
+        //<< 8 * (statsNode.txBytes - prevTxBytes) / ((Simulator::Now().GetSeconds() - prevTime.GetSeconds()))
+        << std::endl;
+    Simulator::Schedule(Seconds(1), &TraceThroughput, monitor, stream, flowID, statsNode.txBytes, Simulator::Now());
+}
+
 
 static void
 TraceGoodput(Ptr<OutputStreamWrapper> stream, uint32_t flowID, uint32_t prevRxBytes, Time prevTime) {
@@ -399,14 +412,15 @@ int main(int argc, char *argv[]) {
         router2Routing_2->AddNetworkRouteTo(clientInterfaces_2[i].GetAddress(0), Ipv4Mask("255.255.255.0"), bottleneckInterfaces_2.GetAddress(0), 1);
         serverRouting_2->AddNetworkRouteTo(clientInterfaces_2[i].GetAddress(0), Ipv4Mask("255.255.255.0"), bottleneckInterfaces_1.GetAddress(1), 1);
     }
-    for (uint32_t i = 0; i < traffic_config.flows.size(); i++) { 
-        Config::Set("/NodeList/" + std::to_string(i) + "/$ns3::TcpL4Protocol/SocketType", TypeIdValue(TypeId::LookupByName("ns3::" + traffic_config.flows[i].congestion_control))); 
+    for (uint32_t i = 0; i < traffic_config.flows.size()/2; i++) { 
+        Config::Set("/NodeList/" + std::to_string(clients_1.Get(i)->GetId()) + "/$ns3::TcpL4Protocol/SocketType", TypeIdValue(TypeId::LookupByName("ns3::" + traffic_config.flows[i].congestion_control))); 
+        Config::Set("/NodeList/" + std::to_string(clients_2.Get(i)->GetId()) + "/$ns3::TcpL4Protocol/SocketType", TypeIdValue(TypeId::LookupByName("ns3::" + traffic_config.flows[i+numClients].congestion_control))); 
     }
 
     uint16_t basePort = 8080;
     rxBytes.resize(numClients, 0);
     rxBytes2.resize(numClients, 0);
-
+    FlowMonitorHelper flowmonHelperSender;
     for (uint32_t i = 0; i < numClients; ++i) {
         Address serverAddress_1(InetSocketAddress(serverInterfaces_1[i].GetAddress(1), basePort + i));
         BulkSendHelper bulkSend_1("ns3::TcpSocketFactory", serverAddress_1);
@@ -425,51 +439,4 @@ int main(int argc, char *argv[]) {
         clientApps_2.Stop(Seconds(traffic_config.flows[i + numClients].duration));
 
         Simulator::Schedule(Seconds(traffic_config.flows[i].start_time) + MilliSeconds(1), &socketTrace<decltype(&TimeTracer)>, clients_1.Get(i)->GetId(), 1, i, "rtt", "RTT",  &TimeTracer);
-        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time) + MilliSeconds(1), &socketTrace<decltype(&uint32Tracer)>, clients_1.Get(i)->GetId(), 1, i, "bytes", "BytesInFlight",  &uint32Tracer);
-        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time) + MilliSeconds(1), &socketTrace<decltype(&uint32Tracer)>, clients_1.Get(i)->GetId(), 1, i, "cwnd", "CongestionWindow",  &uint32Tracer);
-        
-        
-        
-        Simulator::Schedule(Seconds(traffic_config.flows[i + numClients].start_time) + MilliSeconds(1), &socketTrace<decltype(&TimeTracer)>, clients_2.Get(i)->GetId(), 2, i + numClients, "rtt", "RTT",  &TimeTracer);
-        Simulator::Schedule(Seconds(traffic_config.flows[i + numClients].start_time) + MilliSeconds(1), &socketTrace<decltype(&uint32Tracer)>, clients_2.Get(i)->GetId(), 2, i + numClients, "bytes", "BytesInFlight",  &uint32Tracer);
-        Simulator::Schedule(Seconds(traffic_config.flows[i + numClients].start_time) + MilliSeconds(1), &socketTrace<decltype(&uint32Tracer)>, clients_2.Get(i)->GetId(), 2, i + numClients, "cwnd", "CongestionWindow",  &uint32Tracer);
-        
-        // Simulator::Schedule(Seconds(traffic_config.flows[i].start_time) + MilliSeconds(1), &socketTrace<decltype(&uint32Tracer)>,  clients_1.Get(i)->GetId(), "bytes", "BytesInFlight",  &uint32Tracer);
-        // Simulator::Schedule(Seconds(traffic_config.flows[i].start_time) + MilliSeconds(1), &socketTrace<decltype(&uint32Tracer)>,  clients_1.Get(i)->GetId(), "cwnd", "CongestionWindow", &uint32Tracer);
-
-        PacketSinkHelper packetSinkHelper_1("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), basePort + i));
-        ApplicationContainer serverApps_1 = packetSinkHelper_1.Install(servers_1.Get(i));
-        serverApps_1.Start(Seconds(traffic_config.flows[i].start_time));
-        serverApps_1.Stop(stopTime);
-
-        PacketSinkHelper packetSinkHelper_2("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), basePort + i));
-        ApplicationContainer serverApps_2 = packetSinkHelper_2.Install(servers_2.Get(i));
-        serverApps_2.Start(Seconds(0.1));
-        serverApps_2.Stop(stopTime);
-
-        Ptr<PacketSink> sink_1 = DynamicCast<PacketSink>(serverApps_1.Get(0));
-        sink_1->TraceConnectWithoutContext("Rx", MakeBoundCallback(&ReceivedPacket, i));
-        Ptr<PacketSink> sink_2 = DynamicCast<PacketSink>(serverApps_2.Get(0));
-        sink_2->TraceConnectWithoutContext("Rx", MakeBoundCallback(&ReceivedPacket2, i));
-
-        Ptr<OutputStreamWrapper> goodputStream_1 = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + "-1_" + std::to_string(i + 1) + "-goodput.csv");
-        *goodputStream_1->GetStream() << "time,goodput\n";
-        Simulator::Schedule(Seconds(1), &TraceGoodput, goodputStream_1, i, 0, Seconds(0));
-
-        Ptr<OutputStreamWrapper> goodputStream_2 = ascii.CreateFileStream(outpath + traffic_config.flows[i + numClients].congestion_control + "-2_"+ std::to_string(i + 1) + "-goodput.csv");
-        *goodputStream_2->GetStream() << "time,goodput\n";
-        Simulator::Schedule(Seconds(1), &TraceGoodput2, goodputStream_2, i, 0, Seconds(0));
-    }
-
-    Simulator::Schedule(Seconds(100), &RerouteTraffic, numClients, clientInterfaces_2, serverInterfaces_2, router1_2, router2_2, crossInterfaces1, crossInterfaces2, true);
-    Simulator::Schedule(Seconds(200), &RerouteTraffic, numClients, clientInterfaces_2, serverInterfaces_2, router1_2, router2_2, bottleneckInterfaces_2, bottleneckInterfaces_2, false);
-
-    // bottleneckLink.EnablePcap("scratch/cross_path/r12_r11_bottleneckDevices_1", bottleneckDevices_1, true);
-    // bottleneckLink.EnablePcap("scratch/cross_path/r22_r21_bottleneckDevices_2", bottleneckDevices_2, true);
-
-    Simulator::Stop(stopTime);
-    Simulator::Run();
-    Simulator::Destroy();
-    COUT("Simulation finished.");
-    return 0;
-}
+        Simulator::Schedule(Seconds(traffic_config.flows[i].start_time) + MilliSeconds(1), &socketTrace<decltype(&uint32Tracer)>, clients_1.Get(i

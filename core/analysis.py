@@ -235,14 +235,13 @@ def plot_all_mn(path: str) -> None:
     plt.close()
 
 def plot_all_ns3_responsiveness(path: str) -> None:
-    fig, axs = plt.subplots(5, 1, figsize=(17, 30))
     plt.rcParams.update({
-        'font.size': 16,         # General font size
+        'font.size': 20,         # General font size
         'axes.titlesize': 20,    # Title font size
-        'axes.labelsize': 16,    # Axis label font size
-        'xtick.labelsize': 16,   # X-axis tick font size
-        'ytick.labelsize': 16,   # Y-axis tick font size
-        'legend.fontsize': 20,   # Legend font size
+        'axes.labelsize': 20,    # Axis label font size
+        'xtick.labelsize': 20,   # X-axis tick font size
+        'ytick.labelsize': 20,   # Y-axis tick font size
+        'legend.fontsize': 12,   # Legend font size
     })
 
     csv_files = [f for f in os.listdir(path) if f.endswith('.csv')]
@@ -263,6 +262,7 @@ def plot_all_ns3_responsiveness(path: str) -> None:
     with open(emulation_info_file, 'r') as f:
         emulation_info = json.load(f)
 
+    fig, axs = plt.subplots(5, 1, figsize=(17, 30))
     netem_bw, netem_rtt, netem_loss = [], [], []
 
     for flow in emulation_info['flows']:
@@ -276,20 +276,27 @@ def plot_all_ns3_responsiveness(path: str) -> None:
         if 'goodput' in metrics_files:
             df = pd.read_csv(os.path.join(path, metrics_files['goodput']))
             axs[0].plot(df['time'], df['goodput'], label=f'{flow_name} Goodput')
-
+            axs[0].set_title("Goodput (Mbps)")
+            axs[0].set_ylabel("Goodput (Mbps)")
         if 'rtt' in metrics_files:
             df = pd.read_csv(os.path.join(path, metrics_files['rtt']))
             axs[1].plot(df['time'], df['rtt'], label=f'{flow_name} RTT')
+            axs[1].set_title("Smooth Round-Trip Time (ms)")
+            axs[1].set_ylabel("Milliseconds (ms)")
 
         if 'throughput' in metrics_files:
             df = pd.read_csv(os.path.join(path, metrics_files['throughput']))
             axs[2].plot(df['time'], df['throughput'], label=f'{flow_name} Throughput')
+            axs[2].set_title("Throughtput (Mbps)")
+            axs[2].set_ylabel("Throughtput (Mbps)")
     
         if 'cwnd' in metrics_files or 'bytes' in metrics_files:
             cwnd_df = pd.read_csv(os.path.join(path, metrics_files['cwnd'])) if 'cwnd' in metrics_files else pd.DataFrame()
             bytes_df = pd.read_csv(os.path.join(path, metrics_files['bytes'])) if 'bytes' in metrics_files else pd.DataFrame()
             axs[3].plot(cwnd_df['time'], cwnd_df['cwnd']/1500, label=f'{flow_name} CWND (packets)')
             axs[3].plot(bytes_df['time'], bytes_df['bytes']/1500, label=f'{flow_name} Packets in flight', linestyle='--')
+            axs[3].set_title("Congestion Window and Packets in flgiht (packets)")
+            axs[3].set_ylabel("Packets")
 
     if netem_bw:    
         bw_df = pd.DataFrame(netem_bw, columns=["time", "max_bw"])
@@ -324,16 +331,22 @@ def plot_all_ns3_responsiveness(path: str) -> None:
         ax_loss.legend(loc='upper right')
         ax_loss.set_ylim(bottom=0)
         axs[0].set_ylim(bottom=0)
+    queue_files = [os.path.join(path, f) for f in os.listdir(path) if f.startswith('queueSize-') and f.endswith('.csv')]
+    for queue_file in queue_files:
+        # Extract node and device ID for labeling (optional)
+        file_name = os.path.basename(queue_file)
+        node_device_id = file_name.split('-')[1].split('.')[0]
 
-    # Queue size plot
-    queue_file = os.path.join(path, 'queueSize.csv')
-    if os.path.exists(queue_file):
+        # Read the file and preprocess
         df_queue = pd.read_csv(queue_file)
         df_queue['time'] = pd.to_numeric(df_queue['time'], errors='coerce')
         df_queue['time'] = df_queue['time'] - df_queue['time'].min()
         df_queue['root_pkts'] = df_queue['root_pkts'].astype(float)
-        axs[4].plot(df_queue['time'], df_queue['root_pkts'], label='Queue Size')
-        axs[4].set_xlim(df['time'].min(), df['time'].max())  # Adjust x-axis to data range
+
+        # Plot the data on the same axis
+        axs[4].step(df_queue['time'], df_queue['root_pkts'], label=f'Node-Device {node_device_id}', where='post')
+    axs[4].set_title("Packets in queue (packets)")
+    axs[4].set_ylabel("Packets")
 
     for i, ax in enumerate(axs):
         ax.set_xlabel('Time (s)')
@@ -361,7 +374,7 @@ def plot_all_ns3_responsiveness(path: str) -> None:
     plt.tight_layout(rect=[0, 0, 1, 1], pad=1.0)
     output_file = os.path.join(path, 'ns3_experiment_results.pdf')
 
-    plt.savefig(output_file)
+    plt.savefig(output_file, dpi=1080)
     printBlueBackground(f"NS3 experiment plots saved to {output_file}")
     plt.close()
 

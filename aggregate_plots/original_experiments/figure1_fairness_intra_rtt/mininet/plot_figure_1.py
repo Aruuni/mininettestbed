@@ -8,7 +8,6 @@ from matplotlib.ticker import ScalarFormatter
 import numpy as np
 
 plt.rcParams['text.usetex'] = False
-plt.rcParams['text.usetex'] = False
 script_dir = os.path.dirname( __file__ )
 mymodule_dir = os.path.join( script_dir, '../../../..')
 sys.path.append( mymodule_dir )
