@@ -467,15 +467,6 @@ int main(int argc, char *argv[]) {
         sink_2->TraceConnectWithoutContext("Rx", MakeBoundCallback(&ReceivedPacket2, i));
 
          
-
-        Ptr<OutputStreamWrapper> goodputStream_1 = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + "-1_" + std::to_string(i + 1) + "-goodput.csv");
-        *goodputStream_1->GetStream() << "time,goodput\n";
-        Simulator::Schedule(Seconds(1), &TraceGoodput, goodputStream_1, i, 0, Seconds(0));
-
-        Ptr<OutputStreamWrapper> goodputStream_2 = ascii.CreateFileStream(outpath + traffic_config.flows[i + numClients].congestion_control + "-2_"+ std::to_string(i + 1) + "-goodput.csv");
-        *goodputStream_2->GetStream() << "time,goodput\n";
-        Simulator::Schedule(Seconds(1), &TraceGoodput2, goodputStream_2, i, 0, Seconds(0));
-        
         Ptr<OutputStreamWrapper> goodputStream_1 = ascii.CreateFileStream(outpath + traffic_config.flows[i].congestion_control + "-1_" + std::to_string(i + 1) + "-goodput.csv");
         *goodputStream_1->GetStream() << "time,goodput\n";
         Simulator::Schedule(Seconds(1), &TraceGoodput, goodputStream_1, i, 0, Seconds(0));
