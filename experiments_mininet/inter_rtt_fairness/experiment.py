@@ -35,9 +35,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     mkdirp(path)
     if (protocol == "bbr3"):
         protocol = "bbr"
-    if (protocol == "vivace-loss"):
-        protocol = "pcc"
-    if (protocol == "vivace-latency"):
+    if (protocol == "vivace"):
         protocol = "pcc"
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
     

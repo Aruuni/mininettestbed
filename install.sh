@@ -24,9 +24,3 @@ fi
 
 sudo apt install -y openvswitch-testcontroller mininet moreutils sysstat ethtool iperf3 cmake g++ nlohmann-json3-dev software-properties-common
 
-git clone https://github.com/kaiwenzha/PCC-Vivace PCC-Vivace
-cd PCC-Vivace/PCC-Kernel-Vivace-Latency/src
-make
-cd ../../..
-cd PCC-Vivace/PCC-Kernel-Vivace-Loss/src
-make

@@ -53,9 +53,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     mkdirp(path)
     if (protocol == "bbr3"):
         protocol = "bbr"
-    if (protocol == "vivace-loss"):
-        protocol = "pcc"
-    if (protocol == "vivace-latency"):
+    if (protocol == "vivace"):
         protocol = "pcc"   
     change_all_user_permissions(path)
 

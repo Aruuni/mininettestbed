@@ -1,7 +1,7 @@
 source common.sh
 bash setup.sh
-sudo insmod PCC-Vivace/PCC-Kernel-Vivace-Loss/src/tcp_pcc.ko
-PROTOCOLS="vivace-loss"
+sudo insmod tcp_pcc.ko
+PROTOCOLS="orca"
 BANDWIDTHS="50"
 DELAYS="25"
 RUNS="1"
