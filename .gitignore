@@ -1,4 +1,5 @@
 *.pyc
+PCC-Vivace
 results/*
 *.zip
 rl_logging

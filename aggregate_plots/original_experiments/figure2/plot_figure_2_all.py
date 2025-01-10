@@ -13,7 +13,7 @@ import numpy as np
 import matplotlib.patches as mpatches
 
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '../..')
+mymodule_dir = os.path.join( script_dir, '../../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 
@@ -113,12 +113,12 @@ def plot_all_delays(QMULT):
             # Plot individual runs with alternating transparency
             for i, (x, y) in enumerate(zip(PROTOCOL_DATA[protocol]['x'], PROTOCOL_DATA[protocol]['y'])):
                 if i % 2 == 1:  # Second flow
-                    ax.plot(x, y, linewidth=LINEWIDTH, alpha=0.3, color=COLOR[protocol])
+                    ax.plot(x, y, linewidth=LINEWIDTH, alpha=0.3)
                 else:  # First flow
-                    ax.plot(x, y, linewidth=LINEWIDTH, alpha=0.6, color=COLOR[protocol])
+                    ax.plot(x, y, linewidth=LINEWIDTH, alpha=0.6 )
 
             # Plot average line
-            ax.plot(avg_y.index, avg_y.values, linewidth=LINEWIDTH * 2, alpha=1, color=COLOR[protocol], label=protocol)
+            #ax.plot(avg_y.index, avg_y.values, linewidth=LINEWIDTH * 2, alpha=1,  label=protocol)
             ax.set(yscale=SCALE)
             ax.grid()
             ax.set_title(f"{protocol.upper()} (Delay = {DELAY} ms)")
@@ -129,7 +129,7 @@ def plot_all_delays(QMULT):
         plt.tight_layout()
 
         # Save the plot
-        for format in ['pdf', 'png']:
+        for format in ['png']:
             plt.savefig(f"cwnd_delay_{DELAY}ms_qmult_{QMULT}.{format}", dpi=300)
 
 

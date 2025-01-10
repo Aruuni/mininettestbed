@@ -37,7 +37,10 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     if (protocol == "bbr3"):
         protocol = "bbr"
-        
+    if (protocol == "vivace-loss"):
+        protocol = "pcc"
+    if (protocol == "vivace-latency"):
+        protocol = "pcc"   
     tcp_buffers_setup(bdp_in_bytes_2 + qsize_in_bytes_2, multiplier=tcp_buffer_mult)
     
     net.start()

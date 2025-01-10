@@ -15,10 +15,18 @@ if [[ "$UBUNTU_VERSION" == "16.04" ]]; then
 
 else
     # Execute if on any other Ubuntu version
+    sudo add-apt-repository ppa:deadsnakes/ppa
     sudo apt update
     sudo apt install -y python3-pip 
     sudo python3 -m pip install mininet numpy matplotlib pandas 
 
 fi
 
-sudo apt install -y openvswitch-testcontroller mininet moreutils sysstat ethtool iperf3 cmake g++ nlohmann-json3-dev
+sudo apt install -y openvswitch-testcontroller mininet moreutils sysstat ethtool iperf3 cmake g++ nlohmann-json3-dev software-properties-common
+
+git clone https://github.com/kaiwenzha/PCC-Vivace PCC-Vivace
+cd PCC-Vivace/PCC-Kernel-Vivace-Latency/src
+make
+cd ../../..
+cd PCC-Vivace/PCC-Kernel-Vivace-Loss/src
+make

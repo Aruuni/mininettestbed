@@ -195,7 +195,7 @@ if __name__ == "__main__":
         CAPTHICK = ELINEWIDTH
         CAPSIZE= 2
 
-        fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.2))
+        fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3.7,1.8))
         ax = axes
         # markers, caps, bars = ax.errorbar(cubic_data.index*2, cubic_data['goodput_ratio_total_mean'], yerr=cubic_data['goodput_ratio_total_std'],marker='x',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='cubic')
         # [bar.set_alpha(0.5) for bar in bars]
@@ -218,7 +218,7 @@ if __name__ == "__main__":
         [bar.set_alpha(0.5) for bar in bars]
         [cap.set_alpha(0.5) for cap in caps]
 
-        ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio', ylim=[0.5,1])
+        ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio', ylim=[0.4,1])
         for axis in [ax.xaxis, ax.yaxis]:
             axis.set_major_formatter(ScalarFormatter())
         # ax.legend(loc=4,prop={'size': 6})

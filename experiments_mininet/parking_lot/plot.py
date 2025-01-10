@@ -42,7 +42,7 @@ if __name__ == '__main__':
     LOSSES=[0]
 
     # Careful, its a ram guzzler
-    MAX_PLOTS = 12
+    MAX_PLOTS = 8
 
     pool = Pool(processes=MAX_PLOTS)
 

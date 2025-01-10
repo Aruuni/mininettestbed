@@ -110,9 +110,12 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                 if protocol != 'aurora':
                                     if os.path.exists(f"{PATH}/csvs/c{(n + 1)}_ss.csv"):
                                         # Compute the avg and std rtt across all samples of both flows
-                                        sender = pd.read_csv(PATH + f"/csvs/c{(n + 1)}_ss.csv")
-                                       # print(PATH)
-                                        
+                                        if protocol == 'bbr3':
+                                            sender = pd.read_csv(PATH + f"/csvs/c{(n + 1)}.csv")
+                                        else:
+                                            sender = pd.read_csv(PATH + f"/csvs/c{(n + 1)}_ss.csv")
+                                       # print(PA   TH)
+                                        sender = sender[['time', 'srtt']]
                                         sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
 
                                         #print(sender.head(10))
@@ -122,7 +125,6 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                         if len(sender) > 0:
                                             delay_flows.append(sender)
                                         delay_mean = sender.mean().values[0]
-                                        print(delay_mean)
                                         delay_std = sender.std().values[0]
                                     else:
                                         sender = None
@@ -460,7 +462,7 @@ def plot_data(data, filename, ylim=None):
 
 if __name__ == "__main__":
     ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_aqm"
-    PROTOCOLS = ['cubic', 'bbr', 'sage', 'pcc'] # 'bbr3', 
+    PROTOCOLS = ['cubic', 'bbr', 'sage', 'pcc',  'orca', 'bbr3']
     DELAYS = [10,100]
     RUNS = [1, 2, 3, 4, 5]
     QMULTS = [0.2,1,4]
