@@ -1,6 +1,6 @@
 import os, sys
 from mininet.net import Mininet
-
+from mininet.cli import CLI
 script_dir = os.path.dirname( __file__ )
 mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
@@ -25,9 +25,12 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     
     net = Mininet(topo=topo)
     path = f"{HOME_DIR}/cctestbed/mininet/results_custom/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
+    printRed(path)
 
     rmdirp(path)
     mkdirp(path)
+    change_all_user_permissions(path)
+
     if (protocol == "bbr3"):
         protocol = "bbr"
     if (protocol == "vivace"):
@@ -35,14 +38,18 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
 
     net.start()
-    disable_offload(net)
+    #disable_offload(net)
 
     network_config = [NetworkConf('s1', 's2', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
                       NetworkConf('s2', 's3', bw, None, qsize_in_bytes, False, aqm, None)]
     
 
     traffic_config = [TrafficConf('c1', 'x1', 0, duration, protocol), 
-                      TrafficConf('c2', 'x2', 20, duration, protocol)]
+                      TrafficConf('c2', 'x2', 20, duration-20, protocol),
+                      TrafficConf('c3', 'x3', 40, duration-40, protocol)
+                      
+                      
+                      ]
 
 
     

@@ -191,6 +191,35 @@ def parse_orca_output(file, offset):
     
     return df
 
+def parse_astraea_output(file, offset):
+    with open(file, 'r') as fin:
+        out = fin.read()
+    start_index = out.find("----START----")
+    end_index = out.find("----END----")
+    out = out[start_index:end_index]
+ 
+    lines = out.strip().split("\n")
+    lines = [line for line in lines if line.strip() != '']
+    
+    
+    # Extract the relevant information
+    data = [line.split(",") for line in lines[1:]]
+    #time,min_rtt,avg_urtt,cnt,srtt_us,avg_thr,thr_cnt,pacing_rate,loss_bytes,packets_out,retrans_out,max_packets_out,CWND in Kernel,CWND to Assign
+    columns = ["time", "min_rtt", "avg_urtt", "cnt", "srtt", "bandwidth", "thr_cnt", "pacing_rate", "loss_bytes", "packets_out", "retr", "max_packets_out", "cwnd", "CWND to Assign"] if len(data[0]) == 14 else ["time", "bandwidth"]
+
+    # Create a pandas DataFrame
+    df = pd.DataFrame(data, columns=columns)
+    # Convert columns to appropriate types
+    print(df.head())
+    df["time"] = df["time"].astype(int)
+    min_rtt = df["time"].min()    
+    df["time"] = df["time"] - min_rtt + offset
+
+
+    
+    return df
+
+
 def parse_aurora_output(file, offset):
     with open(file, 'r') as fin:
         auroraOutput = fin.read()

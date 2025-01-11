@@ -33,6 +33,7 @@ class Emulation:
         self.start_time = 0
         self.orca_flows_counter = 0
         self.sage_flows_counter = 0
+        self.astraea_flows_counter = 0
         self.counter = 0
 
         self.flip = True
@@ -107,7 +108,7 @@ class Emulation:
                 # os.system("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
                 os.system(cmd)
             else:
-                printTC("Running the following command in %s's terminal: %s" % (node.name, cmd))
+                printTC(f"Running the following command in {node.name}'s terminal: {cmd}")
                 # node.cmd("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
                 node.cmd(cmd)
 
@@ -248,6 +249,17 @@ class Emulation:
                 command = self.start_sage_receiver
                 self.call_second.append(Command(command, params, start_time, destination))
 
+            elif protocol == 'astraea':
+                # Create server start up call
+                params = (destination,)
+                command = self.start_astraea_server
+                self.call_first.append(Command(command, params, None, destination))
+
+                # Create client start up call
+                params = (source_node,destination,duration)
+                command = self.start_astraea_client
+                self.call_second.append(Command(command, params, start_time, source_node))
+                
             elif protocol == 'aurora':
                 # Create server start up call
                 params = (destination, duration)
@@ -255,7 +267,7 @@ class Emulation:
                 self.call_first.append(Command(command, params, None, ))
 
                 # Create client start up call
-                params = (source_node,destination,duration,"%s/mininettestbed/saved_models/icml_paper_model" % HOME_DIR)
+                params = (source_node,destination,duration,f"{HOME_DIR}/mininettestbed/saved_models/icml_paper_model" )
                 command = self.start_aurora_client
                 self.call_second.append(Command(command, params, start_time, destination))
                 
@@ -314,9 +326,10 @@ class Emulation:
             This thread is used to wait for the output of the given node.
             """
             host = self.network.get(node_name)
+            #printRed(host.waitOutput(verbose = True))
             output = host.waitOutput(verbose = True)
             mkdirp(self.path)
-            with open( '%s/%s_output.txt' % (self.path, node_name), 'w') as fout:
+            with open( f"{self.path}/{node_name}_output.txt", 'w') as fout:
                 fout.write(output)
 
         def host_thread(call: Command) -> None:
@@ -384,28 +397,22 @@ class Emulation:
         for monitor in monitors:
             node, interface = monitor.split('-')
             if 's' in node:
-                iface = '%s-%s' % (node, interface)
-                monitor = Process(target=monitor_qlen, args=(iface, interval_sec,'%s/queues' % (self.path)))
+                iface = f"{node}-{interface}"
+                monitor = Process(target=monitor_qlen, args=(iface, interval_sec,f"{self.path}/queues"))
                 self.qmonitors.append(monitor)
             elif 'r' in node:
-                iface = '%s-%s' % (node, interface)
+                iface = f"{node}-{interface}"
                 mininode = self.network.get(node)
-                monitor = Process(target=monitor_qlen_on_router, args=(iface, mininode, interval_sec,'%s/queues' % (self.path)))
+                monitor = Process(target=monitor_qlen_on_router, args=(iface, mininode, interval_sec,f"{self.path}/queues"))
                 self.qmonitors.append(monitor)
-
-    
-    # TODO: rework this to bind to a specific link/ interface
-    def start_handovers(self, delay, interval=15):
-        printDebug(f"Starting handovers")
-
 
     def start_iperf_server(self, node_name: str, monitor_interval=1, port=5201):
         """
-        Start a one off iperf3 server on the given node with the given port at a default interval of 1 second
+        Start a one-off iperf3 server on the given node with the given port at a default interval of 1 second
         """
         node = self.network.get(node_name)
         cmd = f"iperf3 -p {port} -i {monitor_interval} --one-off --json -s"
-        printBlueBackground(f"Sending command '{cmd}' to host {node.name}")
+        printBlueFill(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
 
     def start_iperf_client(self, node_name: str, destination_name: str, duration: int, protocol: str, monitor_interval=1, port=5201):
@@ -421,8 +428,29 @@ class Emulation:
         node.cmd(sscmd)
 
         iperfCmd = f"iperf3 -p {port} -i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}" 
-        printBlueBackground(f'Sending command {iperfCmd} to host {node.name}')
+        printBlueFill(f'Sending command {iperfCmd} to host {node.name}')
         node.sendCmd(iperfCmd)
+
+    def start_astraea_server(self, node_name: str, monitor_interval=1, port=44279):
+        """
+        Starts a one-off astraea server on the given node with the given port at a default interval of 1 second
+        """
+        node = self.network.get(node_name)
+        cmd = f"sudo -u {USERNAME} {ASTRAEA_INSTALL_FOLDER}/src/build/bin/server --port={port} --perf-interval={monitor_interval * 1000}  --one-off --terminal-out "
+        printPink(f"Sending command '{cmd}' to host {node.name}")
+        node.sendCmd(cmd)
+
+    def start_astraea_client(self, node_name: str, destination_name: str, duration: int,  monitor_interval=1, port=44279):
+        node = self.network.get(node_name)
+        # Might not need
+        # sscmd = f"./ss_script.sh 0.1 {self.path}/{node.name}_ss.csv &" 
+        # printBlue(f'Sending command {sscmd} to host {node.name}')
+        # node.cmd(sscmd)
+
+        cmd = f"sudo  -u {USERNAME} {ASTRAEA_INSTALL_FOLDER}/src/build/bin/client_eval --ip={self.network.get(destination_name).IP()} --port={port} --cong=astraea --interval=30  --terminal-out --pyhelper={ASTRAEA_INSTALL_FOLDER}/python/infer.py --model={ASTRAEA_INSTALL_FOLDER}/models/py/ --duration={duration} --id={self.astraea_flows_counter} "
+        printPinkFill(f"Sending command '{cmd}' to host {node.name}")
+        node.sendCmd(cmd)
+        self.astraea_flows_counter+= 1
 
 
     def start_orca_sender(self, node_name: str, duration: int, port=4444):
@@ -432,7 +460,7 @@ class Emulation:
         node = self.network.get(node_name)
         
         sscmd = f"./ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
-        printGreenBackground(f"Sending command '{sscmd}' to host {node.name}")
+        printGreenFill(f"Sending command '{sscmd}' to host {node.name}")
         node.cmd(sscmd)
         
         orcacmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {ORCA_INSTALL_FOLDER}/sender.sh {port} {self.orca_flows_counter} {duration}"  
@@ -450,41 +478,39 @@ class Emulation:
         destination = self.network.get(destination_name)
 
         orcacmd = f"sudo -u {USERNAME} {ORCA_INSTALL_FOLDER}/receiver.sh {destination.IP()} {port} {0}"
-        printGreenBackground(f"Sending command '{orcacmd}' to host {node.name}")
+        printGreenFill(f"Sending command '{orcacmd}' to host {node.name}")
         node.sendCmd(orcacmd)
 
 
     def start_sage_sender(self, node_name, duration, port=5555):
         node = self.network.get(node_name)
-        sscmd = './ss_script.sh 0.01 %s &' % (self.path + '/' + node.name + '_ss.csv')
-        print("\033[93mSending command '%s' to host %s\033[0m" % (sscmd, node.name))
+        sscmd = f"./ss_script.sh 0.01 {(self.path + '/' + node.name + '_ss.csv')} &"
+        printPurple(f"Sending command '{sscmd}' to host {node.name}")
         node.cmd(sscmd)
 
-        sagecmd = 'sudo -u %s  EXPERIMENT_PATH=%s %s/sender.sh %s %s %s' % (USERNAME, self.path, SAGE_INSTALL_FOLDER, port, self.sage_flows_counter, duration)
-        print("\033[35mSending command '%s' to host %s\033[0m" % (sagecmd, node.name))
+        sagecmd = f"sudo -u {USERNAME}  EXPERIMENT_PATH={self.path} {SAGE_INSTALL_FOLDER}/sender.sh {port} {self.sage_flows_counter} {duration}" 
+        printPurple(f"Sending command '{sagecmd}' to host {node.name}")
         node.sendCmd(sagecmd)
         
-
         self.sage_flows_counter+= 1 
 
     def start_sage_receiver(self, node_name, destination_name, port=5555):
         node = self.network.get(node_name)
         destination = self.network.get(destination_name)
-        sagecmd = 'sudo -u %s %s/receiver.sh %s %s %s' % (USERNAME, SAGE_INSTALL_FOLDER,destination.IP(), port, 0)
-        print("\033[35mSending command '%s' to host %s\033[0m" % (sagecmd, node.name))
+        sagecmd = f"sudo -u {USERNAME} {SAGE_INSTALL_FOLDER}/receiver.sh {destination.IP()} {port} {0}"
+        printPurple(f"Sending command '{sagecmd}' to host {node.name}" )
         node.sendCmd(sagecmd)
-
 
     def start_aurora_client(self, node_name, destination_name, duration, model_path, port=9000, perf_interval=1):
         node = self.network.get(node_name)
         destination = self.network.get(destination_name)
-        auroracmd = 'sudo -u %s EXPERIMENT_PATH=%s LD_LIBRARY_PATH=$LD_LIBRARY_PATH:%s/src/core %s/src/app/pccclient send %s %s %s %s --pcc-rate-control=python3 -pyhelper=loaded_client -pypath=%s/src/udt-plugins/testing/ --history-len=10 --pcc-utility-calc=linear --model-path=%s' % (USERNAME, self.path, PCC_USPACE_INSTALL_FOLDER, PCC_USPACE_INSTALL_FOLDER, destination.IP(), port, perf_interval, duration, PCC_RL_INSTALL_FOLDER, model_path)        
-        print("Sending command '%s' to host %s" % (auroracmd, node.name))
+        auroracmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PCC_USPACE_INSTALL_FOLDER}/src/core {PCC_USPACE_INSTALL_FOLDER}/src/app/pccclient send {destination.IP()} {port} {perf_interval} {duration} --pcc-rate-control=python3 -pyhelper=loaded_client -pypath={PCC_RL_INSTALL_FOLDER}/src/udt-plugins/testing/ --history-len=10 --pcc-utility-calc=linear --model-path={model_path}"        
+        print(f"Sending command '{auroracmd}' to host {node.name}")
         node.sendCmd(auroracmd)
 
     def start_aurora_server(self, node_name, duration, port=9000, perf_interval=1):
         node = self.network.get(node_name)
-        auroracmd = 'sudo -u %s LD_LIBRARY_PATH=$LD_LIBRARY_PATH:%s/src/core %s/src/app/pccserver recv %s %s %s' % (USERNAME,PCC_USPACE_INSTALL_FOLDER,PCC_USPACE_INSTALL_FOLDER,port, perf_interval, duration)
+        auroracmd = f"sudo -u {USERNAME} LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PCC_USPACE_INSTALL_FOLDER}/src/core {PCC_USPACE_INSTALL_FOLDER}/src/app/pccserver recv {port} {perf_interval} {duration}"
         print("Sending command '%s' to host %s" % (auroracmd, node.name))
         node.sendCmd(auroracmd)
 

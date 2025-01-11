@@ -40,7 +40,14 @@ def process_raw_outputs(path):
             # Convert receiver output into csv
             df = parse_aurora_output(path+"/%s_output.txt" % receiver, start_time)
             df.to_csv("%s/%s.csv" %  (csv_path, receiver),index=False)
-        # WILL ONLY WORK WITH SYSTEM CC
+        elif flow[-2] == 'astraea':
+            # Convert sender output into csv
+            df = parse_astraea_output(f"{path}/{sender}_output.txt" , start_time)
+            df.to_csv(f"{csv_path}/{sender}.csv", index=False)
+
+            # Convert receiver output into csv
+            df = parse_astraea_output(path+"/%s_output.txt" % receiver, start_time)
+            df.to_csv("%s/%s.csv" %  (csv_path, receiver),index=False)
         elif flow[-2] in IPERF:
             # Convert sender output into csv
             df = parse_iperf_json(path+"/%s_output.txt" % sender, start_time)
@@ -76,10 +83,13 @@ def plot_all_mn(path: str) -> None:
         flow_server = flow[1]  # Server flow name like 'x1', 'x2', etc.
 
         df_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}.csv'))
-        df_ss_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}_ss.csv'))
+        try:
+            df_ss_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}_ss.csv'))
+        except FileNotFoundError:
+            df_ss_client = pd.DataFrame().empty
         df_server = pd.read_csv(os.path.join(path, f'csvs/{flow_server}.csv'))
-        df_client = remove_outliers(df_client, 'bandwidth', 200)
-        df_ss_client = remove_outliers(df_ss_client, 'cwnd', 20000)
+        # df_client = remove_outliers(df_client, 'bandwidth', 200)
+        # df_ss_client = remove_outliers(df_ss_client, 'cwnd', 20000)
         netem_bw = []
         netem_rtt = []
         netem_loss = []
@@ -123,6 +133,7 @@ def plot_all_mn(path: str) -> None:
 
 
         # Goodput 
+        printRed(df_server.head())
         axs[0].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
         axs[0].set_title("Goodput (Mbps)")
         axs[0].set_ylabel("Goodput (Mbps)")
@@ -150,10 +161,10 @@ def plot_all_mn(path: str) -> None:
         # else:
         #     axs[3].plot(df_client['time'], df_client['bytes'], label=f'{flow_client} Bytes')
 
-
-        if 'cwnd' in df_ss_client.columns:
-            axs[3].plot(df_ss_client['time'], df_ss_client['cwnd'], label=f'{flow_client} CWND')
-            axs[3].set_title("Cwnd from SS (packets)")
+        if df_ss_client not in [None, pd.DataFrame().empty]:    
+            if 'cwnd' in df_ss_client.columns:
+                axs[3].plot(df_ss_client['time'], df_ss_client['cwnd'], label=f'{flow_client} CWND')
+                axs[3].set_title("Cwnd from SS (packets)")
         else:
             axs[3].plot(df_client['time'], df_client['cwnd'], label=f'{flow_client} CWND')
             axs[3].set_title("Cwnd from Iperf (packets)")
@@ -166,12 +177,12 @@ def plot_all_mn(path: str) -> None:
             axs[4].plot(df_ss_client['time'], df_ss_client['retr'], label=f'{flow_client} Retransmits')
             axs[4].set_title("Retransmits from SS (packets)")
 
-        if 'rttvar' in df_client.columns:
-            axs[5].plot(df_client['time'], df_client['rttvar'], label=f'{flow_client} Rttvar')
-            axs[5].set_title("Rttvar from Iperf (ms)")
-        else:
-            axs[5].plot(df_ss_client['time'], df_ss_client['rttvar'], label=f'{flow_client} Rttvar')
-            axs[5].set_title("Rttvar from SS (ms)")
+        # if 'rttvar' in df_client.columns:
+        #     axs[5].plot(df_client['time'], df_client['rttvar'], label=f'{flow_client} Rttvar')
+        #     axs[5].set_title("Rttvar from Iperf (ms)")
+        # else:
+        #     axs[5].plot(df_ss_client['time'], df_ss_client['rttvar'], label=f'{flow_client} Rttvar')
+        #     axs[5].set_title("Rttvar from SS (ms)")
 
     queue_dir = os.path.join(path, 'queues')  # Specify the folder containing the queue files
     queue_files = [f for f in os.listdir(queue_dir) if f.endswith('eth1.txt')]
@@ -375,7 +386,7 @@ def plot_all_ns3_responsiveness(path: str) -> None:
     output_file = os.path.join(path, 'ns3_experiment_results.pdf')
 
     plt.savefig(output_file, dpi=1080)
-    printBlueBackground(f"NS3 experiment plots saved to {output_file}")
+    printBlueFill(f"NS3 experiment plots saved to {output_file}")
     plt.close()
 
 def plot_all_ns3_responsiveness_extra(path: str) -> None:

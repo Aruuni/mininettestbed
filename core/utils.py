@@ -83,50 +83,59 @@ def disable_offload(net):
                 os.system('sudo ethtool -K %s lro off' % intf_name)
                 os.system('sudo ethtool -K %s ufo off' % intf_name)
 
-def printGreen(string):
-    start = "\033[32m" # green
-    print(f"{start}{string}{RESET}")
 
 
 RESET = "\033[0m"
 
 def printDebug(string):
-    start = "\033[95m" # pink
-    print(f"{start}{string}{RESET}")
+    COLOR="\033[95m"
+    print(f"{COLOR}{string}{RESET}")
 def printDebug2(string):
-    start = "\033[103m" # yellow
-    print(f"{start}{string}{RESET}")
+    COLOR="\033[103m"
+    print(f"{COLOR}{string}{RESET}")
 def printDebug3(string):
-    start = "\033[42m\033[30m" # green
-    print(f"{start}{string}{RESET}")
+    COLOR="\033[42m"
+    print(f"{COLOR}{string}{RESET}")
 
 
 
 
-def printBlueBackground(string):
-    start = "\033[104m" # background blue
-    print(f"{start}{string}{RESET}")
 def printBlue(string):
-    start = "\033[94m" # blue
-    print(f"{start}{string}{RESET}")
+    COLOR = "\033[94m"
+    print(f"{COLOR}{string}{RESET}")
 
+def printBlueFill(string):
+    COLOR = "\033[104m"
+    print(f"{COLOR}{string}{RESET}")
 
-def printGreenBackground(string):
-    start = "\033[102m" # backgroundgreen
-    print(f"{start}{string}{RESET}")
 def printGreen(string):
-    start = "\033[32m" # green
-    print(f"{start}{string}{RESET}")
+    COLOR = "\033[32m"
+    print(f"{COLOR}{string}{RESET}")
 
+def printGreenFill(string):
+    COLOR = "\033[102m"
+    print(f"{COLOR}{string}{RESET}")
+
+def printPurple(string):
+    COLOR = "\033[93m" 
+    print(f"{COLOR}{string}{RESET}")
 
 def printRed(string):
-    start = "\033[31m" # red
-    print(f"{start}{string}{RESET}")
+    COLOR = "\033[31m"
+    print(f"{COLOR}{string}{RESET}")
 
 def printSS(string):
-    start = "\033[33m" # red
-    print(f"{start}{string}{RESET}")
+    COLOR = "\033[33m"
+    print(f"{COLOR}{string}{RESET}")
 
 def printTC(string):
-    start = "\033[90m" # gray
-    print(f"{start}{string}{RESET}")
+    COLOR = "\033[90m"
+    print(f"{COLOR}{string}{RESET}")
+
+def printPink(string):
+    COLOR = "\033[95m" 
+    print(f"{COLOR}{string}{RESET}")
+
+def printPinkFill(string):
+    COLOR = "\033[105m"
+    print(f"{COLOR}{string}{RESET}")
