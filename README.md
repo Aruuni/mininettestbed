@@ -7,23 +7,20 @@ Code for the evaluation of RL-based protocols using Mininet
 
 ## System requirements
 ### Operating System
-Code has been run on Debian 9 (Stretch) with Linux Kernel 4.13. 
+Code has been run on Ubuntu 22.04 LTS with Linux Kernel 6.4.0 (found [here](https://github.com/google/bbr/tree/v3)) which includes bbrv3. 
 
 Using other Linux kernels may be problematic due to:
 - Cubic implementation may slightly differ from the one used by Orca, especially the Slow Start phase.
-- tcp_probe (kernel module used in our testbed) has been discontinued in favor of tcp kernel event tracing.
 
 
 ### Python
-The Python version used to run the code is Python 2.7.13 and all modules versions can be found in *requirements27.txt*
-The RL agents of Orca and Aurora run on Python 3 and all modules versions can be found in *requirements35.txt*
-
-### System config
-All kernel configuration parameters can be found in *sysctl.txt*, although they are the default ones. Note that when setting up the emulation, some of these values (e.g. TCP buffers and segmentation offload) are changed. Refer to the code for details.
+The Python version used to run core code is python3.7. 
+The RL agents of Orca and Aurora run on Python 3.7 also 
 
 ## Installation
 
-Download and install [Mininet](http://mininet.org/).
+Run the [install script](./install.sh) to install 
+
 Download [Orca](https://github.com/Aruuni/Orca) and follow the repo's instruction to install it.
 Download [PCC-Uspace](https://github.com/giacomoni/PCC-Uspace) and [PCC-RL](https://github.com/giacomoni/PCC-RL) and follow the repo's instruction to install Aurora.
 
