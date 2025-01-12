@@ -21,7 +21,6 @@ def process_raw_outputs(path):
         sender_ip = str(flow[2])
         receiver_ip = str(flow[3])
         start_time = int(flow[-4])
-        
         if flow[-2] in ORCA:
             # Convert sender output into csv
             df = parse_orca_output(path+"/%s_output.txt" % sender, start_time)
@@ -46,8 +45,8 @@ def process_raw_outputs(path):
             df.to_csv(f"{csv_path}/{sender}.csv", index=False)
 
             # Convert receiver output into csv
-            df = parse_astraea_output(path+"/%s_output.txt" % receiver, start_time)
-            df.to_csv("%s/%s.csv" %  (csv_path, receiver),index=False)
+            df = parse_astraea_output(f"{path}/{receiver}_output.txt" , start_time)
+            df.to_csv(f"{csv_path}/{receiver}.csv", index=False)
         elif flow[-2] in IPERF:
             # Convert sender output into csv
             df = parse_iperf_json(path+"/%s_output.txt" % sender, start_time)
@@ -66,7 +65,7 @@ def plot_all_mn(path: str) -> None:
     def remove_outliers(df, column, threshold):
         """Remove outliers from a DataFrame column based on a threshold."""
         return df[df[column] < threshold]
-    fig, axs = plt.subplots(8, 1, figsize=(16, 36))
+    fig, axs = plt.subplots(7, 1, figsize=(16, 36))
     with open(os.path.join(path, 'emulation_info.json'), 'r') as f:
         emulation_info = json.load(f)
     flows = []
@@ -86,7 +85,7 @@ def plot_all_mn(path: str) -> None:
         try:
             df_ss_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}_ss.csv'))
         except FileNotFoundError:
-            df_ss_client = pd.DataFrame().empty
+            df_ss_client = pd.DataFrame()
         df_server = pd.read_csv(os.path.join(path, f'csvs/{flow_server}.csv'))
         # df_client = remove_outliers(df_client, 'bandwidth', 200)
         # df_ss_client = remove_outliers(df_ss_client, 'cwnd', 20000)
@@ -133,7 +132,6 @@ def plot_all_mn(path: str) -> None:
 
 
         # Goodput 
-        printRed(df_server.head())
         axs[0].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
         axs[0].set_title("Goodput (Mbps)")
         axs[0].set_ylabel("Goodput (Mbps)")
@@ -161,7 +159,7 @@ def plot_all_mn(path: str) -> None:
         # else:
         #     axs[3].plot(df_client['time'], df_client['bytes'], label=f'{flow_client} Bytes')
 
-        if df_ss_client not in [None, pd.DataFrame().empty]:    
+        if not df_ss_client.empty:    
             if 'cwnd' in df_ss_client.columns:
                 axs[3].plot(df_ss_client['time'], df_ss_client['cwnd'], label=f'{flow_client} CWND')
                 axs[3].set_title("Cwnd from SS (packets)")
@@ -185,8 +183,12 @@ def plot_all_mn(path: str) -> None:
         #     axs[5].set_title("Rttvar from SS (ms)")
 
     queue_dir = os.path.join(path, 'queues')  # Specify the folder containing the queue files
-    queue_files = [f for f in os.listdir(queue_dir) if f.endswith('eth1.txt')]
+    queue_files = [f for f in os.listdir(queue_dir) if f.endswith('.txt')]
+    match = re.search(r"_(\d+)pkts_", queue_dir)
 
+    queue_limit = int(match.group(1))
+
+    axs[5].axhline(queue_limit, color='red', linestyle='--', label='Queue Limit')
     for queue_file in queue_files:
         queue_path = os.path.join(queue_dir, queue_file)
 
@@ -207,11 +209,10 @@ def plot_all_mn(path: str) -> None:
 
         df_queue['root_pkts'] = df_queue['root_pkts'] / 1500
         df_queue['interval_drops'] = df_queue['root_drp'].diff().fillna(0)
-
-        axs[6].plot(df_queue['time'], df_queue['root_pkts'], label=f'{queue_file} - root_pkts')
-        axs[6].set_title("Queue size (packets)")
-        axs[7].plot(df_queue['time'], df_queue['interval_drops'], linestyle='--', label=f'{queue_file} - root_drp')
-        axs[7].set_title("Queue drops (packets)")
+        axs[5].plot(df_queue['time'], df_queue['root_pkts'], label=f'{queue_file} - root_pkts')
+        axs[5].set_title("Queue size (packets)")
+        axs[6].plot(df_queue['time'], df_queue['interval_drops'], linestyle='--', label=f'{queue_file} - root_drp')
+        axs[6].set_title("Queue drops (packets)")
 
 
     for i, ax in enumerate(axs):

@@ -436,18 +436,18 @@ class Emulation:
         Starts a one-off astraea server on the given node with the given port at a default interval of 1 second
         """
         node = self.network.get(node_name)
-        cmd = f"sudo -u {USERNAME} {ASTRAEA_INSTALL_FOLDER}/src/build/bin/server --port={port} --perf-interval={monitor_interval * 1000}  --one-off --terminal-out "
+        cmd = f"sudo -u {USERNAME} {ASTRAEA_INSTALL_FOLDER}/src/build/bin/server --port={port} --perf-interval={monitor_interval * 1000}  --one-off --terminal-out"
         printPink(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
 
-    def start_astraea_client(self, node_name: str, destination_name: str, duration: int,  monitor_interval=1, port=44279):
+    def start_astraea_client(self, node_name: str, destination_name: str, duration: int,  monitor_interval=1 , port=44279):
         node = self.network.get(node_name)
         # Might not need
         # sscmd = f"./ss_script.sh 0.1 {self.path}/{node.name}_ss.csv &" 
         # printBlue(f'Sending command {sscmd} to host {node.name}')
         # node.cmd(sscmd)
 
-        cmd = f"sudo  -u {USERNAME} {ASTRAEA_INSTALL_FOLDER}/src/build/bin/client_eval --ip={self.network.get(destination_name).IP()} --port={port} --cong=astraea --interval=30  --terminal-out --pyhelper={ASTRAEA_INSTALL_FOLDER}/python/infer.py --model={ASTRAEA_INSTALL_FOLDER}/models/py/ --duration={duration} --id={self.astraea_flows_counter} "
+        cmd = f"sudo  -u {USERNAME} {ASTRAEA_INSTALL_FOLDER}/src/build/bin/client_eval --ip={self.network.get(destination_name).IP()} --port={port} --cong=astraea --interval=30  --terminal-out --pyhelper={ASTRAEA_INSTALL_FOLDER}/python/infer.py --model={ASTRAEA_INSTALL_FOLDER}/models/py/ --duration={duration} --id={self.astraea_flows_counter}"
         printPinkFill(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
         self.astraea_flows_counter+= 1
