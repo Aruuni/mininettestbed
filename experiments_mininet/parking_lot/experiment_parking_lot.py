@@ -51,7 +51,6 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     bw_config = [NetworkConf(f's{i}', f's{i+1}', bw, None, qsize_in_bytes, False, aqm, loss) for i in range(1, n_flows,1)]
     delay_config = [NetworkConf(f'c{i}', f's{i-1}', None, 2*delay, 3*qsize_in_bytes, False, aqm, loss) for i in range(2, n_flows+1,1)]
     delay_config.append(NetworkConf('c1', 's1', None, 2*delay, 3*qsize_in_bytes, False, aqm, loss))
-    #printDebug3(delay_config)
     network_config = bw_config + delay_config
 
     traffic_config = [TrafficConf('c1', 'x1', int(duration/2), int(duration/2)+duration, protocol)]
@@ -77,6 +76,7 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     # Process raw outputs into csv files
     process_raw_outputs(path)
     change_all_user_permissions(path)
+    plot_all_mn(path)
 if __name__ == '__main__':
 
     topology = 'ParkingLot' 

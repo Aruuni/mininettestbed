@@ -2,6 +2,9 @@ sudo fuser -k 6653/tcp
 sudo modprobe tcp_bbr
 UBUNTU_VERSION=$(lsb_release -r | awk '{print $2}')
 
+sudo insmod tcp_pcc.ko
+
+sudo make install
 
 #Orca settigns
 sudo sysctl -w net.ipv4.tcp_low_latency=1

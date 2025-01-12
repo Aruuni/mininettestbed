@@ -29,7 +29,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     rmdirp(path)
     mkdirp(path)
-    change_all_user_permissions(path)
+    printGreen(f"delay is {delay}, bw is {bw}, qmult is {qmult}, qsize is {qsize_in_bytes}, bdp is {bdp_in_bytes}, loss is {loss}")
 
     if (protocol == "bbr3"):
         protocol = "bbr"
@@ -45,8 +45,8 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     
 
     traffic_config = [TrafficConf('c1', 'x1', 0, duration, protocol), 
-                      TrafficConf('c2', 'x2', 20, duration-20, protocol),
-                      TrafficConf('c3', 'x3', 40, duration-40, protocol)
+                      TrafficConf('c2', 'x2', 10, duration-10, "cubic"),
+     #                 TrafficConf('c3', 'x3', 5, duration-5, protocol)
                       
                       
                       ]
