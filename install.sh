@@ -1,6 +1,5 @@
 #!/bin/bash
-
-#TODO: add the orca/sage dependencies
+CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UBUNTU_VERSION=$(lsb_release -r | awk '{print $2}')
 
 if [[ "$UBUNTU_VERSION" == "16.04" ]]; then
@@ -26,9 +25,9 @@ fi
 sudo apt install -y openvswitch-testcontroller mininet moreutils sysstat ethtool iperf3 cmake g++ nlohmann-json3-dev software-properties-common
 
 echo "Downloading and setting up pcc vivace kernel"
-git clone https://github.com/PCCproject/PCC-Kernel -b vivace
+git clone https://github.com/PCCproject/PCC-Kernel -b vivace ~/PCC-Kernel
 cd PCC-Kernel/src && make
-cp tcp_pcc.ko ../..
+cp tcp_pcc.ko $CURRENT_DIR
 
 echo "Downloading and setting up Orca"
 git clone ~/https://github.com/Aruuni/Orca ~/Orca
@@ -43,4 +42,5 @@ python3.7 -m pip install protobuf==3.10.0 tensorflow==1.14.0 --upgrade
 python3.7 -m pip install matplotlib==3.2
 cd kernel/tcp-astraea
 make
+cp tcp_astraea.ko $CURRENT_DIR
 bash build.sh

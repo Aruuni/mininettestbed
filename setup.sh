@@ -2,9 +2,9 @@ sudo fuser -k 6653/tcp
 sudo modprobe tcp_bbr
 UBUNTU_VERSION=$(lsb_release -r | awk '{print $2}')
 
-sudo insmod PCC-Kernel/src/tcp_pcc.ko
-cd ~/astraea-open-source/kernel/tcp-astraea
-make install
+
+sudo insmod tcp_pcc.ko
+sudo insmod tcp_astraea.ko
 
 #Orca settigns
 sudo sysctl -w net.ipv4.tcp_low_latency=1

@@ -1,9 +1,6 @@
-sudo add-apt-repository -y ppa:jblgf0/python
-
-
-sysctl net.ipv4.tcp_available_congestion_control
 # mininettestbed
 Code for the evaluation of RL-based protocols using Mininet
+
 
 ## System requirements
 ### Operating System
@@ -14,22 +11,15 @@ Using other Linux kernels may be problematic due to:
 
 
 ### Python
-The Python version used to run core code is python3.7. 
-The RL agents of Orca and Aurora run on Python 3.7 also 
+The Python version used to run core code is Python >= 3.7. 
+The RL agents of Orca,  Aurora and Astraea run on Python 3.7, sage runs on 3.6.
 
 ## Installation
 
-Run the [install script](./install.sh) to install 
-
-Download [Orca](https://github.com/Aruuni/Orca) and follow the repo's instruction to install it.
-Download [PCC-Uspace](https://github.com/giacomoni/PCC-Uspace) and [PCC-RL](https://github.com/giacomoni/PCC-RL) and follow the repo's instruction to install Aurora.
-
-
-Install python interpreter (3.5) for Orca's agent using venv:
+Run the [install script](./install.sh) to install [Orca](https://github.com/Aruuni/Orca), [Astraea](https://github.com/Aruuni/astraea-open-source), [PCC Vivace](https://github.com/PCCproject/PCC-Kernel/tree/vivace) and [sage](https://github.com/Aruuni/sage) (only available on ubuntu 16.04 using the precompiled 4.19 kernel)
 
 ```bash
-cd
-python3 -m venv venv
+bash install.sh
 ```
 
 
@@ -42,6 +32,11 @@ USERNAME=None
 
 Make sure installation location of Orca, PCC-RL and PCC-Uspace match the path set in core/config.py (home directory)
 
+check for the available kernel conegstion control using: 
+```bash 
+sysctl net.ipv4.tcp_available_congestion_control
+```
+
 ## Running the experiments
 The experiments folder contain one script per experiment. 
 
@@ -51,10 +46,3 @@ To run them all, just execute
 sudo ./run_rexperiments.sh
 ```
 
-## Data collected
-A detailed explanation of the data collected during emulation can be found in the *figshare* database.
-
-## Plotting results
-All plots on the paper can be reproduced by running the corresponding script in the plots folder. The scripts assume that results are stored in *mininetestbed/nooffload*.
-
-You can also reproduce the plots without having to rerun the experiment by downloading the dataset available [here](https://sussex.figshare.com/articles/dataset/Data_for_Reinforcement_Learning-based_Congestion_Control_A_Systematic_Evaluation_of_Fairness_Efficiency_and_Responsiveness/24970173). Make sure to move the data into the expected location or change the path(s) in the python scripts
