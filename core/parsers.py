@@ -2,6 +2,7 @@ import re
 import pandas as pd
 import json
 import os
+from core.utils import *
 
 def parse_tc_show_output(output):
     '''
@@ -210,10 +211,13 @@ def parse_astraea_output(file, offset):
     # Create a pandas DataFrame
     df = pd.DataFrame(data, columns=columns)
     # Convert columns to appropriate types
-    print(df.head())
     df["time"] = df["time"].astype(int)
     min_rtt = df["time"].min()    
-    df["time"] = df["time"] - min_rtt + offset
+    df["time"] = df["time"] - min_rtt 
+    df["time"] = df["time"]/ 1000
+
+    if len(data[0]) == 14:
+        df["time"] = df["time"] + offset
 
 
     
