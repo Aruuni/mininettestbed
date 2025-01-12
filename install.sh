@@ -34,6 +34,14 @@ git clone ~/https://github.com/Aruuni/Orca ~/Orca
 cd ~/Orca
 bash build.sh
 
+if [[ "$UBUNTU_VERSION" == "16.04" ]]; then
+    eaco "Downloading and setting up sage"
+    git clone https://github.com/Aruuni/sage ~/sage
+    cd ~/sage
+    bash build.sh
+
+fi
+
 echo "Downloading and setting up astraea"
 git clone https://github.com/Aruuni/astraea-open-source --recursive ~/astraea-open-source
 cd ~/astraea-open-source
