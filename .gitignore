@@ -1,15 +1,15 @@
 *.pyc
 PCC-Kernel
 results/*
-*.zip
 rl_logging
 results*
 .idea
 nooffload
 aurora_analysis/*
 tcp_tracing/*
-pcc_log.txt
+tcp_pcc.ko
 *.txt
+*.zip
 *.json
 *.png
 *.pdf
