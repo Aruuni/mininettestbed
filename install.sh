@@ -30,7 +30,7 @@ cd ~/PCC-Kernel/src && make
 cp tcp_pcc.ko $CURRENT_DIR
 
 echo "Downloading and setting up Orca"
-git clone ~/https://github.com/Aruuni/Orca ~/Orca
+git clone https://github.com/Aruuni/Orca ~/Orca
 cd ~/Orca
 bash build.sh
 
