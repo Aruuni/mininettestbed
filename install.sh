@@ -26,7 +26,7 @@ sudo apt install -y openvswitch-testcontroller mininet moreutils sysstat ethtool
 
 echo "Downloading and setting up pcc vivace kernel"
 git clone https://github.com/PCCproject/PCC-Kernel -b vivace ~/PCC-Kernel
-cd PCC-Kernel/src && make
+cd ~/PCC-Kernel/src && make
 cp tcp_pcc.ko $CURRENT_DIR
 
 echo "Downloading and setting up Orca"
