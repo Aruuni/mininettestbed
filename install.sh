@@ -50,5 +50,6 @@ python3.7 -m pip install protobuf==3.10.0 tensorflow==1.14.0 --upgrade
 python3.7 -m pip install matplotlib==3.2
 cd kernel/tcp-astraea
 make
+cd ~/astraea-open-source
 cp tcp_astraea.ko $CURRENT_DIR
 bash build.sh
