@@ -48,6 +48,7 @@ cd ~/astraea-open-source
 python3.7 -m pip install pip --upgrade
 python3.7 -m pip install protobuf==3.10.0 tensorflow==1.14.0 --upgrade
 python3.7 -m pip install matplotlib==3.2
+python3.7 -m pip install --upgrade --force-reinstall pillow
 cd kernel/tcp-astraea
 make
 cd ~/astraea-open-source
