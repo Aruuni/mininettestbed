@@ -415,7 +415,7 @@ class Emulation:
         printBlueFill(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
 
-    def start_iperf_client(self, node_name: str, destination_name: str, duration: int, protocol: str, monitor_interval=1, port=5201):
+    def start_iperf_client(self, node_name: str, destination_name: str, duration: int, protocol: str, monitor_interval=0.1, port=5201):
         """
         Start a iperf3 client on the given node with the given destination and port at a default interval of 1 second. 
         Additioanlly, the SS script is started on the client node with a default interval of 0.01 seconds (lowest possible). 
@@ -423,11 +423,11 @@ class Emulation:
         """
         node = self.network.get(node_name)
 
-        sscmd = f"./ss_script.sh 0.1 {self.path}/{node.name}_ss.csv &" 
+        sscmd = f"./core/ss/ss_script_iperf3.sh 0.1 {self.path}/{node.name}_ss.csv &" 
         printBlue(f'Sending command {sscmd} to host {node.name}')
         node.cmd(sscmd)
 
-        iperfCmd = f"iperf3 -p {port} -i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}" 
+        iperfCmd = f"iperf3 -p {port} --cport={11111} -i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}" 
         printBlueFill(f'Sending command {iperfCmd} to host {node.name}')
         node.sendCmd(iperfCmd)
 
@@ -447,7 +447,7 @@ class Emulation:
         # printBlue(f'Sending command {sscmd} to host {node.name}')
         # node.cmd(sscmd)
 
-        cmd = f"sudo  -u {USERNAME} {ASTRAEA_INSTALL_FOLDER}/src/build/bin/client_eval --ip={self.network.get(destination_name).IP()} --port={port} --cong=astraea --interval=30  --terminal-out --pyhelper={ASTRAEA_INSTALL_FOLDER}/python/infer.py --model={ASTRAEA_INSTALL_FOLDER}/models/py/ --duration={duration} --id={self.astraea_flows_counter}"
+        cmd = f"sudo  -u {USERNAME} {ASTRAEA_INSTALL_FOLDER}/src/build/bin/client_eval --ip={self.network.get(destination_name).IP()} --port={port} --cong=astraea --interval=20  --terminal-out --pyhelper={ASTRAEA_INSTALL_FOLDER}/python/infer.py --model={ASTRAEA_INSTALL_FOLDER}/models/py/ --duration={duration} --id={self.astraea_flows_counter}"
         printPinkFill(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
         self.astraea_flows_counter+= 1
@@ -459,10 +459,10 @@ class Emulation:
         """
         node = self.network.get(node_name)
         
-        sscmd = f"./ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
+        sscmd = f"./core/ss/ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
         printGreenFill(f"Sending command '{sscmd}' to host {node.name}")
         node.cmd(sscmd)
-        
+
         orcacmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {ORCA_INSTALL_FOLDER}/sender.sh {port} {self.orca_flows_counter} {duration}"  
         printGreen(f"Sending command '{orcacmd}' to host {node.name}")
         node.sendCmd(orcacmd)

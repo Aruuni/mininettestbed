@@ -26,11 +26,11 @@ sudo apt install -y openvswitch-testcontroller mininet moreutils sysstat ethtool
 
 echo "Downloading and setting up pcc vivace kernel"
 git clone https://github.com/PCCproject/PCC-Kernel -b vivace ~/PCC-Kernel
-cd PCC-Kernel/src && make
+cd ~/PCC-Kernel/src && make
 cp tcp_pcc.ko $CURRENT_DIR
 
 echo "Downloading and setting up Orca"
-git clone ~/https://github.com/Aruuni/Orca ~/Orca
+git clone https://github.com/Aruuni/Orca ~/Orca
 cd ~/Orca
 bash build.sh
 
@@ -48,8 +48,19 @@ cd ~/astraea-open-source
 python3.7 -m pip install pip --upgrade
 python3.7 -m pip install protobuf==3.10.0 tensorflow==1.14.0 --upgrade
 python3.7 -m pip install matplotlib==3.2
+python3.7 -m pip install --upgrade --force-reinstall pillow
 cd kernel/tcp-astraea
 make
 cd ~/astraea-open-source
 cp tcp_astraea.ko $CURRENT_DIR
 bash build.sh
+
+
+echo "Downloading and setting up ns-3"
+git clone https://gitlab.com/nsnam/ns-3-dev ~/ns-3-dev
+cp ns3_simscript/CCTestBed.cc ~/ns-3-dev/scratch
+cp ns3_simscript/cross_path.cc ~/ns-3-dev/scratch
+cd ~/ns-3-dev
+./ns3 configure --build-profile=optimized 
+./ns3 
+

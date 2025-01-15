@@ -21,7 +21,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
-    duration = 50
+    duration = 10
     
     net = Mininet(topo=topo)
     path = f"{HOME_DIR}/cctestbed/mininet/results_custom/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
@@ -38,14 +38,14 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
 
     net.start()
-    #disable_offload(net)
+    disable_offload(net)
 
     network_config = [NetworkConf('s1', 's2', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
                       NetworkConf('s2', 's3', bw, None, qsize_in_bytes, False, aqm, None)]
     
 
-    traffic_config = [TrafficConf('c1', 'x1', 0, duration, "cubic"), 
-                      TrafficConf('c2', 'x2', 10, duration-10, protocol),
+    traffic_config = [TrafficConf('c1', 'x1', 0, duration, protocol), 
+                      TrafficConf('c2', 'x2', 5, duration-5, protocol),
      #                 TrafficConf('c3', 'x3', 5, duration-5, protocol)
                       
                       

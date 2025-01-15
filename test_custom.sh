@@ -1,7 +1,7 @@
 source common.sh
 bash setup.sh
 
-PROTOCOLS="astraea"
+PROTOCOLS="orca astraea vivace cubic bbr3 bbr1"
 BANDWIDTHS="100"
 DELAYS="20"
 RUNS="1"

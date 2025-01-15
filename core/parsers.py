@@ -3,7 +3,7 @@ import pandas as pd
 import json
 import os
 from core.utils import *
-
+from collections import defaultdict
 def parse_tc_show_output(output):
     '''
     Parse tc show dev output. Assumes that dev can only have one netem and/or one tbf. 
@@ -44,24 +44,48 @@ def parse_tc_show_output(output):
 
 
 def parse_ss_output(file_path, offset=0):
-    """
-    Parses an ss output CSV file, adjusts the time column to relative time (in seconds) using the earliest timestamp as the reference.
-    
-    Args:
-    - file_path: The path to the ss output file (CSV format).
-    - offset: The time offset (in seconds) to adjust the time series.
-    
-    Returns:
-    - A pandas DataFrame with adjusted relative time (in seconds) that contains 
-    """
-    # Load the CSV file into a pandas DataFrame
-    df = pd.read_csv(file_path)
-    
+    #df = pd.read_csv(file_path)
+    patterns = {
+        "time": r"^(\d+\.\d+),",  # Timestamp at the beginning
+        "state": r"\sESTAB\s",  # Match exact ESTAB state
+        "cwnd": r"cwnd:(\d+)",
+        "srtt": r"rtt:([\d.]+)/",  # Extract srtt
+        "rttvar": r"rtt:[\d.]+/([\d.]+)",  # Extract rttvar
+        "retr": r"retrans:(\d+)/"   
+    }
+    data = defaultdict(list)  # Initializes a dictionary where values are lists
+    with open(file_path, "r") as f:
+        for line in f:
+            # Filter for exact ESTAB state
+            if not re.search(patterns["state"], line):
+                continue
+
+            # Extract timestamp
+            time_match = re.search(patterns["time"], line)
+            if not time_match:
+                continue
+            timestamp = float(time_match.group(1))
+            data["time"].append(timestamp)
+
+            # Extract metrics
+            for key, pattern in patterns.items():
+                if key == "time" or key == "state":
+                    continue
+                match = re.search(pattern, line)
+                value = float(match.group(1)) if match else None
+                data[key].append(value if value is not None else 0)
+    df = pd.DataFrame(data)
+
+    if df.empty:
+        raise ValueError("No ESTAB state entries found in the input file.")
+
     # Convert the 'time' column to relative time (seconds since the minimum timestamp)
     min_time = df['time'].min()
-    df['time'] = df['time'] - min_time + offset +1
-    
+    df['time'] = df['time'] - min_time + offset
     return df
+
+
+
 def parse_iperf_output(output):
     """Parse iperf output and return bandwidth.
     iperfOutput: string
@@ -279,4 +303,3 @@ def parse_aurora_output(file, offset):
             df = pd.DataFrame([], columns=['time','bandwidth'])
 
     return df
-

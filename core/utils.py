@@ -81,7 +81,7 @@ def disable_offload(net):
                 os.system('sudo ethtool -K %s gro off' % intf_name)
                 os.system('sudo ethtool -K %s gso off' % intf_name)
                 os.system('sudo ethtool -K %s lro off' % intf_name)
-                os.system('sudo ethtool -K %s ufo off' % intf_name)
+                #os.system('sudo ethtool -K %s ufo off' % intf_name) no need as no udp traffic
 
 
 

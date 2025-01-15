@@ -2,7 +2,7 @@ import os, sys
 from mininet.net import Mininet
 
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '..')
+mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
 
 
@@ -26,6 +26,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     net = Mininet(topo=topo)
     path = "%s/cctestbed/mininet/results_fairness_intra_rtt_async/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
     path = f"{HOME_DIR}/cctestbed/mininet/results_fairness_intra_rtt_async/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
+    printGreen(f"delay is {delay}, bw is {bw}, qmult is {qmult}, qsize is {qsize_in_bytes}, bdp is {bdp_in_bytes}, loss is {loss}")
 
     rmdirp(path)
     mkdirp(path)
@@ -33,6 +34,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         protocol = "bbr"
     if (protocol == "vivace"):
         protocol = "pcc"
+
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
 
     net.start()
@@ -60,10 +62,11 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     net.stop()
     
     change_all_user_permissions(path)
-
     process_raw_outputs(path)
     change_all_user_permissions(path)
-
+    plot_all_mn(path)
+    change_all_user_permissions(path)
+    
 if __name__ == '__main__':
     topology = 'Dumbell'
     delay = int(sys.argv[1])

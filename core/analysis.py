@@ -49,8 +49,8 @@ def process_raw_outputs(path):
             df.to_csv(f"{csv_path}/{receiver}.csv", index=False)
         elif flow[-2] in IPERF:
             # Convert sender output into csv
-            df = parse_iperf_json(path+"/%s_output.txt" % sender, start_time)
-            df.to_csv("%s/%s.csv" % (csv_path,sender), index=False)
+            df = parse_iperf_json(f"{path}/{sender}_output.txt", start_time)
+            df.to_csv(f"{csv_path}/{sender}.csv", index=False)
             
             df = parse_ss_output(path+"/%s_ss.csv" % sender, start_time)
             df.to_csv("%s/%s_ss.csv" % (csv_path,sender), index=False)
@@ -87,8 +87,7 @@ def plot_all_mn(path: str) -> None:
         except FileNotFoundError:
             df_ss_client = pd.DataFrame()
         df_server = pd.read_csv(os.path.join(path, f'csvs/{flow_server}.csv'))
-        # df_client = remove_outliers(df_client, 'bandwidth', 200)
-        # df_ss_client = remove_outliers(df_ss_client, 'cwnd', 20000)
+
         netem_bw = []
         netem_rtt = []
         netem_loss = []
