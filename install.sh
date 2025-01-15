@@ -22,7 +22,7 @@ else
 
 fi
 
-sudo apt install -y openvswitch-testcontroller mininet moreutils sysstat ethtool iperf3 cmake g++ nlohmann-json3-dev software-properties-common
+sudo apt install -y openvswitch-testcontroller mininet moreutils sysstat ethtool iperf3 cmake g++ g++-9 nlohmann-json3-dev software-properties-common
 
 echo "Downloading and setting up pcc vivace kernel"
 git clone https://github.com/PCCproject/PCC-Kernel -b vivace ~/PCC-Kernel
