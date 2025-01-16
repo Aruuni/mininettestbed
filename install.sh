@@ -18,7 +18,7 @@ else
     sudo apt update
     sudo apt install -y python3-pip python3.7 python3.7-dev python3-7-distutils
     sudo pip3 install -U virtualenv==15.2.*
-    sudo python3 -m pip install mininet numpy matplotlib pandas 
+    sudo python3 -m pip install mininet numpy matplotlib pandas scienceplots
 
 fi
 
@@ -27,7 +27,6 @@ sudo apt install -y openvswitch-testcontroller mininet moreutils sysstat ethtool
 echo "Downloading and setting up pcc vivace kernel"
 git clone https://github.com/PCCproject/PCC-Kernel -b vivace ~/PCC-Kernel
 cd ~/PCC-Kernel/src && make
-cp tcp_pcc.ko $CURRENT_DIR
 
 echo "Downloading and setting up Orca"
 git clone https://github.com/Aruuni/Orca ~/Orca
@@ -52,7 +51,6 @@ python3.7 -m pip install --upgrade --force-reinstall pillow
 cd kernel/tcp-astraea
 make
 cd ~/astraea-open-source
-cp tcp_astraea.ko $CURRENT_DIR
 bash build.sh
 
 
