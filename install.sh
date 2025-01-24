@@ -41,7 +41,7 @@ python3.7 -m pip install protobuf==3.10.0 tensorflow==1.14.0 --upgrade
 python3.7 -m pip install matplotlib==3.2
 python3.7 -m pip install numpy==1.20.0
 python3.7 -m pip install --upgrade --force-reinstall pillow
-cd CC/astraea-open-source/kernel/tcp-astraea
+cd $CURRENT_DIR/CC/astraea-open-source/kernel/tcp-astraea
 make
 cd ../..
 bash build.sh

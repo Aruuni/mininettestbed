@@ -2,7 +2,8 @@ sudo fuser -k 6653/tcp
 sudo modprobe tcp_bbr
 UBUNTU_VERSION=$(lsb_release -r | awk '{print $2}')
 
-# if you nee to use secure boot, you must sign theese, liek this 
+# if you nee to use secure boot, you must sign theese, like this 
+# sudo /lib/modules/$(uname -r)/build/scripts/sign-file sha256 ~/bbr/mok.key ~/bbr/mok.pem CC/PCC-Kernel/src/tcp_pcc.ko
 sudo insmod CC/PCC-Kernel/src/tcp_pcc.ko
 sudo insmod CC/astraea-open-source/kernel/tcp-astraea/tcp_astraea.ko
 
