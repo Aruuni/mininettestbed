@@ -463,7 +463,7 @@ class Emulation:
         printGreenFill(f"Sending command '{sscmd}' to host {node.name}")
         node.cmd(sscmd)
 
-        orcacmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {ORCA_INSTALL_FOLDER}/sender.sh {port} {self.orca_flows_counter} {duration}"  
+        orcacmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {ORCA_INSTALL_FOLDER}/sender.sh {port} {self.orca_flows_counter} {duration} {ORCA_INSTALL_FOLDER}"  
         printGreen(f"Sending command '{orcacmd}' to host {node.name}")
         node.sendCmd(orcacmd)
 
@@ -477,7 +477,7 @@ class Emulation:
         node = self.network.get(node_name)
         destination = self.network.get(destination_name)
 
-        orcacmd = f"sudo -u {USERNAME} {ORCA_INSTALL_FOLDER}/receiver.sh {destination.IP()} {port} {0}"
+        orcacmd = f"sudo -u {USERNAME} {ORCA_INSTALL_FOLDER}/receiver.sh {destination.IP()} {port} {0} {ORCA_INSTALL_FOLDER}"
         printGreenFill(f"Sending command '{orcacmd}' to host {node.name}")
         node.sendCmd(orcacmd)
 

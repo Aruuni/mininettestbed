@@ -16,7 +16,7 @@ else
     # Execute if on any other Ubuntu version
     sudo add-apt-repository ppa:deadsnakes/ppa
     sudo apt update
-    sudo apt install -y python3-pip python3.7 python3.7-dev python3-7-distutils
+    sudo apt install -y python3-pip python3.7 python3.7-dev python3.7-distutils
     sudo pip3 install -U virtualenv==15.2.*
     sudo python3 -m pip install mininet numpy matplotlib pandas scienceplots
 
@@ -24,33 +24,26 @@ fi
 
 sudo apt install -y openvswitch-testcontroller mininet moreutils sysstat ethtool iperf3 cmake g++ g++-9 nlohmann-json3-dev software-properties-common
 
-echo "Downloading and setting up pcc vivace kernel"
-git clone https://github.com/PCCproject/PCC-Kernel -b vivace ~/PCC-Kernel
-cd ~/PCC-Kernel/src && make
+echo "Setting up pcc vivace kernel"
+cd $CURRENT_DIR/CC/PCC-Kernel/src && make
+
 
 echo "Downloading and setting up Orca"
-git clone https://github.com/Aruuni/Orca ~/Orca
-cd ~/Orca
+
+cd $CURRENT_DIR/CC/Orca
 bash build.sh
 
-if [[ "$UBUNTU_VERSION" == "16.04" ]]; then
-    eaco "Downloading and setting up sage"
-    git clone https://github.com/Aruuni/sage ~/sage
-    cd ~/sage
-    bash build.sh
-
-fi
 
 echo "Downloading and setting up astraea"
-git clone https://github.com/Aruuni/astraea-open-source --recursive ~/astraea-open-source
-cd ~/astraea-open-source
+
 python3.7 -m pip install pip --upgrade
 python3.7 -m pip install protobuf==3.10.0 tensorflow==1.14.0 --upgrade
 python3.7 -m pip install matplotlib==3.2
+python3.7 -m pip install numpy==1.20.0
 python3.7 -m pip install --upgrade --force-reinstall pillow
-cd kernel/tcp-astraea
+cd CC/astraea-open-source/kernel/tcp-astraea
 make
-cd ~/astraea-open-source
+cd ../..
 bash build.sh
 
 
@@ -62,3 +55,12 @@ cd ~/ns-3-dev
 ./ns3 configure --build-profile=optimized 
 ./ns3 
 
+# TODO FINISH SAGE
+
+# if [[ "$UBUNTU_VERSION" == "16.04" ]]; then
+#     eaco "Downloading and setting up sage"
+#     git clone https://github.com/Aruuni/sage ~/sage
+#     cd ~/sage
+#     bash build.sh
+
+# fi
