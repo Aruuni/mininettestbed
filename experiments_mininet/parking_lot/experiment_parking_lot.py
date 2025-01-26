@@ -72,11 +72,11 @@ def run_emulation(topology: str, protocol, params, bw, delay, qmult, tcp_buffer_
     net.stop()
 
     change_all_user_permissions(path)
-
-    # Process raw outputs into csv files
     process_raw_outputs(path)
     change_all_user_permissions(path)
     plot_all_mn(path)
+    change_all_user_permissions(path)
+    
 if __name__ == '__main__':
 
     topology = 'ParkingLot' 
