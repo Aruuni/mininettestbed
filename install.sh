@@ -18,7 +18,7 @@ else
     sudo apt update
     sudo apt install -y python3-pip python3.7 python3.7-dev python3.7-distutils
     sudo pip3 install -U virtualenv==15.2.*
-    sudo python3 -m pip install mininet numpy matplotlib pandas scienceplots
+    sudo python3 -m pip install mininet numpy==2.1.3 matplotlib==3.9.2 pandas==2.2.3 scienceplots
 
 fi
 
