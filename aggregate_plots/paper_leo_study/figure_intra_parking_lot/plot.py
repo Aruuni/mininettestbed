@@ -15,7 +15,7 @@ sys.path.append( mymodule_dir )
 from core.config import *
 
 ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_parking_lot/fifo" 
-PROTOCOLS = ['cubic', 'bbr', 'sage', 'pcc', 'orca', 'bbr3']
+PROTOCOLS = ['cubic', 'bbr1', 'astraea', 'vivace', 'orca', 'bbr3' ]
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 QMULTS = [0.2, 1 ,4]
@@ -100,9 +100,10 @@ for mult in QMULTS:
    cubic_data = summary_data[summary_data['protocol'] == 'cubic'].set_index('delay')
    orca_data = summary_data[summary_data['protocol'] == 'orca'].set_index('delay')
    bbr3_data = summary_data[summary_data['protocol'] == 'bbr3'].set_index('delay')
-   bbr_data = summary_data[summary_data['protocol'] == 'bbr'].set_index('delay')
+   bbr_data = summary_data[summary_data['protocol'] == 'bbr1'].set_index('delay')
    sage_data = summary_data[summary_data['protocol'] == 'sage'].set_index('delay')
-   pcc_data = summary_data[summary_data['protocol'] == 'pcc'].set_index('delay')
+   pcc_data = summary_data[summary_data['protocol'] == 'vivace'].set_index('delay')
+   astraea_data = summary_data[summary_data['protocol'] == 'astraea'].set_index('delay')
 
    LINEWIDTH = 0.15
    ELINEWIDTH = 0.75
@@ -113,26 +114,34 @@ for mult in QMULTS:
    ax = axes
 
 
-
-   markers, caps, bars = ax.errorbar(cubic_data.index*2, cubic_data['goodput_ratio_total_mean'], yerr=cubic_data['goodput_ratio_total_std'],marker='x',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='cubic')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(orca_data.index*2,orca_data['goodput_ratio_total_mean'], yerr=orca_data['goodput_ratio_total_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr3_data.index*2, bbr3_data['goodput_ratio_total_mean'], yerr=bbr3_data['goodput_ratio_total_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='bbrv3')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr_data.index*2,bbr_data['goodput_ratio_total_mean'], yerr=bbr_data['goodput_ratio_total_std'],marker='.',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv1')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(sage_data.index*2,sage_data['goodput_ratio_total_mean'], yerr=sage_data['goodput_ratio_total_std'],marker='*',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='sage')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(pcc_data.index*2,pcc_data['goodput_ratio_total_mean'], yerr=pcc_data['goodput_ratio_total_std'],marker='_',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='vivace')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-
+   if 'cubic' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(cubic_data.index*2, cubic_data['goodput_ratio_total_mean'], yerr=cubic_data['goodput_ratio_total_std'],marker='x',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='cubic')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'orca' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(orca_data.index*2,orca_data['goodput_ratio_total_mean'], yerr=orca_data['goodput_ratio_total_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'bbr3' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(bbr3_data.index*2, bbr3_data['goodput_ratio_total_mean'], yerr=bbr3_data['goodput_ratio_total_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='bbrv3')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'bbr1' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(bbr_data.index*2,bbr_data['goodput_ratio_total_mean'], yerr=bbr_data['goodput_ratio_total_std'],marker='.',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv1')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'sage' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(sage_data.index*2,sage_data['goodput_ratio_total_mean'], yerr=sage_data['goodput_ratio_total_std'],marker='*',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='sage')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'vivace' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(pcc_data.index*2,pcc_data['goodput_ratio_total_mean'], yerr=pcc_data['goodput_ratio_total_std'],marker='_',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='vivace')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'astraea' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(astraea_data.index*2,astraea_data['goodput_ratio_total_mean'], yerr=astraea_data['goodput_ratio_total_std'],marker='h',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='astraea')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
 
 
    ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio', ylim=[-0.1,1.1])

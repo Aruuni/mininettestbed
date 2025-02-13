@@ -15,7 +15,7 @@ from core.config import *
 
 
 ROOT_PATH =  f"{HOME_DIR}/cctestbed/mininet/results_fairness_bw_async/fifo" 
-PROTOCOLS = ['cubic', 'orca' , 'bbr3', 'bbr', 'sage', 'pcc']
+PROTOCOLS = ['cubic', 'orca' , 'bbr3', 'bbr1', 'astraea', 'vivace']
 BWS = [10,20,30,40,50,60,70,80,90,100]
 DELAYS = [20]
 QMULTS = [0.2,1,4]
@@ -105,7 +105,8 @@ for mult in QMULTS:
    bbr_data = summary_data[summary_data['protocol'] == 'bbr'].set_index('bandwidth')
    sage_data = summary_data[summary_data['protocol'] == 'sage'].set_index('bandwidth')
    pcc_data = summary_data[summary_data['protocol'] == 'pcc'].set_index('bandwidth')
-
+   astraea_data = summary_data[summary_data['protocol'] == 'astraea'].set_index('bandwidth')
+   
    LINEWIDTH = 0.15
    ELINEWIDTH = 0.75
    CAPTHICK = ELINEWIDTH
@@ -115,28 +116,35 @@ for mult in QMULTS:
 
    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(3,1.2))
    ax = axes
-
-
-   markers, caps, bars = ax.errorbar(cubic_data.index,cubic_data['retr_total_mean']*1448.0*8.0/(1024.0*1024.0), yerr=(cubic_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),cubic_data['retr_total_std']*1448*8/(1024*1024)),marker='x',elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,linewidth=LINEWIDTH, label='cubic')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(orca_data.index,orca_data['retr_total_mean']*1448*8/(1024*1024), yerr=(orca_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),orca_data['retr_total_std']*1448*8/(1024*1024)),marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr3_data.index,bbr3_data['retr_total_mean']*1448*8/(1024*1024), yerr=(bbr3_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),bbr_data['retr_total_std']*1448*8/(1024*1024)),marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv3')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr_data.index,bbr_data['retr_total_mean']*1448*8/(1024*1024), yerr=(bbr_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),bbr_data['retr_total_std']*1448*8/(1024*1024)),marker='.',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv1')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(sage_data.index,sage_data['retr_total_mean']*1448*8/(1024*1024), yerr=(sage_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),sage_data['retr_total_std']*1448*8/(1024*1024)),marker='*',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='sage')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(pcc_data.index,pcc_data['retr_total_mean']*1448*8/(1024*1024), yerr=(pcc_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),pcc_data['retr_total_std']*1448*8/(1024*1024)),marker='_',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='vivace')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-
-
+   
+   if 'cubic' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(cubic_data.index,cubic_data['retr_total_mean']*1448.0*8.0/(1024.0*1024.0), yerr=(cubic_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),cubic_data['retr_total_std']*1448*8/(1024*1024)),marker='x',elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,linewidth=LINEWIDTH, label='cubic')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'orca' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(orca_data.index,orca_data['retr_total_mean']*1448*8/(1024*1024), yerr=(orca_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),orca_data['retr_total_std']*1448*8/(1024*1024)),marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'bbr3' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(bbr3_data.index,bbr3_data['retr_total_mean']*1448*8/(1024*1024), yerr=(bbr3_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),bbr3_data['retr_total_std']*1448*8/(1024*1024)),marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv3')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'bbr1' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(bbr_data.index,bbr_data['retr_total_mean']*1448*8/(1024*1024), yerr=(bbr_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),bbr_data['retr_total_std']*1448*8/(1024*1024)),marker='.',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv1')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'sage' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(sage_data.index,sage_data['retr_total_mean']*1448*8/(1024*1024), yerr=(sage_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),sage_data['retr_total_std']*1448*8/(1024*1024)),marker='*',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='sage')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'vivace' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(pcc_data.index,pcc_data['retr_total_mean']*1448*8/(1024*1024), yerr=(pcc_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),pcc_data['retr_total_std']*1448*8/(1024*1024)),marker='_',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='vivace')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'astraea' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(astraea_data.index,astraea_data['retr_total_mean']*1448*8/(1024*1024), yerr=(astraea_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),astraea_data['retr_total_std']*1448*8/(1024*1024)),marker='h',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='astraea')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
    ax.set(xlabel='Bandwidth (Mbps)', ylabel='Retr. Rate (Mbps)',yscale=SCALE)
    for axis in [ax.xaxis, ax.yaxis]:
        axis.set_major_formatter(ScalarFormatter())

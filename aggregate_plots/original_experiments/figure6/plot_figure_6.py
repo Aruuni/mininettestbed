@@ -15,7 +15,7 @@ mymodule_dir = os.path.join( script_dir, '../../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 
-PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
+PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr1', 'astraea', 'vivace']
 def parse_aurora_output(file, offset):
    with open(file, 'r') as fin:
       auroraOutput = fin.read()
@@ -108,9 +108,9 @@ if __name__ == "__main__":
             COLORMAP = {'cubic': '#0C5DA5',
              'orca': '#00B945',
              'bbr3': '#FF9500',
-             'bbr': '#FF2C01',
-             'sage': '#845B97',
-             'pcc': '#686868',
+             'bbr1': '#FF2C01',
+             'astraea': '#845B97',
+             'vivace': '#686868',
              }
             LEGENDMAP = {}
             BW = 100
@@ -182,10 +182,10 @@ if __name__ == "__main__":
 
                for n in range(FLOWS):
                    if mode == 'inverse':
-                       LABEL = (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol) if n == 0 else 'cubic'
+                       LABEL = protocol if n == 0 else 'cubic'
                        COLOR = '#0C5DA5' if n == 1 else COLORMAP[protocol]
                    else:
-                       LABEL = (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol) if n == 1 else 'cubic'
+                       LABEL = protocol if n == 1 else 'cubic'
                        COLOR = '#0C5DA5' if n == 0 else COLORMAP[protocol]
 
                    ax.plot(data[protocol][n+1].index, data[protocol][n+1]['mean'], linewidth=LINEWIDTH, label=LABEL, color=COLOR)

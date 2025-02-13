@@ -14,7 +14,7 @@ sys.path.append( mymodule_dir )
 from core.config import *
 
 ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_bw_async/fifo" 
-PROTOCOLS = ['cubic', 'bbr', 'orca', 'sage', 'bbr3', 'pcc']
+PROTOCOLS = ['cubic', 'sage', 'orca', 'astraea', 'bbr3', 'vivace']
 BWS = [10,20,30,40,50,60,70,80,90,100]
 DELAYS = [20]
 QMULTS = [0.2,1,4]
@@ -92,11 +92,11 @@ for mult in QMULTS:
    cubic_data = summary_data[summary_data['protocol'] == 'cubic'].set_index('bandwidth')
    orca_data = summary_data[summary_data['protocol'] == 'orca'].set_index('bandwidth')
    bbr3_data = summary_data[summary_data['protocol'] == 'bbr3'].set_index('bandwidth')
-   bbr_data = summary_data[summary_data['protocol'] == 'bbr'].set_index('bandwidth')
+   bbr_data = summary_data[summary_data['protocol'] == 'bbr1'].set_index('bandwidth')
    sage_data = summary_data[summary_data['protocol'] == 'sage'].set_index('bandwidth')
-   pcc_data = summary_data[summary_data['protocol'] == 'pcc'].set_index('bandwidth')
-   
-   LINEWIDTH = 0.15
+   pcc_data = summary_data[summary_data['protocol'] == 'vivace'].set_index('bandwidth')
+   astraea_data = summary_data[summary_data['protocol'] == 'astraea'].set_index('bandwidth')
+   LINEWIDTH = 0.20
    ELINEWIDTH = 0.75
    CAPTHICK = ELINEWIDTH
    CAPSIZE= 2
@@ -104,26 +104,34 @@ for mult in QMULTS:
    fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.2))
    ax = axes
 
-
-   markers, caps, bars = ax.errorbar(cubic_data.index, cubic_data['goodput_ratio_20_mean'], yerr=cubic_data['goodput_ratio_20_std'],marker='x',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='cubic')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(orca_data.index,orca_data['goodput_ratio_20_mean'], yerr=orca_data['goodput_ratio_20_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr3_data.index,bbr3_data['goodput_ratio_20_mean'], yerr=bbr3_data['goodput_ratio_20_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv3')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(bbr_data.index,bbr_data['goodput_ratio_20_mean'], yerr=bbr_data['goodput_ratio_20_std'],marker='.',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv1')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(sage_data.index,sage_data['goodput_ratio_20_mean'], yerr=sage_data['goodput_ratio_20_std'],marker='*',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='sage')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-   markers, caps, bars = ax.errorbar(pcc_data.index,pcc_data['goodput_ratio_20_mean'], yerr=pcc_data['goodput_ratio_20_std'],marker='_',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='vivace')
-   [bar.set_alpha(0.5) for bar in bars]
-   [cap.set_alpha(0.5) for cap in caps]
-
+   if 'cubic' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(cubic_data.index, cubic_data['goodput_ratio_20_mean'], yerr=cubic_data['goodput_ratio_20_std'],marker='x',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='cubic')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'orca' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(orca_data.index,orca_data['goodput_ratio_20_mean'], yerr=orca_data['goodput_ratio_20_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'bbr3' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(bbr3_data.index,bbr3_data['goodput_ratio_20_mean'], yerr=bbr3_data['goodput_ratio_20_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv3')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'bbr1' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(bbr_data.index,bbr_data['goodput_ratio_20_mean'], yerr=bbr_data['goodput_ratio_20_std'],marker='.',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv1')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'sage' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(sage_data.index,sage_data['goodput_ratio_20_mean'], yerr=sage_data['goodput_ratio_20_std'],marker='*',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='sage')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'vivace' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(pcc_data.index,pcc_data['goodput_ratio_20_mean'], yerr=pcc_data['goodput_ratio_20_std'],marker='_',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='vivace')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
+   if 'astraea' in PROTOCOLS:
+      markers, caps, bars = ax.errorbar(astraea_data.index,astraea_data['goodput_ratio_20_mean'], yerr=astraea_data['goodput_ratio_20_std'],marker='2',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='astraea')
+      [bar.set_alpha(0.5) for bar in bars]
+      [cap.set_alpha(0.5) for cap in caps]
 
 
 
@@ -138,7 +146,7 @@ for mult in QMULTS:
    legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.28),columnspacing=0.8,handletextpad=0.5)# ax.grid()
 
    for format in ['pdf']:
-      plt.savefig('goodput_ratio_async_bw_20_%s.%s' % (mult, format), dpi=720)
+      plt.savefig('goodput_ratio_bw_%s.%s' % (mult, format), dpi=720)
 
 
 
