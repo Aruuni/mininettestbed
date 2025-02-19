@@ -19,7 +19,7 @@ from core.config import *
 
 
 ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_friendly_intra_rtt_async/fifo" 
-PROTOCOLS = ['cubic', 'bbr1', 'orca', 'astraea', 'bbr3', 'vivace']
+PROTOCOLS = ['cubic', 'sage', 'orca', 'astraea', 'bbr3', 'vivace']
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 QMULTS = [0.2,1,4]
@@ -111,7 +111,7 @@ for mult in QMULTS:
    #bbr1_data = summary_data[summary_data['protocol'] == 'bbr1'].set_index('delay')
    #bbr1sec_data = summary_data[summary_data['protocol'] == 'bbr-1sec'].set_index('delay')
    #bbr7sec_data = summary_data[summary_data['protocol'] == 'bbr-7sec'].set_index('delay')
-   LINEWIDTH = 0.15
+   LINEWIDTH = 0.2
    ELINEWIDTH = 0.75
    CAPTHICK = ELINEWIDTH
    CAPSIZE= 2
@@ -145,7 +145,7 @@ for mult in QMULTS:
       [bar.set_alpha(0.5) for bar in bars]
       [cap.set_alpha(0.5) for cap in caps]
    if 'astraea' in PROTOCOLS:
-      markers, caps, bars = ax.errorbar(astraea_data.index*2,astraea_data['goodput_ratio_20_mean'], yerr=astraea_data['goodput_ratio_20_std'],marker='h',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='astraea')
+      markers, caps, bars = ax.errorbar(astraea_data.index*2,astraea_data['goodput_ratio_20_mean'], yerr=astraea_data['goodput_ratio_20_std'],marker='2',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='astraea')
       [bar.set_alpha(0.5) for bar in bars]
       [cap.set_alpha(0.5) for cap in caps]
 

@@ -15,7 +15,7 @@ mymodule_dir = os.path.join( script_dir, '../../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 
-PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr1', 'astraea', 'vivace']
+PROTOCOLS = ['cubic','bbr3',  'sage', 'orca',   'vivace', 'astraea',]
 def parse_aurora_output(file, offset):
    with open(file, 'r') as fin:
       auroraOutput = fin.read()
@@ -108,9 +108,9 @@ if __name__ == "__main__":
             COLORMAP = {'cubic': '#0C5DA5',
              'orca': '#00B945',
              'bbr3': '#FF9500',
-             'bbr1': '#FF2C01',
-             'astraea': '#845B97',
-             'vivace': '#686868',
+             'sage': '#FF2C01',
+             'vivace': '#845B97',
+             'astraea': '#686868',
              }
             LEGENDMAP = {}
             BW = 100

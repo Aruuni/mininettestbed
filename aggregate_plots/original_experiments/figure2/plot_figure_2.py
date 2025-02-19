@@ -12,10 +12,12 @@ from matplotlib.lines import Line2D
 import numpy as np
 import matplotlib.patches as mpatches
 import sys
-HOME_DIR = "/home/mihai"
-
 plt.rcParams['text.usetex'] = False
 
+script_dir = os.path.dirname( __file__ )
+mymodule_dir = os.path.join( script_dir, '../../..')
+sys.path.append( mymodule_dir )
+from core.config import *
 
 
 class HandlerDashedLines(HandlerLineCollection):
@@ -62,7 +64,7 @@ class HandlerDashedLines(HandlerLineCollection):
 
 def plot_one(QMULT, RUN):
    # Plot congestion window, or sending rate
-   ROOT_PATH = "%s/mininettestbed/nooffload/results_fairness_intra_rtt_async/fifo" % HOME_DIR
+   ROOT_PATH = "%s/cctestbed/mininet/results_fairness_intra_rtt_async/fifo" % HOME_DIR
    BW = 100
    DELAY = 100
    SCALE = 'linear'
@@ -71,14 +73,14 @@ def plot_one(QMULT, RUN):
    COLOR = {'cubic': '#0C5DA5',
              'orca': '#00B945',
              'bbr3': '#FF9500',
-             'bbr': '#FF2C01',
-             'sage': '#845B97',
-             'pcc': '#686868',
+             'sage': '#FF2C01',
+             'vivace': '#845B97',
+             'astraea': '#686868',
              }
    LINESTYLE = 'dashed'
    XLIM = [0,175]
 
-   PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
+   PROTOCOLS = ['cubic', 'sage', 'orca',  'bbr3', 'vivace', 'astraea'] # 'sage',
 
    BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
    BDP_IN_PKTS = BDP_IN_BYTES / 1500
@@ -86,20 +88,29 @@ def plot_one(QMULT, RUN):
    PROTOCOL_DATA = {'cubic': {'x1': None, 'y1': None,'x2': None, 'y2': None},
                     'orca': {'x1': None, 'y1': None,'x2': None, 'y2': None},
                     'bbr3': {'x1': None, 'y1': None,'x2': None, 'y2': None},
-                    'bbr': {'x1': None, 'y1': None,'x2': None, 'y2': None},
+                    'astraea': {'x1': None, 'y1': None,'x2': None, 'y2': None},
                     'sage': {'x1': None, 'y1': None,'x2': None, 'y2': None},
-                    'pcc': {'x1': None, 'y1': None,'x2': None, 'y2': None},
+                    'vivace': {'x1': None, 'y1': None,'x2': None, 'y2': None},
                     }
    # Get the data:
    for protocol in PROTOCOLS:
       PATH = ROOT_PATH + '/Dumbell_%smbit_%sms_%spkts_0loss_2flows_22tcpbuf_%s/run%s' % (BW, DELAY, int(QMULT * BDP_IN_PKTS), protocol, RUN)
       if protocol != 'aurora':
-         if os.path.exists(PATH + '/c1_ss.csv') and os.path.exists(PATH + '/c2_ss.csv'):
-            sender1 = pd.read_csv(PATH + '/c1_ss.csv', names=['time', 'rtt', 'cwnd', 'minrtt'], header=None)
-            sender2 = pd.read_csv(PATH + '/c2_ss.csv', names=['time', 'rtt', 'cwnd', 'minrtt'], header=None)
+         if os.path.exists(PATH + '/csvs/c1_ss.csv') and os.path.exists(PATH + '/csvs/c2_ss.csv'):
+            sender1 = pd.read_csv(PATH + '/csvs/c1_ss.csv').reset_index(drop=True)
+            sender2 = pd.read_csv(PATH + '/csvs/c2_ss.csv').reset_index(drop=True)
            
-            sender1 = sender1.drop(index=0)
-            sender2 = sender2.drop(index=0)
+            sender1 = sender1[['time', 'cwnd']]
+            sender2 = sender2[['time', 'cwnd']]
+
+            sender1['time'] = sender1['time'].astype(float)
+            sender2['time'] = sender2['time'].astype(float)
+
+            sender1['time'] = sender1['time'].apply(lambda x: float(x))
+            sender2['time'] = sender2['time'].apply(lambda x: float(x))
+         else :
+            sender1 = pd.read_csv(PATH + f"/csvs/c1.csv").reset_index(drop=True)
+            sender2 = pd.read_csv(PATH + f"/csvs/c1.csv").reset_index(drop=True)
 
             sender1 = sender1[['time', 'cwnd']]
             sender2 = sender2[['time', 'cwnd']]
@@ -107,18 +118,10 @@ def plot_one(QMULT, RUN):
             sender1['time'] = sender1['time'].astype(float)
             sender2['time'] = sender2['time'].astype(float)
 
-            min_time1 = sender1['time'].min()
-            min_time2 = sender2['time'].min()
-
-            sender1['time'] = sender1['time'] - min_time1
-            sender2['time'] = sender2['time'] - min_time2
-
 
             sender1['time'] = sender1['time'].apply(lambda x: float(x))
             sender2['time'] = sender2['time'].apply(lambda x: float(x))
 
-         else:
-            print("Folder %s not found" % (PATH))
       else:
          if os.path.exists(PATH + '/csvs/c1.csv') and os.path.exists(PATH + '/csvs/c2.csv'):
             sender1 = pd.read_csv(PATH + '/csvs/c1.csv').reset_index(drop=True)
@@ -165,11 +168,13 @@ def plot_one(QMULT, RUN):
    # get the max vlue for ylim
    max_cubic_y = max(PROTOCOL_DATA['cubic']['y1'].max(), PROTOCOL_DATA['cubic']['y2'].max())
    max_orca_y = max(PROTOCOL_DATA['orca']['y1'].max(), PROTOCOL_DATA['orca']['y2'].max())
-   max_bbr_y = max(PROTOCOL_DATA['bbr']['y1'].max(), PROTOCOL_DATA['bbr']['y2'].max())
+   max_bbr_y = max(PROTOCOL_DATA['bbr3']['y1'].max(), PROTOCOL_DATA['bbr3']['y2'].max())
    max_sage_y = max(PROTOCOL_DATA['sage']['y1'].max(), PROTOCOL_DATA['sage']['y2'].max())
-   max_pcc_y = max(PROTOCOL_DATA['pcc']['y1'].max(), PROTOCOL_DATA['pcc']['y2'].max())
+   max_pcc_y = max(PROTOCOL_DATA['vivace']['y1'].max(), PROTOCOL_DATA['vivace']['y2'].max())
+   max_astraea_y = max(PROTOCOL_DATA['astraea']['y1'].max(), PROTOCOL_DATA['astraea']['y2'].max())
 
-   max_y =  max(max_cubic_y, max_orca_y, max_bbr_y, max_sage_y, max_pcc_y)
+
+   max_y =  max(max_cubic_y,  max_bbr_y, max_pcc_y, max_astraea_y)
 
 
    for i,protocol in enumerate(PROTOCOLS):

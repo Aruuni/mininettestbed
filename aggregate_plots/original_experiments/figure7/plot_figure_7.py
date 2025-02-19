@@ -108,28 +108,25 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                     bandwidth_std = None
 
                                 if protocol != 'aurora':
-                                    if os.path.exists(f"{PATH}/csvs/c{(n + 1)}_ss.csv"):
-                                        # Compute the avg and std rtt across all samples of both flows
-                                        if protocol == 'bbr3':
-                                            sender = pd.read_csv(PATH + f"/csvs/c{(n + 1)}.csv")
-                                        else:
-                                            sender = pd.read_csv(PATH + f"/csvs/c{(n + 1)}_ss.csv")
-                                       # print(PA   TH)
-                                        sender = sender[['time', 'srtt']]
-                                        sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
-
-                                        #print(sender.head(10))
-                                        # We need to resample this data to 1 Hz frequency: Truncate time value to seconds, groupby.mean()
-                                        sender['time'] = sender['time'].apply(lambda x: int(x))
-                                        sender = sender.groupby('time').mean()
-                                        if len(sender) > 0:
-                                            delay_flows.append(sender)
-                                        delay_mean = sender.mean().values[0]
-                                        delay_std = sender.std().values[0]
+                                    # Compute the avg and std rtt across all samples of both flows
+                                    if protocol == 'astraea':
+                                        sender = pd.read_csv(PATH + f"/csvs/c{(n + 1)}.csv")
                                     else:
-                                        sender = None
-                                        delay_mean = None
-                                        delay_std = None
+                                        sender = pd.read_csv(PATH + f"/csvs/c{(n + 1)}_ss.csv")
+                                    # print(PA   TH)
+                                    sender = sender[['time', 'srtt']]
+                                    print(sender.head(10))
+                                    sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
+
+                                    #print(sender.head(10))
+                                    # We need to resample this data to 1 Hz frequency: Truncate time value to seconds, groupby.mean()
+                                    sender['time'] = sender['time'].apply(lambda x: int(x))
+                                    sender = sender.groupby('time').mean()
+                                    if len(sender) > 0:
+                                        delay_flows.append(sender)
+                                    delay_mean = sender.mean().values[0]
+                                    delay_std = sender.std().values[0]
+                         
 
                                     if os.path.exists(f"{PATH}/sysstat/etcp_c{(n + 1)}.log" ):
                                         systat = pd.read_csv(f"{PATH}/sysstat/etcp_c{(n + 1)}.log", sep=';').rename(
@@ -422,9 +419,9 @@ def plot_data(data, filename, ylim=None):
     COLOR = {'cubic': '#0C5DA5',
              'orca': '#00B945',
              'bbr3': '#FF9500',
-             'bbr': '#FF2C01',
-             'sage': '#845B97',
-             'pcc': '#686868',
+             'sage': '#FF2C01',
+             'vivace': '#845B97',
+             'astraea': '#686868',
              }
 
     LINEWIDTH = 1
@@ -462,8 +459,8 @@ def plot_data(data, filename, ylim=None):
 
 if __name__ == "__main__":
     ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_aqm"
-    PROTOCOLS = ['cubic', 'bbr', 'sage', 'pcc',  'orca', 'bbr3']
-    DELAYS = [10,100]
+    PROTOCOLS = ['cubic','bbr3',  'orca',  'sage',  'vivace', 'astraea',]
+    DELAYS = [10, 100]
     RUNS = [1, 2, 3, 4, 5]
     QMULTS = [0.2,1,4]
 
@@ -481,9 +478,9 @@ if __name__ == "__main__":
     COLOR_MAP = {'cubic': '#0C5DA5',
              'orca': '#00B945',
              'bbr3': '#FF9500',
-             'bbr': '#FF2C01',
-             'sage': '#845B97',
-             'pcc': '#686868',
+             'sage': '#FF2C01',
+             'vivace': '#845B97',
+             'astraea': '#686868',
              }
     MARKER_MAP = {10: '^',
                  100: '*'}

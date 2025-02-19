@@ -12,7 +12,7 @@ mymodule_dir = os.path.join( script_dir, '../../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 
-PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
+PROTOCOLS = ['cubic', 'sage', 'orca', 'astraea', 'bbr3', 'vivace']
 
 
 def get_aqm_data(BW,aqm, delay, qmult):
@@ -55,9 +55,11 @@ def get_aqm_data(BW,aqm, delay, qmult):
         # For each flow, receivers contains a list of dataframes with a time and bandwidth column. These dataframes SHOULD have
         # exactly the same index. Now I can concatenate and compute mean and std
         for n in range(4):
-           goodput_data[protocol][n+1]['mean'] = pd.concat(receivers[n+1], axis=1).mean(axis=1)
-           goodput_data[protocol][n+1]['std'] = pd.concat(receivers[n+1], axis=1).std(axis=1)
-           goodput_data[protocol][n+1].index = pd.concat(receivers[n+1], axis=1).index
+            df = pd.concat(receivers[n+1], axis=1)
+            df = df.sort_index()  # Ensure ascending time
+            goodput_data[protocol][n+1]['mean'] = df.mean(axis=1)
+            goodput_data[protocol][n+1]['std']  = df.std(axis=1)
+            goodput_data[protocol][n+1].index  = df.index
 
     # Fetch per flow delay
     delay_data = {
@@ -65,57 +67,6 @@ def get_aqm_data(BW,aqm, delay, qmult):
         for protocol in PROTOCOLS
     }
 
-    start_time = 0
-    end_time = 100
-    for protocol in PROTOCOLS:
-        BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
-        BDP_IN_PKTS = BDP_IN_BYTES / 1500
-        senders = {1: [], 2: [], 3: [], 4: []}
-        receivers = {1: [], 2: [], 3: [], 4: []}
-        for run in RUNS:
-            PATH = ROOT_PATH + '/%s/Dumbell_%smbit_%sms_%spkts_0loss_%sflows_22tcpbuf_%s/run%s' % (
-            aqm, BW, delay, int(qmult * BDP_IN_PKTS), 4, protocol, run)
-            for n in range(4):
-                if protocol != 'aurora':
-                    if os.path.exists(PATH + '/c%s_ss.csv' % (n+1)) :
-                        # Compute the avg and std rtt across all samples of both flows
-                        sender = pd.read_csv(PATH + '/c%s_ss.csv' % (n + 1), names=['time', 'rtt', 'cwnd', 'minrtt',''], header=None)
-                        sender = sender.drop(index=0)
-                        sender['time'] = sender['time'].astype(float)
-                        sender['rtt'] = sender['rtt'].astype(float)
-
-                        min_time = sender['time'].min()
-                        sender['time'] = sender['time'] - min_time    
-
-                        sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
-
-                        sender = sender[['time', 'rtt']]
-
-                        # We need to resample this data to 1 Hz frequency: Truncate time value to seconds, groupby.mean()
-                        sender['time'] = sender['time'].apply(lambda x: int(x))
-                        sender = sender.groupby('time').mean()
-
-                        # sender = sender.drop_duplicates('time')
-                        # sender = sender.set_index('time')
-                        senders[n + 1].append(sender)
- 
-                else:
-                    if os.path.exists(PATH + '/csvs/c%s.csv' % (n+1)) :
-                        sender = pd.read_csv(PATH + '/csvs/c%s.csv' % (n+1)).reset_index(drop=True)
-                        sender = sender[['time', 'rtt']]
-                        sender = sender.rename(columns={'rtt': 'srtt'})
-                        sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
-                        sender = sender.drop_duplicates('time')
-                        sender = sender.set_index('time')
-                        senders[n + 1].append(sender)
-
-
-        # For each flow, receivers contains a list of dataframes with a time and bandwidth column. These dataframes SHOULD have
-        # exactly the same index. Now I can concatenate and compute mean and std
-        for n in range(4):
-            delay_data[protocol][n + 1]['mean'] = pd.concat(senders[n + 1], axis=1).mean(axis=1)
-            delay_data[protocol][n + 1]['std'] = pd.concat(senders[n + 1], axis=1).std(axis=1)
-            delay_data[protocol][n + 1].index = pd.concat(senders[n + 1], axis=1).index
 
     # Fetch per flow retransmissions
     retr_data = {
@@ -183,11 +134,12 @@ def get_aqm_data(BW,aqm, delay, qmult):
 
 def plot_data(data, filename, ylim=None, xlim=None):
     COLOR = {'cubic': '#0C5DA5',
-                'orca': '#00B945',
-                'bbr3': '#FF9500',
-                'bbr': '#FF2C01',
-                'sage': '#845B97',
-                'pcc': '#686868'}
+             'orca': '#00B945',
+             'bbr3': '#FF9500',
+             'sage': '#FF2C01',
+             'vivace': '#845B97',
+             'astraea': '#686868',
+             }
     LINEWIDTH = 1
     fig, axes = plt.subplots(nrows=len(PROTOCOLS), ncols=1, figsize=(8, 5), sharex=True, sharey=True)
 
@@ -229,7 +181,7 @@ def plot_data(data, filename, ylim=None, xlim=None):
 if __name__ == "__main__":
     ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_aqm"
     BW = 100
-    DELAY = 10
+    DELAY = 100
     RUNS = [1, 2, 3, 4, 5]
     QMULTS = [0.2,1,4]
     AQM = 'fifo'

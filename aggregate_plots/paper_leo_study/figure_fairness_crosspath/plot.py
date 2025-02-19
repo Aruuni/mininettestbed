@@ -3,17 +3,23 @@ import matplotlib.pyplot as plt
 from matplotlib.transforms import offset_copy
 import scienceplots
 plt.style.use('science')
-import os
+import os, sys
 from matplotlib.ticker import ScalarFormatter
 import numpy as np
 
 plt.rcParams['text.usetex'] = False
 
+script_dir = os.path.dirname( __file__ )
+mymodule_dir = os.path.join( script_dir, '../../..')
+sys.path.append( mymodule_dir )
+from core.config import *
+from core.plotting import * 
+
 
 ROOT_PATH = "/home/mihai/mininettestbed/nooffload/results_parking_lot/fifo" 
-PROTOCOLS = ['cubic', 'bbr', 'sage', 'pcc', 'orca', 'bbr3']
+PROTOCOLS = ['cubic', 'bbr1', 'bbr3', 'sage', 'astraea' ]
 BWS = [100]
-DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+DELAYS = [10]
 QMULTS = [0.2, 1 ,4]
 RUNS = [1, 2, 3, 4, 5]
 LOSSES=[0]

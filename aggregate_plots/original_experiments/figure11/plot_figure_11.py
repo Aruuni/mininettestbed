@@ -21,16 +21,16 @@ from core.config import *
 COLOR = {'cubic': '#0C5DA5',
              'orca': '#00B945',
              'bbr3': '#FF9500',
-             'bbr': '#FF2C01',
-             'sage': '#845B97',
-             'pcc': '#686868',
+             'sage': '#FF2C01',
+             'vivace': '#845B97',
+             'astraea': '#686868',
              }
 
-PROTOCOLS = ['cubic', 'orca', 'bbr3', 'bbr', 'sage', 'pcc']
+PROTOCOLS = ['cubic', 'sage', 'orca',  'bbr3', 'vivace', 'astraea'] # 'sage',
 BW = 50
 DELAY = 50
 QMULT = 1
-RUN = 12
+RUN = 25
 BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
 BDP_IN_PKTS = BDP_IN_BYTES / 1500
 start_time = 100

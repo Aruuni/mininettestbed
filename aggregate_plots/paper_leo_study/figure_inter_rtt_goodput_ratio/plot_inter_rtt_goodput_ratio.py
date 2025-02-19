@@ -10,12 +10,13 @@ import numpy as np
 plt.rcParams['text.usetex'] = False
 
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '../../../..')
+mymodule_dir = os.path.join( script_dir, '../../..')
 sys.path.append( mymodule_dir )
 from core.config import *
+from core.plotting import * 
 
 ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_inter_rtt_async/fifo" 
-PROTOCOLS = ['cubic', 'sage', 'orca', 'astraea', 'bbr3', 'vivace']
+PROTOCOLS = ['cubic', 'astraea', 'bbr3', 'bbr1', 'sage']
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 QMULTS = [0.2,1,4]
@@ -97,51 +98,56 @@ for mult in QMULTS:
    pcc_data = summary_data[summary_data['protocol'] == 'vivace'].set_index('delay')
    astraea_data = summary_data[summary_data['protocol'] == 'astraea'].set_index('delay')
 
-   LINEWIDTH = 0.20
-   ELINEWIDTH = 0.75
-   CAPTHICK = ELINEWIDTH
-   CAPSIZE= 2
 
    fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.2))
    ax = axes
-   if 'cubic' in PROTOCOLS:
-      markers, caps, bars = ax.errorbar(cubic_data.index*2, cubic_data['goodput_ratio_total_mean'], yerr=cubic_data['goodput_ratio_total_std'],marker='x',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='cubic')
-      [bar.set_alpha(0.5) for bar in bars]
-      [cap.set_alpha(0.5) for cap in caps]
-   if 'orca' in PROTOCOLS:
-      markers, caps, bars = ax.errorbar(orca_data.index*2,orca_data['goodput_ratio_total_mean'], yerr=orca_data['goodput_ratio_total_std'],marker='+',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='orca')
-      [bar.set_alpha(0.5) for bar in bars]
-      [cap.set_alpha(0.5) for cap in caps]
-   if 'bbr3' in PROTOCOLS:
-      markers, caps, bars = ax.errorbar(bbr3_data.index*2, bbr3_data['goodput_ratio_total_mean'], yerr=bbr3_data['goodput_ratio_total_std'],marker='^',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK, label='bbrv3')
-      [bar.set_alpha(0.5) for bar in bars]
-      [cap.set_alpha(0.5) for cap in caps]
-   if 'bbr1' in PROTOCOLS:
-      markers, caps, bars = ax.errorbar(bbr_data.index*2,bbr_data['goodput_ratio_total_mean'], yerr=bbr_data['goodput_ratio_total_std'],marker='.',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='bbrv1')
-      [bar.set_alpha(0.5) for bar in bars]
-      [cap.set_alpha(0.5) for cap in caps]
-   if 'sage' in PROTOCOLS:
-      markers, caps, bars = ax.errorbar(sage_data.index*2,sage_data['goodput_ratio_total_mean'], yerr=sage_data['goodput_ratio_total_std'],marker='*',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='sage')
-      [bar.set_alpha(0.5) for bar in bars]
-      [cap.set_alpha(0.5) for cap in caps]
-   if 'vivace' in PROTOCOLS:
-      markers, caps, bars = ax.errorbar(pcc_data.index*2,pcc_data['goodput_ratio_total_mean'], yerr=pcc_data['goodput_ratio_total_std'],marker='_',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='vivace')
-      [bar.set_alpha(0.5) for bar in bars]
-      [cap.set_alpha(0.5) for cap in caps]
-   if 'astraea' in PROTOCOLS:
-      markers, caps, bars = ax.errorbar(astraea_data.index*2,astraea_data['goodput_ratio_total_mean'], yerr=astraea_data['goodput_ratio_total_std'],marker='2', linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='astraea')
-      [bar.set_alpha(0.5) for bar in bars]
-      [cap.set_alpha(0.5) for cap in caps]
+
+   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'cubic'].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',   'x', 'cubic')
+   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'bbr1'].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',  '.', 'bbrv1')
+   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'bbr3'].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',   '^', 'bbrv3')
+   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'sage'].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',   '*', 'sage')
+   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'astraea'].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std','2', 'astraea')
 
    ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio')
    for axis in [ax.xaxis, ax.yaxis]:
        axis.set_major_formatter(ScalarFormatter())
+
+
+   # Build a 2-row "pyramid" legend
    handles, labels = ax.get_legend_handles_labels()
-   # remove the errorbars
-   handles = [h[0] for h in handles]
+   # Convert errorbar handles if needed
+   line_handles = [h[0] if isinstance(h, tuple) else h for h in handles]
+   legend_map   = dict(zip(labels, line_handles))
 
-   legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.28),columnspacing=0.8,handletextpad=0.5)
-   # ax.grid()
+   # Decide which protocols go top vs. bottom row
+   handles_top = [legend_map.get('cubic'), legend_map.get('bbrv1'), legend_map.get('bbrv3')]
+   labels_top  = ['cubic', 'bbrv1', 'bbrv3']
+
+   handles_bottom = [legend_map.get('sage'), legend_map.get('astraea')]
+   labels_bottom  = ['sage', 'astraea']
+
+   legend_top = plt.legend(
+      handles_top, labels_top,
+      ncol=3,
+      loc='upper center',
+      bbox_to_anchor=(0.5, 1.41),
+      columnspacing=1.0,
+      handletextpad=0.5,
+      labelspacing=0.1,
+      borderaxespad=0.0
+   )
+   plt.gca().add_artist(legend_top)
+
+   legend_bottom = plt.legend(
+      handles_bottom, labels_bottom,
+      ncol=2,
+      loc='upper center',
+      bbox_to_anchor=(0.5, 1.23),
+      columnspacing=1.0,
+      handletextpad=0.5,
+      labelspacing=0.1,
+      borderaxespad=0.0
+   )
 
 
-   plt.savefig(f"goodput_ratio_inter_rtt_{mult}_mn.pdf" , dpi=1080)
+   plt.savefig(f"goodput_ratio_inter_rtt_{mult}.pdf" , dpi=1080)

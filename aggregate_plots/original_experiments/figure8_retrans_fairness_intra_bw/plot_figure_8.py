@@ -15,7 +15,7 @@ from core.config import *
 
 
 ROOT_PATH =  f"{HOME_DIR}/cctestbed/mininet/results_fairness_bw_async/fifo" 
-PROTOCOLS = ['cubic', 'orca' , 'bbr3', 'bbr1', 'astraea', 'vivace']
+PROTOCOLS = ['cubic', 'orca' , 'bbr3', 'sage', 'vivace', 'astraea']
 BWS = [10,20,30,40,50,60,70,80,90,100]
 DELAYS = [20]
 QMULTS = [0.2,1,4]
@@ -107,7 +107,7 @@ for mult in QMULTS:
    pcc_data = summary_data[summary_data['protocol'] == 'pcc'].set_index('bandwidth')
    astraea_data = summary_data[summary_data['protocol'] == 'astraea'].set_index('bandwidth')
    
-   LINEWIDTH = 0.15
+   LINEWIDTH = 0.2
    ELINEWIDTH = 0.75
    CAPTHICK = ELINEWIDTH
    CAPSIZE= 2
@@ -142,7 +142,7 @@ for mult in QMULTS:
       [bar.set_alpha(0.5) for bar in bars]
       [cap.set_alpha(0.5) for cap in caps]
    if 'astraea' in PROTOCOLS:
-      markers, caps, bars = ax.errorbar(astraea_data.index,astraea_data['retr_total_mean']*1448*8/(1024*1024), yerr=(astraea_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),astraea_data['retr_total_std']*1448*8/(1024*1024)),marker='h',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='astraea')
+      markers, caps, bars = ax.errorbar(astraea_data.index,astraea_data['retr_total_mean']*1448*8/(1024*1024), yerr=(astraea_data[['retr_total_mean','retr_total_std']].min(axis=1)*1448*8/(1024*1024),astraea_data['retr_total_std']*1448*8/(1024*1024)),marker='2',linewidth=LINEWIDTH, elinewidth=ELINEWIDTH, capsize=CAPSIZE, capthick=CAPTHICK,label='astraea')
       [bar.set_alpha(0.5) for bar in bars]
       [cap.set_alpha(0.5) for cap in caps]
    ax.set(xlabel='Bandwidth (Mbps)', ylabel='Retr. Rate (Mbps)',yscale=SCALE)
