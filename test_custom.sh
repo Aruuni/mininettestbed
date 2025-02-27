@@ -1,7 +1,7 @@
 source common.sh
 bash setup.sh
 
-PROTOCOLS="orca"
+PROTOCOLS="sage"
 BANDWIDTHS="100"
 DELAYS="20"
 RUNS="1"

@@ -87,6 +87,9 @@ def parse_ss_output(file_path, offset=0):
 
 def parse_ss_sage_output(file_path, offset=0):
     #df = pd.read_csv(file_path)
+    estab = {
+                "state": r"\sESTAB\s",  # Match exact ESTAB state
+    }
     patterns = {
         "time": r"^(\d+\.\d+),",  # Timestamp at the beginning
         "cwnd": r"cwnd:(\d+)",
@@ -97,10 +100,12 @@ def parse_ss_sage_output(file_path, offset=0):
     data = defaultdict(list)  # Initializes a dictionary where values are lists
     with open(file_path, "r") as f:
         for line in f:
-
-
+            if not re.search(patterns["cwnd"], line):
+                print(line)
+                continue
             # Extract timestamp
             time_match = re.search(patterns["time"], line)
+
             if not time_match:
                 continue
             timestamp = float(time_match.group(1))
