@@ -29,7 +29,6 @@ class Emulation:
         self.call_second = []
         self.path = path
         self.qmonitors = []
-        self.tcp_probe = False
         self.start_time = 0
         self.orca_flows_counter = 0
         self.sage_flows_counter = 0
@@ -358,6 +357,8 @@ class Emulation:
 
         if self.sysstat:
             start_sysstat(1,self.sysstat_length,self.path) 
+            # start_sysstat(1,self.sysstat_length,self.path, self.network.get("r2a")) 
+            # start_sysstat(1,self.sysstat_length,self.path, self.network.get("r2b")) 
             # run sysstat on each sender to collect ETCP and UDP stats
             for node_name in self.sending_nodes:
                 start_sysstat(1,self.sysstat_length,self.path, self.network.get(node_name))
@@ -387,6 +388,9 @@ class Emulation:
                 monitor.terminate()
                 
         if self.sysstat:
+            # if self.network.get("r2a") is not None:
+            #     self.sending_nodes.append("r2a")
+            #     self.sending_nodes.append("r2b")
             stop_sysstat(self.path, self.sending_nodes)
 
 

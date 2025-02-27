@@ -1,11 +1,11 @@
 source common.sh
 bash setup.sh
 
-PROTOCOLS="astraea"
+PROTOCOLS="orca"
 BANDWIDTHS="100"
 DELAYS="20"
 RUNS="1"
-QMULTS="1"
+QMULTS="4"
 FLOWS="2"
 
 for bw in $BANDWIDTHS
