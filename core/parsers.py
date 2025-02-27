@@ -85,6 +85,44 @@ def parse_ss_output(file_path, offset=0):
     return df
 
 
+def parse_ss_sage_output(file_path, offset=0):
+    #df = pd.read_csv(file_path)
+    patterns = {
+        "time": r"^(\d+\.\d+),",  # Timestamp at the beginning
+        "cwnd": r"cwnd:(\d+)",
+        "srtt": r"rtt:([\d.]+)/",  # Extract srtt
+        "rttvar": r"rtt:[\d.]+/([\d.]+)",  # Extract rttvar
+        "retr": r"retrans:(\d+)/"   
+    }
+    data = defaultdict(list)  # Initializes a dictionary where values are lists
+    with open(file_path, "r") as f:
+        for line in f:
+
+
+            # Extract timestamp
+            time_match = re.search(patterns["time"], line)
+            if not time_match:
+                continue
+            timestamp = float(time_match.group(1))
+            data["time"].append(timestamp)
+
+            # Extract metrics
+            for key, pattern in patterns.items():
+                if key == "time" or key == "state":
+                    continue
+                match = re.search(pattern, line)
+                value = float(match.group(1)) if match else None
+                data[key].append(value if value is not None else 0)
+    df = pd.DataFrame(data)
+
+    if df.empty:
+        raise ValueError("No ESTAB state entries found in the input file.")
+
+    # Convert the 'time' column to relative time (seconds since the minimum timestamp)
+    min_time = df['time'].min()
+    df['time'] = df['time'] - min_time + offset
+    return df
+
 
 def parse_iperf_output(output):
     """Parse iperf output and return bandwidth.

@@ -484,11 +484,11 @@ class Emulation:
 
     def start_sage_sender(self, node_name, duration, port=5555):
         node = self.network.get(node_name)
-        sscmd = f"./ss_script.sh 0.01 {(self.path + '/' + node.name + '_ss.csv')} &"
+        sscmd = f"./core/ss/ss_script_sage.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
         printPurple(f"Sending command '{sscmd}' to host {node.name}")
         node.cmd(sscmd)
 
-        sagecmd = f"sudo -u {USERNAME}  EXPERIMENT_PATH={self.path} {SAGE_INSTALL_FOLDER}/sender.sh {port} {self.sage_flows_counter} {duration}" 
+        sagecmd = f"sudo -u {USERNAME}  EXPERIMENT_PATH={self.path} {SAGE_INSTALL_FOLDER}/sender.sh {port} {self.sage_flows_counter} {duration} {SAGE_INSTALL_FOLDER}" 
         printPurple(f"Sending command '{sagecmd}' to host {node.name}")
         node.sendCmd(sagecmd)
         
@@ -497,7 +497,7 @@ class Emulation:
     def start_sage_receiver(self, node_name, destination_name, port=5555):
         node = self.network.get(node_name)
         destination = self.network.get(destination_name)
-        sagecmd = f"sudo -u {USERNAME} {SAGE_INSTALL_FOLDER}/receiver.sh {destination.IP()} {port} {0}"
+        sagecmd = f"sudo -u {USERNAME} {SAGE_INSTALL_FOLDER}/receiver.sh {destination.IP()} {port} {0} {SAGE_INSTALL_FOLDER}"
         printPurple(f"Sending command '{sagecmd}' to host {node.name}" )
         node.sendCmd(sagecmd)
 
