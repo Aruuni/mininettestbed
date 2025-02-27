@@ -30,11 +30,11 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     qsize_in_bytes_2 = max(int(qmult * bdp_in_bytes_2), 1510)
     
     net = Mininet(topo=topo)
-    path = f"{HOME_DIR}/cctestbed/mininet/cross_traffic_fairness_inter_rtt/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes_2/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
+    path = f"{HOME_DIR}/cctestbed/mininet/results_soft_handover_fairness_inter_rtt/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes_2/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
 
     rmdirp(path)
     mkdirp(path)
-
+    printGreenFill(path)
     if (protocol == "bbr3"):
         protocol = "bbr"
     if (protocol == "vivace"):
