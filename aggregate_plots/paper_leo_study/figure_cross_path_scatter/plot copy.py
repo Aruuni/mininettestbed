@@ -62,9 +62,6 @@ def calculate_jains_index(bandwidths):
 #
 #   Rejoin utilization is computed over the interval [200, 200+delay] seconds
 #   using the average of the normalized values from interfaces r2a-eth1 and r2b-eth1.
-#
-#   Additionally, retransmissions are now also computed for the rejoin interval,
-#   so that the utilization can be corrected (subtracted) similarly to the cross interval.
 # --------------------------------------------------------------------
 def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                   flows, runs, change1):
@@ -83,15 +80,8 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                     retr_list = []
                     util_list = []
                     rejoin_util_list = []  # List for rejoin utilization averages
-                    rejoin_retr_list = []  # List for rejoin retransmission averages
 
                     for run in runs:
-                        # Define the rejoin interval for retransmission calculations
-                        rejoin_start = 200
-                        rejoin_end = 200 + delay
-                        # This list will hold rejoin retransmission values for each dumbbell/flow
-                        rejoin_retr_values = []
-
                         receivers_goodput = { i: pd.DataFrame() for i in range(1, flows*2+1) }
                         retr_values = []
                         # For each dumbbell and flow, read goodput and retransmission files
@@ -110,7 +100,7 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                                 else:
                                     print(f"File {csv_path} not found")
                                 
-                                # Read retransmission sysstat file (for both cross and rejoin intervals)
+                                # Read retransmission sysstat file
                                 sysstat_path = (f"{root_path}/{aqm}/DoubleDumbell_{bw}mbit_{delay}ms_"
                                                 f"{int(mult * BDP_IN_PKTS)}pkts_0loss_{flows}flows_22tcpbuf_"
                                                 f"{protocol}/run{run}/sysstat/etcp_c{dumbbell}_{flow_id}.log")
@@ -121,19 +111,13 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                                     retr_df.loc[:, 'timestamp'] = retr_df['timestamp'] - start_timestamp + 1
                                     retr_df = retr_df.rename(columns={'timestamp':'time'})
                                     retr_df['time'] = retr_df['time'].astype(float).astype(int)
-                                    # Compute for cross interval
-                                    cross_df = retr_df[(retr_df['time'] >= cross_start) & (retr_df['time'] < cross_end)]
-                                    cross_df = cross_df.drop_duplicates('time').set_index('time')
-                                    retr_val = (cross_df * 1500 * 8 / (1024 * 1024)).mean().values[0]
+                                    retr_df = retr_df[(retr_df['time'] >= cross_start) & (retr_df['time'] < cross_end)]
+                                    retr_df = retr_df.drop_duplicates('time').set_index('time')
+                                    # Convert retransmissions to Mbit/s (1500 bytes * 8 bits)
+                                    retr_val = (retr_df * 1500 * 8 / (1024 * 1024)).mean().values[0]
                                     retr_values.append(retr_val)
-                                    # Compute for rejoin interval
-                                    rejoin_df = retr_df[(retr_df['time'] >= rejoin_start) & (retr_df['time'] < rejoin_end)]
-                                    rejoin_df = rejoin_df.drop_duplicates('time').set_index('time')
-                                    retr_rejoin_val = (rejoin_df * 1500 * 8 / (1024 * 1024)).mean().values[0]
-                                    rejoin_retr_values.append(retr_rejoin_val)
                                 else:
                                     retr_values.append(0)
-                                    rejoin_retr_values.append(0)
 
                         # Process the dev util file for the cross interval (using r2a-eth1)
                         sysstat_path_dev = (f"{root_path}/{aqm}/DoubleDumbell_{bw}mbit_{delay}ms_"
@@ -156,6 +140,8 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                             util_list.append(0)
                         
                         # --- Compute rejoin utilization over the window [200, 200+delay] seconds ---
+                        rejoin_start = 200
+                        rejoin_end = 200 + delay
                         # r2a-eth1 rejoin (reuse the dev file if available)
                         util_rejoin_a = 0
                         if os.path.exists(sysstat_path_dev):
@@ -206,9 +192,6 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                         goodput_list.append(run_goodput)
                         run_retr = np.mean(retr_values) if retr_values else 0
                         retr_list.append(run_retr)
-                        # Compute average rejoin retransmission for this run
-                        run_retr_rejoin = np.mean(rejoin_retr_values) if rejoin_retr_values else 0
-                        rejoin_retr_list.append(run_retr_rejoin)
                     # End runs loop
 
                     cross_mean = np.mean(cross_jains_list) if cross_jains_list else 0
@@ -221,8 +204,6 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                     util_std  = np.std(util_list) if util_list else 0
                     rejoin_util_mean = np.mean(rejoin_util_list) if rejoin_util_list else 0
                     rejoin_util_std  = np.std(rejoin_util_list) if rejoin_util_list else 0
-                    retr_rejoin_mean = np.mean(rejoin_retr_list) if rejoin_retr_list else 0
-                    retr_rejoin_std  = np.std(rejoin_retr_list) if rejoin_retr_list else 0
 
                     results.append([
                         protocol, bw, delay*2, mult,
@@ -230,8 +211,7 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                         goodput_mean, goodput_std,
                         retr_mean, retr_std, 
                         util_mean, util_std,
-                        rejoin_util_mean, rejoin_util_std,
-                        retr_rejoin_mean, retr_rejoin_std
+                        rejoin_util_mean, rejoin_util_std
                     ])
 
     columns = [
@@ -240,8 +220,7 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
         'goodput_cross_mean','goodput_cross_std',
         'retr_cross_mean','retr_cross_std', 
         'util_mean', 'util_std',
-        'rejoin_util_mean', 'rejoin_util_std',
-        'retr_rejoin_mean', 'retr_rejoin_std'
+        'rejoin_util_mean', 'rejoin_util_std'
     ]
     return pd.DataFrame(results, columns=columns)
 
@@ -255,7 +234,7 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
     }
 
     CROSS_MARKER   = '^'  # triangle for Cross
-    REJOIN_MARKER  = '*'  # circle for Rejoin
+    REJOIN_MARKER  = 'o'  # circle for Rejoin
 
     for q in qmults:
         fig, ax = plt.subplots(figsize=(5, 3))  # Adjust as desired
@@ -273,10 +252,6 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
                 - sub_df['retr_cross_mean'].values
             ) / 100.0
             y_rejoin = sub_df['rejoin_util_mean'].values / 100.0
-            y_rejoin_minus_retr = (
-                sub_df['rejoin_util_mean'].values
-                - sub_df['retr_rejoin_mean'].values
-            ) / 100.0
 
             # Cross (triangle)
             ax.scatter(
@@ -301,14 +276,6 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
                 facecolors='none',
                 edgecolors=COLOR_MAP.get(prot, 'gray'),
                 alpha=1.0
-            )
-            # Rejoin minus retrans
-            ax.scatter(
-                x, y_rejoin_minus_retr,
-                marker=REJOIN_MARKER, s=60,
-                facecolors='none',
-                edgecolors=COLOR_MAP.get(prot, 'gray'),
-                alpha=0.5
             )
 
         # 2) TOP LEGEND (protocols only) - in figure coords so it’s truly above
@@ -369,6 +336,8 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
 
         plt.savefig(f"jains_vs_util_qmult_{q}.pdf", dpi=720)
         plt.close(fig)
+
+
 
 
 

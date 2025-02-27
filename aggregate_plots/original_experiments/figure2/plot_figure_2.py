@@ -64,11 +64,11 @@ class HandlerDashedLines(HandlerLineCollection):
 
 def plot_one(QMULT, RUN):
    # Plot congestion window, or sending rate
-   ROOT_PATH = "%s/cctestbed/mininet/results_fairness_intra_rtt_async/fifo" % HOME_DIR
+   ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_intra_rtt_async/fifo" 
    BW = 100
-   DELAY = 100
+   DELAY = 40
    SCALE = 'linear'
-   LINEWIDTH = 1
+   LINEWIDTH = 0.8
    FIGSIZE = (4, 3)
    COLOR = {'cubic': '#0C5DA5',
              'orca': '#00B945',
@@ -79,12 +79,10 @@ def plot_one(QMULT, RUN):
              }
    LINESTYLE = 'dashed'
    XLIM = [0,175]
-
    PROTOCOLS = ['cubic', 'sage', 'orca',  'bbr3', 'vivace', 'astraea'] # 'sage',
 
    BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
    BDP_IN_PKTS = BDP_IN_BYTES / 1500
-
    PROTOCOL_DATA = {'cubic': {'x1': None, 'y1': None,'x2': None, 'y2': None},
                     'orca': {'x1': None, 'y1': None,'x2': None, 'y2': None},
                     'bbr3': {'x1': None, 'y1': None,'x2': None, 'y2': None},
@@ -207,8 +205,9 @@ def plot_one(QMULT, RUN):
 
    PROTOCOLS.append('optimal')
    fig.legend(linecollections, PROTOCOLS, handler_map={type(lc): HandlerDashedLines()},
-             handlelength=1, handleheight=0.5, ncol=4, columnspacing=0.8,handletextpad=0.5, loc='upper center', bbox_to_anchor=(0.5, 0.98))
+             handlelength=1, handleheight=0.5, ncol=3, columnspacing=2,handletextpad=0.5, loc='upper center', bbox_to_anchor=(0.5, 1.16))
 
+   
    for format in [ 'pdf']:
       plt.savefig("sending_%srtt_%sqmult_run%s.%s" % (DELAY*2, QMULT, RUN, format), dpi=1080)
 

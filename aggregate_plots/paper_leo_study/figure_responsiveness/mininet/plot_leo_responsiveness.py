@@ -59,14 +59,14 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
 
 
 COLOR = {'cubic': '#0C5DA5',
-             'orca': '#00B945',
+             'bbr1': '#00B945',
              'bbr3': '#FF9500',
-             'bbr1': '#FF2C01',
-             'vivace': '#845B97',
+             'sage': '#FF2C01',
+             'orca': '#845B97',
              'astraea': '#686868',
              }
 
-PROTOCOLS = ['cubic', 'bbr1', 'bbr3', 'astraea']
+PROTOCOLS = ['cubic', 'astraea', 'bbr3', 'bbr1', 'sage']
 
 BW = 50
 DELAY = 50
