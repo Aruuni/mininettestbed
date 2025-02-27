@@ -101,7 +101,6 @@ def parse_ss_sage_output(file_path, offset=0):
     with open(file_path, "r") as f:
         for line in f:
             if not re.search(patterns["cwnd"], line):
-                print(line)
                 continue
             # Extract timestamp
             time_match = re.search(patterns["time"], line)

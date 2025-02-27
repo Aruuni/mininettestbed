@@ -357,8 +357,9 @@ class Emulation:
 
         if self.sysstat:
             start_sysstat(1,self.sysstat_length,self.path) 
-            # start_sysstat(1,self.sysstat_length,self.path, self.network.get("r2a")) 
-            # start_sysstat(1,self.sysstat_length,self.path, self.network.get("r2b")) 
+            if any("r2a" in config.node1 for config in self.network_config):
+                start_sysstat(1,self.sysstat_length,self.path, self.network.get("r2a")) 
+                start_sysstat(1,self.sysstat_length,self.path, self.network.get("r2b")) 
             # run sysstat on each sender to collect ETCP and UDP stats
             for node_name in self.sending_nodes:
                 start_sysstat(1,self.sysstat_length,self.path, self.network.get(node_name))
@@ -388,9 +389,9 @@ class Emulation:
                 monitor.terminate()
                 
         if self.sysstat:
-            # if self.network.get("r2a") is not None:
-            #     self.sending_nodes.append("r2a")
-            #     self.sending_nodes.append("r2b")
+            if any("r2a" in config.node1 for config in self.network_config):
+                self.sending_nodes.append("r2a")
+                self.sending_nodes.append("r2b")
             stop_sysstat(self.path, self.sending_nodes)
 
 

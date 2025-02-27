@@ -54,7 +54,6 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         network_config.append(NetworkConf(f'c1_{i+1}', 'r1a', None, 50, 3*bdp_in_bytes_1, False, 'fifo', loss))
         network_config.append(NetworkConf(f'c2_{i+1}', 'r1b', None, 2*delay, 3*bdp_in_bytes_2, False, 'fifo', loss))
 
-    printDebug3(network_config)
     traffic_config = [
         TrafficConf(f'c1_{i+1}', f'x1_{i+1}', 0, duration, protocol) for i in range(n_flows)
     ] + [
