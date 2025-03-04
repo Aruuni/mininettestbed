@@ -85,7 +85,7 @@ values, base = np.histogram(optimals, bins=BINS)
 # evaluate the cumulative
 cumulative = np.cumsum(values)
 # plot the cumulative function
-ax.plot(base[:-1], cumulative/50*100, c='black')
+ax.plot(base[:-1], cumulative/50*100, c='black', label="optimal")
 
 for protocol in PROTOCOLS:
     avg_goodputs = bw_rtt_data[bw_rtt_data['protocol'] == protocol]['average_goodput']

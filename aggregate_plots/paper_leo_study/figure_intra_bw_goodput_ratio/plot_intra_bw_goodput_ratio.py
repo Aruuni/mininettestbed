@@ -101,11 +101,11 @@ for mult in QMULTS:
    fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.2))
    ax = axes
 
-   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'cubic'].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',   'x', 'cubic')
-   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'bbr1'].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',  '.', 'bbrv1')
-   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'bbr3'].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',   '^', 'bbrv3')
-   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'sage'].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',   '*', 'sage')
-   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'astraea'].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std','2', 'astraea')
+   plot_points_bw(ax, summary_data[summary_data['protocol'] == 'cubic'].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',   'x', 'cubic')
+   plot_points_bw(ax, summary_data[summary_data['protocol'] == 'bbr1'].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',  '.', 'bbrv1')
+   plot_points_bw(ax, summary_data[summary_data['protocol'] == 'bbr3'].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',   '^', 'bbrv3')
+   plot_points_bw(ax, summary_data[summary_data['protocol'] == 'sage'].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',   '*', 'sage')
+   plot_points_bw(ax, summary_data[summary_data['protocol'] == 'astraea'].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std','2', 'astraea')
 
 
    ax.set(yscale='linear',xlabel='Bandwidth (Mbps)', ylabel='Goodput Ratio')
