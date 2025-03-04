@@ -140,6 +140,7 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                                             f"{int(mult * BDP_IN_PKTS)}pkts_0loss_{flows}flows_22tcpbuf_"
                                             f"{protocol}/run{run}/sysstat/dev_r2a.log")
                         if os.path.exists(sysstat_path_dev):
+                            print(sysstat_path_dev)
                             df_dev = pd.read_csv(sysstat_path_dev, sep=';').rename(columns={"# hostname": "hostname"})
                             util = df_dev[['timestamp', 'IFACE', 'txkB/s', '%ifutil']]
                             start_timestamp = util['timestamp'].iloc[0]
@@ -148,8 +149,17 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                             util['time'] = util['time'].apply(lambda x: int(float(x)))
                             util_if = util[util['IFACE'] == "r2a-eth1"]
                             util_if = util_if[['time', 'txkB/s']].set_index('time')
+                            print(util_if)
+                            
                             # Convert txkB/s to Mbit/s
                             util_if['txkB/s'] = util_if['txkB/s'] * 8 / 1024
+                            print(protocol)
+                            print(util_list)
+
+                            # Drop duplicate indices (keeping the first occurrence)
+                            util_if = util_if[~util_if.index.duplicated(keep='first')]
+                            
+                            # Reindex the 'txkB/s' series over the desired range
                             util_series = util_if['txkB/s'].reindex(range(cross_start, cross_end), fill_value=0)
                             util_list.append(util_series.mean())
                         else:
@@ -168,6 +178,7 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                             util_rejoin_a_df = util_rejoin_a_df[util_rejoin_a_df['IFACE'] == "r2a-eth1"]
                             util_rejoin_a_df = util_rejoin_a_df[['time', 'txkB/s']].set_index('time')
                             util_rejoin_a_df['txkB/s'] = util_rejoin_a_df['txkB/s'] * 8 / 1024
+                            util_rejoin_a_df = util_rejoin_a_df[~util_rejoin_a_df.index.duplicated(keep='first')]
                             util_series_a = util_rejoin_a_df['txkB/s'].reindex(range(rejoin_start, rejoin_end), fill_value=0)
                             util_rejoin_a = util_series_a.mean()
                         # r2b-eth1 rejoin from a separate dev file
@@ -176,6 +187,7 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                                                 f"{int(mult * BDP_IN_PKTS)}pkts_0loss_{flows}flows_22tcpbuf_"
                                                 f"{protocol}/run{run}/sysstat/dev_r2b.log")
                         if os.path.exists(sysstat_path_dev_r2b):
+
                             df_dev_rejoin_b = pd.read_csv(sysstat_path_dev_r2b, sep=';').rename(columns={"# hostname": "hostname"})
                             util_rejoin_b_df = df_dev_rejoin_b[['timestamp', 'IFACE', 'txkB/s', '%ifutil']]
                             start_timestamp_b = util_rejoin_b_df['timestamp'].iloc[0]
@@ -247,12 +259,13 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
 
 
 def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
-    COLOR_MAP = {
-        'cubic':   '#0C5DA5',
-        'bbr1':    '#00B945',
-        'bbr3':    '#FF9500',
-        'astraea': '#686868',
-    }
+    COLOR_MAP = {'cubic': '#0C5DA5',
+             'bbr1': '#00B945',
+             'bbr3': '#FF9500',
+             'sage': '#FF2C01',
+             'orca': '#845B97',
+             'astraea': '#686868',
+             }
 
     CROSS_MARKER   = '^'  # triangle for Cross
     REJOIN_MARKER  = '*'  # circle for Rejoin
@@ -380,7 +393,7 @@ if __name__ == "__main__":
     BWS = [100]       # in Mbit/s
     DELAYS = [10]     # base delays in ms; final stored as [20,40] in DF
     QMULTS = [0.2,1,4]
-    PROTOCOLS = ['cubic','bbr1','bbr3','astraea']
+    PROTOCOLS = ['cubic','bbr1','bbr3','astraea', 'sage']
     FLOWS = 2
     RUNS = [1,2,3,4,5]
     CHANGE1 = 100     # cross interval start time
