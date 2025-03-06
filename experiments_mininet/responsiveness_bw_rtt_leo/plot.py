@@ -32,7 +32,7 @@ def plot_run(*args):
 
 if __name__ == '__main__':
 
-    PROTOCOLS = ['bbr', 'cubic',  'pcc' , 'bbr3', 'orca', 'sage']
+    PROTOCOLS = ['bbr1', 'cubic',  'astraea', 'bbr3', 'orca', 'sage', 'vivace']
 
     BWS = [50]
     DELAYS = [50]

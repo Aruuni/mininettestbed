@@ -11,18 +11,12 @@ pd.set_option('display.max_rows', None)
 
 from matplotlib.patches import Ellipse
 import matplotlib.transforms as transforms
-
-# --------------------------------------------------------------------
-# Append project module path and import configuration
-# --------------------------------------------------------------------
 script_dir = os.path.dirname(__file__)
 mymodule_dir = os.path.join(script_dir, '../../..')
 sys.path.append(mymodule_dir)
 from core.config import *  # e.g. HOME_DIR, etc.
 
-# --------------------------------------------------------------------
-# Confidence Ellipse (from script 1)
-# --------------------------------------------------------------------
+
 def confidence_ellipse(x, y, ax, n_std=1.0, facecolor='none', **kwargs):
     if x.size != y.size:
         raise ValueError("x and y must be the same size")
@@ -46,26 +40,12 @@ def confidence_ellipse(x, y, ax, n_std=1.0, facecolor='none', **kwargs):
     ellipse.set_transform(transf + ax.transData)
     return ax.add_patch(ellipse)
 
-# --------------------------------------------------------------------
-# Jain's Fairness Index function
-# --------------------------------------------------------------------
 def calculate_jains_index(bandwidths):
     n = len(bandwidths)
     sum_bw = sum(bandwidths)
     sum_bw_sq = sum(bw**2 for bw in bandwidths)
     return (sum_bw**2) / (n * sum_bw_sq) if sum_bw_sq != 0 else 0
 
-# --------------------------------------------------------------------
-# data_to_dd_df:
-#   Computes Jain's fairness index, total throughput, average retransmission,
-#   and rejoin utilization.
-#
-#   Rejoin utilization is computed over the interval [200, 200+delay] seconds
-#   using the average of the normalized values from interfaces r2a-eth1 and r2b-eth1.
-#
-#   Additionally, retransmissions are now also computed for the rejoin interval,
-#   so that the utilization can be corrected (subtracted) similarly to the cross interval.
-# --------------------------------------------------------------------
 def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                   flows, runs, change1):
 
@@ -382,10 +362,6 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
 
         plt.savefig(f"jains_vs_util_qmult_{q}.pdf", dpi=720)
         plt.close(fig)
-
-
-
-
 
 if __name__ == "__main__":
     ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_soft_handover_fairness_inter_rtt"

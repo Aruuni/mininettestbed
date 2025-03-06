@@ -63,8 +63,9 @@ COLOR = {'cubic': '#0C5DA5',
              'bbr3': '#FF9500',
              'sage': '#FF2C01',
              'orca': '#845B97',
-             'astraea': '#686868',
+             'astraea': '#845B97',
              }
+
 
 PROTOCOLS = ['cubic', 'astraea', 'bbr3', 'bbr1', 'sage']
 

@@ -25,14 +25,14 @@ def plot_run(*args):
     qsize_in_bytes = max(int(qmult * fixed_bdp_in_bytes), 1500)
 
     path = "%s/cctestbed/mininet/results_parking_lot/%s/%s_%smbit_%sms_%spkts_%sloss_%sflows_%stcpbuf_%s/run%s" % (HOME_DIR,aqm, topology, bw, delay, int(qsize_in_bytes/1500), loss, n_flows, tcp_buffer_mult, protocol, run)
-    
+    print(path)
 
     plot_all_mn(path)
 
     
 if __name__ == '__main__':
 
-    PROTOCOLS = ['bbr', 'cubic',  'pcc' , 'bbr3', 'orca', 'sage']
+    PROTOCOLS = ['bbr1', 'cubic',  'astraea', 'bbr3', 'orca', 'sage', 'vivace']
     #PROTOCOLS = ['pcc'] # , 'bbr3', 'orca', 'sage']
 
     BWS = [100]

@@ -120,7 +120,7 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
 
                                     #print(sender.head(10))
                                     # We need to resample this data to 1 Hz frequency: Truncate time value to seconds, groupby.mean()
-                                    sender['time'] = sender['time'].apply(lambda x: int(x))
+                                    # sender['time'] = sender['time'].apply(lambda x: int(x))
                                     sender = sender.groupby('time').mean()
                                     if len(sender) > 0:
                                         delay_flows.append(sender)
@@ -162,7 +162,7 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                         sender = sender.rename(columns={'rtt': 'srtt'})
                                         sender = sender[(sender['time'] >= (start_time + n * 25)) & (
                                                     sender['time'] <= (end_time + n * 25))]
-                                        sender['time'] = sender['time'].apply(lambda x: int(x))
+                                        # sender['time'] = sender['time'].apply(lambda x: int(x))
                                         sender = sender.drop_duplicates('time')
                                         sender = sender.set_index('time')
                                         if len(sender) > 0:
@@ -323,7 +323,7 @@ def get_aqm_data(aqm, delay, qmult):
                 if protocol != 'aurora':
                     if os.path.exists(PATH + f"/csvs/c{(n+1)}_ss.csv") :
                         # Compute the avg and std rtt across all samples of both flows
-                        sender = pd.read_csv(PATH + f"/csvs/c{(n+1)}_ss.csv")
+                        sender = pd.read_csv(PATH + f"/csvs/c{(n+1)}_ss.csv")   
                         sender = sender.drop(index=0)
 
                         sender = sender[['time', 'srtt']]
@@ -333,7 +333,7 @@ def get_aqm_data(aqm, delay, qmult):
                         sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
 
                         # We need to resample this data to 1 Hz frequency: Truncate time value to seconds, groupby.mean()
-                        sender['time'] = sender['time'].apply(lambda x: int(x))
+                        # sender['time'] = sender['time'].apply(lambda x: int(x))
                         sender = sender.groupby('time').mean()
 
                         # sender = sender.drop_duplicates('time')
@@ -504,4 +504,4 @@ if __name__ == "__main__":
         axes.set( ylabel="Norm. Throughput", xlabel="Norm. Delay", ylim=[0,1])
         axes.invert_xaxis()
         for format in ['pdf']:
-            plt.savefig('%sqmult_scatter1_and_2.%s' % (CONTROL_VAR,format), dpi=720)
+            plt.savefig('%sqmult_scatter1.%s' % (CONTROL_VAR,format), dpi=720)

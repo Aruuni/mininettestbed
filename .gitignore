@@ -13,3 +13,4 @@ tcp_tracing/*
 *.png
 *.pdf
 *.pyc
+*.csv
