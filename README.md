@@ -46,3 +46,10 @@ To run them all, just execute
 sudo ./run_rexperiments.sh
 ```
 
+
+
+running th pox switch 
+
+```bash 
+
+```
