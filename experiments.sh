@@ -166,7 +166,7 @@ bash setup.sh
 
 
 # PROTOCOLS="bbr cubic pcc"
-PROTOCOLS="astraea orca bbr1 bbr3 cubic vivace"
+# PROTOCOLS="astraea orca bbr1 bbr3 cubic vivace"
 
 
 
@@ -179,39 +179,38 @@ PROTOCOLS="astraea orca bbr1 bbr3 cubic vivace"
 # aSteps="5 15 25 35 45"
 # hSTEPS="5 10 15 20 25 30 35 40 45 50"
 
-STEPS="10 20 30 40 50 60 70 80 90 100"
-HOPS="3 5 6"
-RUNS="1 2 3 4 5"
+# STEPS="50 60 70 80 90 100"
+# HOPS="3 5 6"
+# RUNS="1 2 3 4 5"
 
-# PARKING LOT TOPOLOGY INTRA RTT
-for del in $STEPS
-do
-    for hop in $HOPS
-    do
-        for protocol in $PROTOCOLS
-        do
-            for run in $RUNS
-            do
-                run experiments_mininet/fairness_parking_lot_hop_count/experiment_parking__lot_hop_count.py $del "100" "1" $protocol $run "fifo" 0 $hop
-            done
-        done
-    done
-done
-
-
-
-
-
-
-
-
-
-
-
-
-
-# # Fairness Cross path Inter
+# # PARKING LOT TOPOLOGY INTRA RTT
 # for del in $STEPS
+# do
+#     for hop in $HOPS
+#     do
+#         for protocol in $PROTOCOLS
+#         do
+#             for run in $RUNS
+#             do
+#                 run experiments_mininet/fairness_parking_lot_hop_count/experiment_parking__lot_hop_count.py $del "100" "1" $protocol $run "fifo" 0 $hop
+#             done
+#         done
+#     done
+# done
+
+
+
+
+
+
+
+
+# PROTOCOLS="astraea orca bbr1 bbr3 cubic vivace"
+# aSteps="35"
+# QMULTS="0.2 1 4"
+# RUNS="1 2 3 4 5"
+# Fairness Cross path Inter
+# for del in $aSteps
 # do
 #     for qmult in $QMULTS
 #     do
@@ -224,3 +223,9 @@ done
 #         done
 #     done
 # done
+
+
+
+# LeoEM experiments
+
+run experiments_mininet/LeoEM/emulator.py Starlink_NY_LDN_15_ISL_path.log [0,10] 100 10000 "bbr" 1 200

@@ -20,7 +20,7 @@ COLOR = {'cubic': '#0C5DA5',
              'bbr3': '#FF9500',
              'sage': '#FF2C01',
              'orca': '#845B97',
-             'astraea': '#686868',
+             'astraea': '#845B97',
              }
 
 # Parameters
@@ -141,7 +141,7 @@ fig, ax = plt.subplots(figsize=(3, 1.5))
 optimals = rtt_data_bw_rtt[rtt_data_bw_rtt['protocol'] == 'cubic']['optimal_srtt']
 values, base = np.histogram(optimals, bins=BINS)
 cumulative = np.cumsum(values)
-ax.plot(base[:-1], cumulative/50*100, c='black', label="optimal")
+ax.plot(base[:-1], cumulative/50*100, c='black', label="base rtt")
 # Optimal RTT 
 
 

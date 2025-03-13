@@ -54,7 +54,7 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
         for bw in bws:
             for delay in delays:
                 cross_start = change1
-                cross_end = change1 + 50  # cross interval duration remains 50 seconds
+                cross_end = change1 + delay  # cross interval duration remains 50 seconds
                 for protocol in protocols:
                     BDP_IN_BYTES = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
                     BDP_IN_PKTS = BDP_IN_BYTES / 1500
