@@ -16,7 +16,6 @@ mymodule_dir = os.path.join(script_dir, '../../..')
 sys.path.append(mymodule_dir)
 from core.config import *  # e.g. HOME_DIR, etc.
 
-
 def confidence_ellipse(x, y, ax, n_std=1.0, facecolor='none', **kwargs):
     if x.size != y.size:
         raise ValueError("x and y must be the same size")
@@ -69,16 +68,13 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                         # Define the rejoin interval for retransmission calculations
                         rejoin_start = 200
                         rejoin_end = 200 + delay
-                        # This list will hold rejoin retransmission values for each dumbbell/flow
                         rejoin_retr_values = []
 
                         receivers_goodput = { i: pd.DataFrame() for i in range(1, flows*2+1) }
                         retr_values = []
-                        # For each dumbbell and flow, read goodput and retransmission files
                         for dumbbell in range(1, 3):
                             for flow_id in range(1, flows+1):
                                 real_flow_id = flow_id + flows*(dumbbell-1)
-                                # Read goodput CSV
                                 csv_path = (f"{root_path}/{aqm}/DoubleDumbell_{bw}mbit_{delay}ms_"
                                             f"{int(mult * BDP_IN_PKTS)}pkts_0loss_{flows}flows_22tcpbuf_"
                                             f"{protocol}/run{run}/csvs/x{dumbbell}_{flow_id}.csv")
@@ -90,7 +86,6 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                                 else:
                                     print(f"File {csv_path} not found")
                                 
-                                # Read retransmission sysstat file (for both cross and rejoin intervals)
                                 sysstat_path = (f"{root_path}/{aqm}/DoubleDumbell_{bw}mbit_{delay}ms_"
                                                 f"{int(mult * BDP_IN_PKTS)}pkts_0loss_{flows}flows_22tcpbuf_"
                                                 f"{protocol}/run{run}/sysstat/etcp_c{dumbbell}_{flow_id}.log")
@@ -101,12 +96,10 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                                     retr_df.loc[:, 'timestamp'] = retr_df['timestamp'] - start_timestamp + 1
                                     retr_df = retr_df.rename(columns={'timestamp':'time'})
                                     retr_df['time'] = retr_df['time'].astype(float).astype(int)
-                                    # Compute for cross interval
                                     cross_df = retr_df[(retr_df['time'] >= cross_start) & (retr_df['time'] < cross_end)]
                                     cross_df = cross_df.drop_duplicates('time').set_index('time')
                                     retr_val = (cross_df * 1500 * 8 / (1024 * 1024)).mean().values[0]
                                     retr_values.append(retr_val)
-                                    # Compute for rejoin interval
                                     rejoin_df = retr_df[(retr_df['time'] >= rejoin_start) & (retr_df['time'] < rejoin_end)]
                                     rejoin_df = rejoin_df.drop_duplicates('time').set_index('time')
                                     retr_rejoin_val = (rejoin_df * 1500 * 8 / (1024 * 1024)).mean().values[0]
@@ -115,12 +108,10 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                                     retr_values.append(0)
                                     rejoin_retr_values.append(0)
 
-                        # Process the dev util file for the cross interval (using r2a-eth1)
                         sysstat_path_dev = (f"{root_path}/{aqm}/DoubleDumbell_{bw}mbit_{delay}ms_"
                                             f"{int(mult * BDP_IN_PKTS)}pkts_0loss_{flows}flows_22tcpbuf_"
                                             f"{protocol}/run{run}/sysstat/dev_r2a.log")
                         if os.path.exists(sysstat_path_dev):
-                            print(sysstat_path_dev)
                             df_dev = pd.read_csv(sysstat_path_dev, sep=';').rename(columns={"# hostname": "hostname"})
                             util = df_dev[['timestamp', 'IFACE', 'txkB/s', '%ifutil']]
                             start_timestamp = util['timestamp'].iloc[0]
@@ -129,24 +120,14 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                             util['time'] = util['time'].apply(lambda x: int(float(x)))
                             util_if = util[util['IFACE'] == "r2a-eth1"]
                             util_if = util_if[['time', 'txkB/s']].set_index('time')
-                            print(util_if)
                             
-                            # Convert txkB/s to Mbit/s
                             util_if['txkB/s'] = util_if['txkB/s'] * 8 / 1024
-                            print(protocol)
-                            print(util_list)
-
-                            # Drop duplicate indices (keeping the first occurrence)
                             util_if = util_if[~util_if.index.duplicated(keep='first')]
-                            
-                            # Reindex the 'txkB/s' series over the desired range
                             util_series = util_if['txkB/s'].reindex(range(cross_start, cross_end), fill_value=0)
                             util_list.append(util_series.mean())
                         else:
                             util_list.append(0)
                         
-                        # --- Compute rejoin utilization over the window [200, 200+delay] seconds ---
-                        # r2a-eth1 rejoin (reuse the dev file if available)
                         util_rejoin_a = 0
                         if os.path.exists(sysstat_path_dev):
                             df_dev_rejoin_a = pd.read_csv(sysstat_path_dev, sep=';').rename(columns={"# hostname": "hostname"})
@@ -161,13 +142,11 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                             util_rejoin_a_df = util_rejoin_a_df[~util_rejoin_a_df.index.duplicated(keep='first')]
                             util_series_a = util_rejoin_a_df['txkB/s'].reindex(range(rejoin_start, rejoin_end), fill_value=0)
                             util_rejoin_a = util_series_a.mean()
-                        # r2b-eth1 rejoin from a separate dev file
                         util_rejoin_b = 0
                         sysstat_path_dev_r2b = (f"{root_path}/{aqm}/DoubleDumbell_{bw}mbit_{delay}ms_"
                                                 f"{int(mult * BDP_IN_PKTS)}pkts_0loss_{flows}flows_22tcpbuf_"
                                                 f"{protocol}/run{run}/sysstat/dev_r2b.log")
                         if os.path.exists(sysstat_path_dev_r2b):
-
                             df_dev_rejoin_b = pd.read_csv(sysstat_path_dev_r2b, sep=';').rename(columns={"# hostname": "hostname"})
                             util_rejoin_b_df = df_dev_rejoin_b[['timestamp', 'IFACE', 'txkB/s', '%ifutil']]
                             start_timestamp_b = util_rejoin_b_df['timestamp'].iloc[0]
@@ -177,13 +156,12 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                             util_rejoin_b_df = util_rejoin_b_df[util_rejoin_b_df['IFACE'] == "r2b-eth1"]
                             util_rejoin_b_df = util_rejoin_b_df[['time', 'txkB/s']].set_index('time')
                             util_rejoin_b_df['txkB/s'] = util_rejoin_b_df['txkB/s'] * 8 / 1024
+                            util_rejoin_b_df = util_rejoin_b_df[~util_rejoin_b_df.index.duplicated(keep='first')]
                             util_series_b = util_rejoin_b_df['txkB/s'].reindex(range(rejoin_start, rejoin_end), fill_value=0)
                             util_rejoin_b = util_series_b.mean()
-                        # Average the two rejoin utilizations
                         avg_rejoin_util = (util_rejoin_a + util_rejoin_b) / 2
                         rejoin_util_list.append(avg_rejoin_util)
 
-                        # Compute Jain's fairness for this run using the goodput data
                         cross_averages = []
                         for f_id in range(1, flows*2+1):
                             df_flow = receivers_goodput[f_id]
@@ -198,7 +176,6 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                         goodput_list.append(run_goodput)
                         run_retr = np.mean(retr_values) if retr_values else 0
                         retr_list.append(run_retr)
-                        # Compute average rejoin retransmission for this run
                         run_retr_rejoin = np.mean(rejoin_retr_values) if rejoin_retr_values else 0
                         rejoin_retr_list.append(run_retr_rejoin)
                     # End runs loop
@@ -223,7 +200,12 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                         retr_mean, retr_std, 
                         util_mean, util_std,
                         rejoin_util_mean, rejoin_util_std,
-                        retr_rejoin_mean, retr_rejoin_std
+                        retr_rejoin_mean, retr_rejoin_std,
+                        np.asarray(cross_jains_list, dtype=np.float32), 
+                        np.asarray(util_list, dtype=np.float32),
+                        np.asarray(rejoin_util_list, dtype=np.float32),
+                        np.asarray(retr_list, dtype=np.float32),
+                        np.asarray(rejoin_retr_list, dtype=np.float32)
                     ])
 
     columns = [
@@ -233,19 +215,21 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
         'retr_cross_mean','retr_cross_std', 
         'util_mean', 'util_std',
         'rejoin_util_mean', 'rejoin_util_std',
-        'retr_rejoin_mean', 'retr_rejoin_std'
+        'retr_rejoin_mean', 'retr_rejoin_std',
+        'fairness_cross_list', 'util_list',
+        'rejoin_util_list', 'retr_list',
+        'rejoin_retr_list'
     ]
     return pd.DataFrame(results, columns=columns)
 
-
 def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
     COLOR_MAP = {'cubic': '#0C5DA5',
-             'bbr1': '#00B945',
-             'bbr3': '#FF9500',
-             'sage': '#FF2C01',
-             'orca': '#845B97',
-             'astraea': '#686868',
-             }
+                 'bbr1': '#00B945',
+                 'bbr3': '#FF9500',
+                 'sage': '#FF2C01',
+                 'orca': '#845B97',
+                 'astraea': '#686868',
+                 }
 
     CROSS_MARKER   = '^'  # triangle for Cross
     REJOIN_MARKER  = '*'  # circle for Rejoin
@@ -272,6 +256,14 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
             ) / 100.0
 
             # Cross (triangle)
+            ellipseX =  sub_df['fairness_cross_list'].values[0]
+            ellipseYCross =  sub_df['util_list'].values[0].flatten()/100
+            ellipseYRejoin =  sub_df['rejoin_util_list'].values[0].flatten()/100
+
+            confidence_ellipse(ellipseX, ellipseYRejoin, ax, facecolor=COLOR_MAP.get(prot, 'gray'), edgecolor='none', alpha=0.6)
+            confidence_ellipse(ellipseX, ellipseYCross, ax, facecolor=COLOR_MAP.get(prot, 'gray'), edgecolor='none', alpha=0.6)
+
+
             ax.scatter(
                 x, y_cross,
                 marker=CROSS_MARKER, s=60,
@@ -303,12 +295,19 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
                 edgecolors=COLOR_MAP.get(prot, 'gray'),
                 alpha=0.5
             )
+            
+            # Add a confidence ellipse around the "Cross" points
+            if len(x) > 1:
+                confidence_ellipse(
+                    x, y_cross, ax, n_std=1,
+                    edgecolor=COLOR_MAP.get(prot, 'gray'),
+                    linestyle='--'
+                )
 
         # 2) TOP LEGEND (protocols only) - in figure coords so it’s truly above
         protocol_handles = []
         protocol_labels  = []
         for prot in sorted(df['protocol'].unique()):
-            # Dummy handle: unfilled circle in protocol color
             handle = ax.scatter(
                 [], [],
                 marker='o', s=80,
@@ -321,11 +320,10 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
         top_legend = ax.legend(
             protocol_handles, protocol_labels,
             loc='center',
-            bbox_to_anchor=(0.5, 0.92),  # well above axes
-            bbox_transform=fig.transFigure,  # <--- key!
+            bbox_to_anchor=(0.5, 0.92),
+            bbox_transform=fig.transFigure,
             ncol=4
         )
-        # We add this legend to the figure (it’s already in figure coords)
         ax.add_artist(top_legend)
 
         # 3) IN-PLOT LEGEND: Cross vs Rejoin
@@ -348,16 +346,13 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
         )
         ax.add_artist(shape_legend)
 
-        # 4) Style and layout
         ax.set_xlabel("Jain's Fairness Index")
         ax.set_ylabel("Norm. Throughput")
         ax.set_xlim([0.6, 1.05])
         ax.set_ylim([0.5, 1.05])
         ax.grid(True)
 
-        # Make sure there's enough space at the top for the protocol legend
         fig.tight_layout()
-        # Then move the top margin down a bit so legend is visible
         plt.subplots_adjust(top=0.85)
 
         plt.savefig(f"jains_vs_util_qmult_{q}.pdf", dpi=720)
@@ -367,19 +362,14 @@ if __name__ == "__main__":
     ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_soft_handover_fairness_inter_rtt"
     AQM = "fifo"
     BWS = [100]       # in Mbit/s
-    DELAYS = [10]     # base delays in ms; final stored as [20,40] in DF
+    DELAYS = [10]     # one way delays in ms; final stored two way in DF
     QMULTS = [0.2,1,4]
     PROTOCOLS = ['cubic','bbr1','bbr3','astraea', 'sage']
     FLOWS = 2
     RUNS = [1,2,3,4,5]
     CHANGE1 = 100     # cross interval start time
 
-    # 1) Load the data (with retransmission calculations and rejoin utilization)
     dd_df = data_to_dd_df(ROOT_PATH, AQM, BWS, DELAYS, QMULTS,
                           PROTOCOLS, FLOWS, RUNS, CHANGE1)
     print(dd_df)
-    dd_df.to_csv("dd_summary_data.csv", index=False)
-
-    # 2) Plot: X = Jain's fairness, Y = normalized throughput (with secondary points subtracting retransmission,
-    #    and additional rejoin utilization markers)
     plot_dd_scatter_jains_vs_util(dd_df, delays=DELAYS, qmults=QMULTS)

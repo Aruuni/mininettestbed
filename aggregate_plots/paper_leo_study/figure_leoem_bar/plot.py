@@ -4,12 +4,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-protocols = ["astraea", "bbr1", "bbr", "cubic", "satcp"]
+protocols = ["astraea", "bbr1", "bbr", "cubic", "sage",  "satcp"]
 paths = [
     "Starlink_NY_LDN_15_ISL_path.log",
     "Starlink_SD_NY_15_BP_path.log",
     "Starlink_SD_NY_15_ISL_path.log",
-    "Starlink_SEA_NY_15_BP_path.log"
+    "Starlink_SEA_NY_15_BP_path.log",
+    "Starlink_SD_Shanghai_15_ISL_path",
+    "Starlink_SD_SEA_15_BP_path"
 ]
 runs = [1, 2, 3, 4, 5]
 
@@ -25,7 +27,9 @@ label_mapping = {
     "Starlink_NY_LDN_15_ISL_path": "New York to London (ISL)",
     "Starlink_SD_NY_15_BP_path": "Sydney to New York (BP)",
     "Starlink_SD_NY_15_ISL_path": "Sydney to New York (ISL)",
-    "Starlink_SEA_NY_15_BP_path": "Seattle to New York (BP)"
+    "Starlink_SEA_NY_15_BP_path": "Seattle to New York (BP)",
+    "Starlink_SD_Shanghai_15_ISL_path": "Sydney to Shanghai (ISL)",
+    "Starlink_SD_SEA_15_BP_path": "Sydney to Seattle (BP)"
 }
 
 COLOR = {
@@ -115,7 +119,7 @@ for i, protocol in enumerate(protocols):
     ax.bar(offsets, protocol_avgs, width, label=plot_label, color=color)
 
 ax.set_ylabel('Average Goodput (Mbps)')
-ax.set_title('Average Goodput per Path (averaged over 5 runs) for Each Protocol')
+ax.set_title('Average Goodput per Path')
 ax.set_xticks(x)
 ax.set_xticklabels(display_labels, rotation=45, ha='right')
 

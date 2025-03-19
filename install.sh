@@ -9,6 +9,7 @@ if [[ "$UBUNTU_VERSION" == "16.04" ]]; then
     sudo apt update
     sudo apt install -y python3-pip python3.7 python3.7-dev python3.6 python3.6-dev
     sudo python3.7 -m pip install pip==20.3.4
+    sudo python3.7 -m pip install networkx scipy
     sudo python3.7 -m pip install  mininet numpy==1.18.5 matplotlib==3.1.3 pandas==1.0.5 tensorflow==1.14.0
     sudo python3.7 -m pip install --ignore-installed --upgrade pexpect
 
@@ -18,7 +19,7 @@ else
     sudo apt update
     sudo apt install -y python3-pip python3.7 python3.7-dev python3.7-distutils
     sudo pip3 install -U virtualenv==15.2.*
-    sudo python3 -m pip install mininet numpy==2.1.3 matplotlib==3.9.2 pandas==2.2.3 scienceplots
+    sudo python3 -m pip install mininet numpy==2.1.3 matplotlib==3.9.2 pandas==2.2.3 scienceplots networkx scipy
 
 fi
 
@@ -58,7 +59,7 @@ cd ~/ns-3-dev
 
 if [[ "$UBUNTU_VERSION" == "16.04" ]]; then
     echo "Downloading and setting up sage"
-    cd CC/sage
+    cd  $CURRENT_DIR/CC/sage
     bash build.sh
 
 fi
