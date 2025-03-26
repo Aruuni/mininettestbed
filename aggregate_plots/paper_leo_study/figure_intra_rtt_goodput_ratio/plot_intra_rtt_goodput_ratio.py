@@ -37,8 +37,8 @@ for mult in QMULTS:
      for bw in BWS:
         for delay in DELAYS:
            duration = 2*delay
-           start_time = 2*delay
-           end_time = 3*delay
+           start_time = 3*delay
+           end_time = 4*delay
            keep_last_seconds = int(0.25*delay)
 
            BDP_IN_BYTES = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
@@ -148,5 +148,5 @@ for mult in QMULTS:
       borderaxespad=0.0
    )
 
-   plt.savefig(f"goodput_ratio_inter_rtt_{mult}.pdf" , dpi=1080)
+   plt.savefig(f"goodput_ratio_intra_rtt_{mult}.pdf" , dpi=1080)
 

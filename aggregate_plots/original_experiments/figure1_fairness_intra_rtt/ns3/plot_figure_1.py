@@ -18,7 +18,7 @@ from core.utils import *
 ROOT_PATH = f"{HOME_DIR}/cctestbed/ns3/results_fairness_intra_rtt/fifo" 
 PROTOCOLS = ['cubic', 'bbr', 'bbr3']
 BWS = [100]
-DELAYS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 QMULTS = [0.2, 1 ,4]
 RUNS = [1, 2, 3, 4, 5]
 LOSSES=[0]

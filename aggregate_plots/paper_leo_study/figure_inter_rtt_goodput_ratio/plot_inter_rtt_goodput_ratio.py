@@ -27,7 +27,7 @@ for mult in QMULTS:
    for protocol in PROTOCOLS:
      for bw in BWS:
         for delay in DELAYS:
-           start_time = delay
+           start_time = 3*delay
            end_time = 4*delay
            keep_last_seconds = int(0.25*delay)
 

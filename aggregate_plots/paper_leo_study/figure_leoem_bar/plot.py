@@ -4,32 +4,55 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-protocols = ["astraea", "bbr1", "bbr", "cubic", "sage",  "satcp"]
-paths = [
-    "Starlink_NY_LDN_15_ISL_path.log",
-    "Starlink_SD_NY_15_BP_path.log",
-    "Starlink_SD_NY_15_ISL_path.log",
-    "Starlink_SEA_NY_15_BP_path.log",
-    "Starlink_SD_Shanghai_15_ISL_path",
-    "Starlink_SD_SEA_15_BP_path"
-]
+protocols = ["astraea", "bbr1", "bbr", "cubic", "sage", "satcp"]
 runs = [1, 2, 3, 4, 5]
 
 bent_pipe_link_bandwidth = 100
-switch_queue_size = 10000
 num_flows = 1
 
 HOME_DIR = os.environ.get('HOME', '.')
 base_results_dir = os.path.join(HOME_DIR, "cctestbed", "LeoEM", "resutls_single_flow")
 
+paths = [
+    "Starlink_SD_NY_15_ISL_path.log",
+    "Starlink_SD_NY_15_BP_path.log",
+    "Starlink_SEA_NY_15_ISL_path.log",
+    "Starlink_SEA_NY_15_BP_path.log",
+    "Starlink_SD_SEA_15_ISL_path.log",
+    "Starlink_SD_SEA_15_BP_path.log",
+    "Starlink_NY_LDN_15_ISL_path.log",
+    "Starlink_SD_Shanghai_15_ISL_path.log"
+]
 
+# queue_mapping = {
+#     "Starlink_SD_NY_15_ISL_path": 10000,
+#     "Starlink_SD_NY_15_BP_path": 10000,
+#     "Starlink_SEA_NY_15_ISL_path": 10000,
+#     "Starlink_SEA_NY_15_BP_path": 10000,
+#     "Starlink_SD_SEA_15_ISL_path": 10000,
+#     "Starlink_SD_SEA_15_BP_path": 10000,
+#     "Starlink_NY_LDN_15_ISL_path":  10000,
+#     "Starlink_SD_Shanghai_15_ISL_path": 10000,
+# }
+queue_mapping = {
+    "Starlink_SD_NY_15_ISL_path": 522,
+    "Starlink_SD_NY_15_BP_path": 408,
+    "Starlink_SEA_NY_15_ISL_path": 388,
+    "Starlink_SEA_NY_15_BP_path": 326,
+    "Starlink_SD_SEA_15_ISL_path": 582,
+    "Starlink_SD_SEA_15_BP_path": 219,
+    "Starlink_NY_LDN_15_ISL_path": 696,
+    "Starlink_SD_Shanghai_15_ISL_path": 740,
+}
 label_mapping = {
     "Starlink_NY_LDN_15_ISL_path": "New York to London (ISL)",
     "Starlink_SD_NY_15_BP_path": "Sydney to New York (BP)",
     "Starlink_SD_NY_15_ISL_path": "Sydney to New York (ISL)",
     "Starlink_SEA_NY_15_BP_path": "Seattle to New York (BP)",
+    "Starlink_SEA_NY_15_ISL_path": "Seattle to New York (ISL)",
     "Starlink_SD_Shanghai_15_ISL_path": "Sydney to Shanghai (ISL)",
-    "Starlink_SD_SEA_15_BP_path": "Sydney to Seattle (BP)"
+    "Starlink_SD_SEA_15_ISL_path": "Sydney to Seattle (ISL)",
+    "Starlink_SD_SEA_15_BP_path": "Sydney to Seattle (BP)",
 }
 
 COLOR = {
@@ -41,13 +64,18 @@ COLOR = {
     'astraea': '#845B97',
 }
 
-
 results = {}
 
+# Loop over each path and protocol to compute the average goodput
 for path in paths:
+    # Remove file extension to get the basename for directory naming and mapping
     path_basename = path.split('.')[0]
     if path_basename not in results:
         results[path_basename] = {}
+    
+    # Get the corresponding queue size from the mapping; if missing, you can set a default value
+    switch_queue_size = queue_mapping.get(path_basename, 10000)
+    
     for protocol in protocols:
         run_avgs = []
         for run in runs:
@@ -85,21 +113,13 @@ for path in paths:
         overall_avg = np.mean(run_avgs) if run_avgs else np.nan
         results[path_basename][protocol] = overall_avg
 
-
-
-# for path_basename, protocols_dict in results.items():
-#     print(f"{path_basename}:")
-#     for protocol, avg in protocols_dict.items():
-#         print(f"  {protocol}: {avg}")
-
-
 paths_keys = list(results.keys())
 display_labels = [label_mapping.get(key, key) for key in paths_keys]
 
 x = np.arange(len(display_labels))
 width = 0.1
 
-fig, ax = plt.subplots(figsize=(12, 6))
+fig, ax = plt.subplots(figsize=(18, 6))
 
 for i, protocol in enumerate(protocols):
     protocol_avgs = []
@@ -121,7 +141,8 @@ for i, protocol in enumerate(protocols):
 ax.set_ylabel('Average Goodput (Mbps)')
 ax.set_title('Average Goodput per Path')
 ax.set_xticks(x)
-ax.set_xticklabels(display_labels, rotation=45, ha='right')
+ax.set_xticklabels(display_labels, rotation=20, ha='right')
+plt.setp(ax.get_xticklabels(), fontsize=11)
 
 handles, labels = ax.get_legend_handles_labels()
 ax.legend(
@@ -135,4 +156,3 @@ ax.legend(
 
 plt.tight_layout()
 plt.savefig("figure.pdf")
-plt.show()

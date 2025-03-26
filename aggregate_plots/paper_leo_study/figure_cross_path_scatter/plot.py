@@ -364,7 +364,7 @@ if __name__ == "__main__":
     BWS = [100]       # in Mbit/s
     DELAYS = [10]     # one way delays in ms; final stored two way in DF
     QMULTS = [0.2,1,4]
-    PROTOCOLS = ['cubic','bbr1','bbr3','astraea', 'sage']
+    PROTOCOLS = ['cubic', 'bbr1', 'bbr3', 'astraea', 'sage']
     FLOWS = 2
     RUNS = [1,2,3,4,5]
     CHANGE1 = 100     # cross interval start time

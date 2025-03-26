@@ -5,8 +5,12 @@ bash setup.sh
 # PROTOCOLS="astraea orca bbr1 bbr3 cubic vivace"
 # PROTOCOLS="sage"
 # STEPS="10 20 30 40 50 60 70 80 90 100"
-# QMULTS="0.2 1 4"
-# RUNS="1 2 3 4 5"
+# hSTEPS="5 10 15 20 25 30 35 40 45 50"
+
+
+PROTOCOLS="astraea bbr3 bbr1 cubic"
+QMULTS="0.2 1 4"
+RUNS="1 2 3 4 5"
 
 # # FAIRNESS INTRA RTT 
 # for del in $STEPS
@@ -126,27 +130,27 @@ bash setup.sh
 # done
 
 
-# # EFFICIENCY/CONVERGENCE 
-# BANDWIDTH="100"
-# DELAY="10 100"
-# AQMS='fifo'
+# EFFICIENCY/CONVERGENCE 
+BANDWIDTH="100"
+DELAY="50"
+AQMS='fifo'
 
-# for del in $DELAY
-# do
-#     for qmult in $QMULTS
-#     do
-#         for protocol in $PROTOCOLS
-#         do
-#             for aqm in $AQMS
-#             do
-#                 for run in $RUNS
-#                 do
-#                     run experiments_mininet/fairness_aqm/experiment_fairness_aqm.py $del "100" $qmult $protocol $run $aqm 0 "4"
-#                 done
-#             done
-#         done
-#     done
-# done
+for del in $DELAY
+do
+    for qmult in $QMULTS
+    do
+        for protocol in $PROTOCOLS
+        do
+            for aqm in $AQMS
+            do
+                for run in $RUNS
+                do
+                    run experiments_mininet/fairness_aqm/experiment_fairness_aqm.py $del "100" $qmult $protocol $run $aqm 0 "4"
+                done
+            done
+        done
+    done
+done
 
 
 # # PARKING LOT TOPOLOGY INTRA RTT
@@ -164,10 +168,20 @@ bash setup.sh
 #     done
 # done
 
-
-# PROTOCOLS="bbr cubic pcc"
-# PROTOCOLS="astraea orca bbr1 bbr3 cubic vivace"
-
+# # PARKING LOT TOPOLOGY INTER RTT
+# for del in $STEPS
+# do
+#     for qmult in $QMULTS
+#     do
+#         for protocol in $PROTOCOLS
+#         do
+#             for run in $RUNS
+#             do
+#                 run experiments_mininet/fairness_parking_lot_inter_rtt/experiment_parking_lot_inter.py $del "100" $qmult $protocol $run "fifo" 0 "4"
+#             done
+#         done
+#     done
+# done
 
 
 # QMULTS="0.2 1 4"
@@ -224,20 +238,73 @@ bash setup.sh
 #     done
 # done
 
-# LeoEM single flow 
+# LeoEM single flow - ping results for bdp calculation
+#       Starlink_SD_NY_15_ISL_path.log          62.727   522 pkts
+#       Starlink_SD_NY_15_BP_path.log           49.043   408 pkts
+#       Starlink_SEA_NY_15_ISL_path.log         46.551   388 pkts
+#       Starlink_SEA_NY_15_BP_path.log          39.141   326 pkts
+#       Starlink_SD_SEA_15_ISL_path.log         69.813   582 pkts
+#       Starlink_SD_SEA_15_BP_path.log          26.270   219 pkts
+#       Starlink_NY_LDN_15_ISL_path.log         83.566   696 pkts
+#       Starlink_SD_Shanghai_15_ISL_path.log    88.811   740 pkts
+#
+# PROTOCOLS="satcp"
+# RUNS="1 2 3 4 5"
+# PATHS=( "Starlink_SD_NY_15_ISL_path.log" \
+#         "Starlink_SD_NY_15_BP_path.log" \
+#         "Starlink_SEA_NY_15_ISL_path.log" \
+#         "Starlink_SEA_NY_15_BP_path.log" \
+#         "Starlink_SD_SEA_15_ISL_path.log" \
+#         "Starlink_SD_SEA_15_BP_path.log" 
+#         "Starlink_NY_LDN_15_ISL_path.log" \
+#         "Starlink_SD_Shanghai_15_ISL_path.log" )
+# QUEUE_PKTS=(522 408 388 326 582 219 696 740)
 
-PROTOCOLS="astraea orca bbr1 bbr cubic pcc satcp"
-RUNS="1 2 3 4 5"
-PATHS="Starlink_NY_LDN_15_ISL_path.log Starlink_SD_NY_15_BP_path.log Starlink_SD_NY_15_ISL_path.log Starlink_SEA_NY_15_BP_path.log"
-for protocol in $PROTOCOLS
-do
-        for path in $PATHS
-        do 
-                for run in $RUNS
-                do
-                        run experiments_mininet/LeoEM/emulator.py $path [0] 100 10000 $protocol $run 300
-                done
-        done
-done
+# for protocol in $PROTOCOLS; do
+#     for idx in "${!PATHS[@]}"; do
+#         path="${PATHS[$idx]}"
+#         pkts="${QUEUE_PKTS[$idx]}"
+#         for run in $RUNS; do
+#             run experiments_mininet/LeoEM/emulator.py "$path" [0] 100 "$pkts" "$protocol" "$run" 300
+#         done
+#     done
+# done
+
+
+# PROTOCOLS="satcpbbr1"
+# RUNS="6"
+# PATHS=(  "Starlink_SD_SEA_15_ISL_path.log" )
+# #\
+# #         "Starlink_SD_SEA_15_BP_path.log"  ) 219
+# QUEUE_PKTS=( 582 )
+
+# for protocol in $PROTOCOLS; do
+#     for idx in "${!PATHS[@]}"; do
+#         path="${PATHS[$idx]}"
+#         pkts="${QUEUE_PKTS[$idx]}"
+#         for run in $RUNS; do
+#             run experiments_mininet/LeoEM/emulator.py "$path" [0] 100 "$pkts" "$protocol" "$run" 100
+#             sudo killall ss_script_iperf
+#             sudo killall ss_script_sage
+#         done
+#     done
+# done
+
+
+# PROTOCOLS="ping"
+# RUNS="1"
+
+# # PATHS="Starlink_SEA_NY_15_ISL_path.log Starlink_SD_SEA_15_ISL_path.log Starlink_NY_LDN_15_ISL_path.log Starlink_SD_NY_15_BP_path.log Starlink_SD_NY_15_ISL_path.log Starlink_SEA_NY_15_BP_path.log Starlink_SD_Shanghai_15_ISL_path.log Starlink_SD_SEA_15_BP_path.log"
+# PATHS=""
+# for protocol in $PROTOCOLS
+# do
+#         for path in $PATHS
+#         do 
+#                 for run in $RUNS
+#                 do
+#                         run experiments_mininet/LeoEM/emulator.py $path [0] 1000 10000 $protocol $run 300
+#                 done
+#         done
+# done
 
 

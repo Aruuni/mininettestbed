@@ -267,13 +267,14 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
 
 
 def plot_data(data, filename, ylim=None):
-    COLOR = {'cubic': '#0C5DA5',
-             'orca': '#00B945',
-             'bbr3': '#FF9500',
-             'sage': '#FF2C01',
-             'vivace': '#845B97',
-             'astraea': '#686868',
-             }
+    COLOR = {
+        'cubic': '#0C5DA5',
+        'bbr1': '#00B945',
+        'bbr3': '#FF9500',
+        'sage': '#FF2C01',
+        'vivace': '#845B97',
+        'astraea': '#686868'
+    }
 
     LINEWIDTH = 1
     fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(4, 3), sharex=True, sharey=True)
@@ -310,8 +311,8 @@ def plot_data(data, filename, ylim=None):
 
 if __name__ == "__main__":
     ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_aqm"
-    PROTOCOLS = ['cubic','bbr3',  'orca',  'sage',  'vivace', 'astraea',]
-    DELAYS = [10, 100]
+    PROTOCOLS = ['cubic', 'bbr1', 'bbr3',   'sage',   'astraea',]
+    DELAYS = [10, 50]
     RUNS = [1, 2, 3, 4, 5]
     QMULTS = [0.2,1,4]
 

@@ -56,12 +56,12 @@ if __name__ == '__main__':
 
     PROTOCOLS = ['bbr', 'bbr3', 'cubic']
     BWS = [100]
-    DELAYS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+    DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     QMULTS = [0.2, 1, 4]
     RUNS = [1, 2, 3, 4, 5]
     LOSSES=[0]
 
-    MAX_SIMULATIONS = 23
+    MAX_SIMULATIONS = 45
 
     pool = Pool(processes=MAX_SIMULATIONS)
 

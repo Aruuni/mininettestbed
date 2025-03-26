@@ -314,8 +314,8 @@ def plot_all_ns3_responsiveness(path: str) -> None:
         if 'cwnd' in metrics_files or 'bytes' in metrics_files:
             cwnd_df = pd.read_csv(os.path.join(path, metrics_files['cwnd'])) if 'cwnd' in metrics_files else pd.DataFrame()
             bytes_df = pd.read_csv(os.path.join(path, metrics_files['bytes'])) if 'bytes' in metrics_files else pd.DataFrame()
-            axs[3].plot(cwnd_df['time'], cwnd_df['cwnd']/1500, label=f'{flow_name} CWND (packets)')
-            axs[3].plot(bytes_df['time'], bytes_df['bytes']/1500, label=f'{flow_name} Packets in flight', linestyle='--')
+            axs[3].step(cwnd_df['time'], cwnd_df['cwnd']/1500, label=f'{flow_name} CWND (packets)', where='pre')
+            axs[3].step(bytes_df['time'], bytes_df['bytes']/1500, label=f'{flow_name} Packets in flight', linestyle='--', where='pre')
             axs[3].set_title("Congestion Window and Packets in flgiht (packets)")
             axs[3].set_ylabel("Packets")
 

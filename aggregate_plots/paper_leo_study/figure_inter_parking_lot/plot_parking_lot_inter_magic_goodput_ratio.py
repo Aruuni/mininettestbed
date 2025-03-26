@@ -15,7 +15,7 @@ sys.path.append( mymodule_dir )
 from core.config import *
 from core.plotting import * 
 
-ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_parking_lot/fifo" 
+ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_parking_lot_inter_rtt/fifo" 
 PROTOCOLS = ['cubic', 'astraea', 'bbr3', 'bbr1', 'sage']
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
@@ -167,5 +167,5 @@ for mult in QMULTS:
 
 
    for format in ['pdf']:
-      plt.savefig('goodput_ratio_between_max_ribs_magic_goodput_q%s.%s' % (mult, format), dpi=1080)
+      plt.savefig('goodput_ratio_between_max_ribs_magic_goodput_inter_rtt_q%s.%s' % (mult, format), dpi=1080)
 
