@@ -4,7 +4,7 @@ Code for the evaluation of RL-based protocols using Mininet
 
 ## System requirements
 ### Operating System
-Code has been run on Ubuntu 22.04 LTS with Linux Kernel 6.4.0 (found [here](https://github.com/google/bbr/tree/v3)) which includes bbrv3. 
+Code has been run on Ubuntu 22.04 LTS with Linux Kernel 6.4.0 (found [here](https://github.com/google/bbr/tree/bbrv3-2024-11-22)) which includes bbrv3. 
 
 Using other Linux kernels may be problematic due to:
 - Cubic implementation may slightly differ from the one used by Orca, especially the Slow Start phase.
