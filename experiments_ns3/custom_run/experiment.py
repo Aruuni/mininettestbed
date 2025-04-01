@@ -32,8 +32,8 @@ def  generate_traffic_shape(seed, qsize_in_bytes):
     random_loss = round(random.uniform(0,0.01),4) 
     # traffic_config.append(TrafficConf('s2', 's3', start_time, CHANGE_PERIOD, 'tbf', 
     #                               (('s2', 's3'), random_bw, None, qsize_in_bytes, False, 'fifo', None, 'change')))
-    traffic_config.append(TrafficConf('s1', 's2', start_time, CHANGE_PERIOD, 'netem', 
-                                    (('s1', 's2'), None, 50, qsize_in_bytes, False, 'fifo', 0.01, 'change')))
+    # traffic_config.append(TrafficConf('s1', 's2', start_time, CHANGE_PERIOD, 'netem', 
+    #                                 (('s1', 's2'), None, 50, qsize_in_bytes, False, 'fifo', 0.01, 'change')))
             
     return traffic_config
 
@@ -51,7 +51,7 @@ def run_simulation(*args):
     rmdirp(path)
     mkdirp(path)
  
-    traffic_config = [TrafficConf('c1', 'x1', 0, 100, protocol), TrafficConf('c2', 'x2', 20, 100, protocol)]
+    traffic_config = [TrafficConf('c1', 'x1', 0, 7, protocol)]
     traffic_config.extend(generate_traffic_shape(run, qsize_in_bytes))
     printRed(traffic_config)
 
@@ -64,8 +64,8 @@ def run_simulation(*args):
     emulation_info['flows'] = flows
     with open(path + "/emulation_info.json", 'w') as fout:
         json.dump(emulation_info,fout)
-    
-    command = f'cd {HOME_DIR}/ns-3-dev; time ./ns3 run --no-build "scratch/CCTestBed.cc --configJSON={path}/emulation_info.json --path={path} --delay={delay} --bandwidth={bw} --queuesize={250} --seed={run}" > {path}/output.txt 2>&1'
+    # export NS_LOG="TcpSocketBase:TcpOptionSack=debug|prefix_time"
+    command = f'cd {HOME_DIR}/ns-3-dev;  export NS_LOG="TcpSocketBase:TcpOptionSack=debug|prefix_time";  ./ns3 run --no-build "scratch/CCTestBed.cc --configJSON={path}/emulation_info.json --path={path} --delay={delay} --bandwidth={bw} --queuesize={int(qsize_in_bytes/1500)} --seed={run}" > {path}/output.txt 2>&1'
     printGreen(command)
     subprocess.run(command, shell=True)
     plot_all_ns3_responsiveness(path)
@@ -74,10 +74,10 @@ if __name__ == '__main__':
 
     PROTOCOLS = ['bbr', 'bbr3', 'cubic']
     PROTOCOLS = ['bbr']
-    BWS = [50]
-    DELAYS = [50]
+    BWS = [100]
+    DELAYS = [20]
     QMULTS = [1]
-    RUNS = [1]
+    RUNS = [2]
     LOSSES=[0]
 
     MAX_SIMULATIONS = 23
@@ -89,7 +89,7 @@ if __name__ == '__main__':
                 for bw in BWS
                 for delay in DELAYS
                 for mult in QMULTS
-                for run in [1]] #    
+                for run in [2]] #    
                 #for run in range(1,51)] #     
 
     pool.map(run_simulation, params_list)
