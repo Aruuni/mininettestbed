@@ -17,57 +17,24 @@ script_dir = os.path.dirname( __file__ )
 mymodule_dir = os.path.join( script_dir, '../../..')
 sys.path.append( mymodule_dir )
 from core.config import *
-
+from core.plotting import * 
 
 def confidence_ellipse(x, y, ax, n_std=1.0, facecolor='none', **kwargs):
-    """
-    Create a plot of the covariance confidence ellipse of *x* and *y*.
-
-    Parameters
-    ----------
-    x, y : array-like, shape (n, )
-        Input data.
-
-    ax : matplotlib.axes.Axes
-        The axes object to draw the ellipse into.
-
-    n_std : float
-        The number of standard deviations to determine the ellipse's radiuses.
-
-    **kwargs
-        Forwarded to `~matplotlib.patches.Ellipse`
-
-    Returns
-    -------
-    matplotlib.patches.Ellipse
-    """
     if x.size != y.size:
         raise ValueError("x and y must be the same size")
-
     cov = np.cov(x, y)
     pearson = cov[0, 1]/np.sqrt(cov[0, 0] * cov[1, 1])
-    # Using a special case to obtain the eigenvalues of this
-    # two-dimensional dataset.
     ell_radius_x = np.sqrt(1 + pearson)
     ell_radius_y = np.sqrt(1 - pearson)
-    ellipse = Ellipse((0, 0), width=ell_radius_x * 2, height=ell_radius_y * 2,
-                      facecolor=facecolor, **kwargs)
-
-    # Calculating the standard deviation of x from
-    # the squareroot of the variance and multiplying
-    # with the given number of standard deviations.
+    ellipse = Ellipse((0, 0), width=ell_radius_x * 2, height=ell_radius_y * 2,facecolor=facecolor, **kwargs)
     scale_x = np.sqrt(cov[0, 0]) * n_std
     mean_x = np.mean(x)
-
-    # calculating the standard deviation of y ...
     scale_y = np.sqrt(cov[1, 1]) * n_std
     mean_y = np.mean(y)
-
     transf = transforms.Affine2D() \
         .rotate_deg(45) \
         .scale(scale_x, scale_y) \
         .translate(mean_x, mean_y)
-
     ellipse.set_transform(transf + ax.transData)
     return ax.add_patch(ellipse)
 
@@ -108,16 +75,13 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
                                     bandwidth_std = None
 
                                 if protocol != 'aurora':
-                                    # Compute the avg and std rtt across all samples of both flows
                                     if protocol == 'astraea':
                                         sender = pd.read_csv(PATH + f"/csvs/c{(n + 1)}.csv")
                                     else:
                                         sender = pd.read_csv(PATH + f"/csvs/c{(n + 1)}_ss.csv")
-                                    # print(PA   TH)
                                     sender = sender[['time', 'srtt']]
                                     sender = sender[(sender['time'] >= (start_time + n * 25)) & (sender['time'] <= (end_time + n * 25))]
 
-                                    #print(sender.head(10))
                                     # We need to resample this data to 1 Hz frequency: Truncate time value to seconds, groupby.mean()
                                     # sender['time'] = sender['time'].apply(lambda x: int(x))
                                     sender = sender.groupby('time').mean()
@@ -266,19 +230,18 @@ def data_to_df(folder, delays, bandwidths, qmults, aqms, protocols):
 
 
 def plot_data(data, filename, ylim=None):
-    COLOR = {
-        'cubic': '#0C5DA5',
-        'bbr1': '#00B945',
-        'bbr3': '#FF9500',
-        'sage': '#FF2C01',
-        'vivace': '#845B97',
-        'astraea': '#686868'
-    }
+    COLOR = {'cubic': '#0C5DA5',
+             'orca': '#00B945',
+             'bbr3': '#FF9500',
+             'sage': '#FF2C01',
+             'vivace': '#845B97',
+             'astraea': '#686868',
+             }
 
     LINEWIDTH = 1
     fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(4, 3), sharex=True, sharey=True)
 
-    for i, protocol in enumerate(PROTOCOLS):
+    for i, protocol in enumerate(PROTOCOLS_EXTENSION):
         ax = axes[i]
         for n in range(4):
             ax.plot(data['fifo'][protocol][n + 1].index, data['fifo'][protocol][n + 1]['mean'],
@@ -298,26 +261,22 @@ def plot_data(data, filename, ylim=None):
 
         if i == 2:
             ax.set(xlabel='time (s)')
-        # ax.set(title='%s' % protocol)
+
         ax.text(70, 1.8, '%s' % protocol, va='center', c=COLOR[protocol])
         ax.grid()
-
-    # fig.suptitle("%s Mbps, %s RTT, %sxBDP" % (BW, 2*DELAY, QMULTS))
 
     plt.savefig(filename, dpi=720)
 
 
 
 if __name__ == "__main__":
-    ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_aqm"
-    PROTOCOLS = ['cubic', 'bbr1', 'bbr3',   'sage',   'astraea',]
-    DELAYS = [10, 50]
+    EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_aqm"
+    DELAYS = [10, 100]
     RUNS = [1, 2, 3, 4, 5]
-    QMULTS = [0.2,1,4]
 
     #AQM_LIST = ['fifo', 'codel', 'fq']
     AQM_LIST = ['fifo']
-    df1,df2 = data_to_df(ROOT_PATH, DELAYS, [100], QMULTS, AQM_LIST, PROTOCOLS)
+    df1,df2 = data_to_df(EXPERIMENT_PATH, DELAYS, [100], QMULTS, AQM_LIST, PROTOCOLS_EXTENSION)
     df1.to_csv('aqm_data.csv', index=False)
     df2.to_csv('aqm_efficiency_fairness.csv', index=False)
     df = pd.read_csv('aqm_efficiency_fairness.csv', index_col=None).dropna()
@@ -325,34 +284,24 @@ if __name__ == "__main__":
     df['aqm'] = pd.to_numeric(df['aqm'], errors='coerce')
     data = df.groupby(['min_delay','qmult','protocol']).mean()
 
-
-    COLOR_MAP = {'cubic': '#0C5DA5',
-             'bbr1': '#00B945',
-             'bbr3': '#FF9500',
-             'sage': '#FF2C01',
-             'satcp': '#845B97',
-             'astraea': '#845B97',
-             }
     MARKER_MAP = {10: '^',
-                 50: '*'}
+                 100: '*'}
 
-    for CONTROL_VAR in [0.2,1,4]:
-
+    for CONTROL_VAR in QMULTS:
         fig, axes = plt.subplots(figsize=(3,1.5))
-        for protocol in PROTOCOLS:
+        for protocol in PROTOCOLS_EXTENSION:
             for delay in DELAYS:
                 if not (delay == 100 and protocol == 'aurora' and CONTROL_VAR == 4):
-                    axes.scatter(data.loc[delay,CONTROL_VAR, protocol]['delay_mean']/ (delay*2), data.loc[delay,CONTROL_VAR, protocol]['util_mean']/100 - data.loc[delay,CONTROL_VAR, protocol]['retr_mean']/100, edgecolors=COLOR_MAP[protocol], marker=MARKER_MAP[delay], facecolors='none', alpha=0.25)
-                    axes.scatter(data.loc[delay,CONTROL_VAR, protocol]['delay_mean']/ (delay*2), data.loc[delay,CONTROL_VAR, protocol]['util_mean']/100, edgecolors=COLOR_MAP[protocol], marker=MARKER_MAP[delay], facecolors='none', label='%s-%s' % (protocol, delay*2))
+                    axes.scatter(data.loc[delay,CONTROL_VAR, protocol]['delay_mean']/ (delay*2), data.loc[delay,CONTROL_VAR, protocol]['util_mean']/100 - data.loc[delay,CONTROL_VAR, protocol]['retr_mean']/100, edgecolors=COLORS_EXTENSION[protocol], marker=MARKER_MAP[delay], facecolors='none', alpha=0.25)
+                    axes.scatter(data.loc[delay,CONTROL_VAR, protocol]['delay_mean']/ (delay*2), data.loc[delay,CONTROL_VAR, protocol]['util_mean']/100, edgecolors=COLORS_EXTENSION[protocol], marker=MARKER_MAP[delay], facecolors='none', label='%s-%s' % ((lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), delay*2))
                     subset = df[(df['protocol'] == protocol) & (df['qmult'] == CONTROL_VAR)  & (df['min_delay'] == delay)]
                     y = subset['util_mean'].values/100
                     x = subset['delay_mean'].values/(delay*2)
 
-                    confidence_ellipse(x, y, axes, facecolor=COLOR_MAP[protocol], edgecolor='none', alpha=0.25)
+                    confidence_ellipse(x, y, axes, facecolor=COLORS_EXTENSION[protocol], edgecolor='none', alpha=0.25)
 
         handles, labels = axes.get_legend_handles_labels()
         legend = fig.legend(handles, labels, ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.5), columnspacing=0.001, handletextpad=0.001)
-        axes.set( ylabel="Norm. Throughput", xlabel="Norm. Delay", ylim=[0,1])
+        axes.set( ylabel="Norm. Throughput", xlabel="Norm. Delay", ylim=[0.5,1])
         axes.invert_xaxis()
-        for format in ['pdf']:
-            plt.savefig('%sqmult_scatter1.%s' % (CONTROL_VAR,format), dpi=720)
+        plt.savefig(f"qmult{CONTROL_VAR}_scatter1.pdf" , dpi=1080)

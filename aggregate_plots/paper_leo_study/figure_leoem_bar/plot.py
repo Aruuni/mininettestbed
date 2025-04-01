@@ -24,16 +24,6 @@ paths = [
     "Starlink_SD_Shanghai_15_ISL_path.log"
 ]
 
-# queue_mapping = {
-#     "Starlink_SD_NY_15_ISL_path": 10000,
-#     "Starlink_SD_NY_15_BP_path": 10000,
-#     "Starlink_SEA_NY_15_ISL_path": 10000,
-#     "Starlink_SEA_NY_15_BP_path": 10000,
-#     "Starlink_SD_SEA_15_ISL_path": 10000,
-#     "Starlink_SD_SEA_15_BP_path": 10000,
-#     "Starlink_NY_LDN_15_ISL_path":  10000,
-#     "Starlink_SD_Shanghai_15_ISL_path": 10000,
-# }
 queue_mapping = {
     "Starlink_SD_NY_15_ISL_path": 522,
     "Starlink_SD_NY_15_BP_path": 408,
@@ -46,13 +36,13 @@ queue_mapping = {
 }
 label_mapping = {
     "Starlink_NY_LDN_15_ISL_path": "New York to London (ISL)",
-    "Starlink_SD_NY_15_BP_path": "Sydney to New York (BP)",
-    "Starlink_SD_NY_15_ISL_path": "Sydney to New York (ISL)",
+    "Starlink_SD_NY_15_BP_path": "San Diego to New York (BP)",
+    "Starlink_SD_NY_15_ISL_path": "San Diego to New York (ISL)",
     "Starlink_SEA_NY_15_BP_path": "Seattle to New York (BP)",
     "Starlink_SEA_NY_15_ISL_path": "Seattle to New York (ISL)",
-    "Starlink_SD_Shanghai_15_ISL_path": "Sydney to Shanghai (ISL)",
-    "Starlink_SD_SEA_15_ISL_path": "Sydney to Seattle (ISL)",
-    "Starlink_SD_SEA_15_BP_path": "Sydney to Seattle (BP)",
+    "Starlink_SD_Shanghai_15_ISL_path": "San Diego to Shanghai (ISL)",
+    "Starlink_SD_SEA_15_ISL_path": "San Diego to Seattle (ISL)",
+    "Starlink_SD_SEA_15_BP_path": "San Diego to Seattle (BP)",
 }
 
 COLOR = {
@@ -68,12 +58,10 @@ results = {}
 
 # Loop over each path and protocol to compute the average goodput
 for path in paths:
-    # Remove file extension to get the basename for directory naming and mapping
     path_basename = path.split('.')[0]
     if path_basename not in results:
         results[path_basename] = {}
     
-    # Get the corresponding queue size from the mapping; if missing, you can set a default value
     switch_queue_size = queue_mapping.get(path_basename, 10000)
     
     for protocol in protocols:
@@ -119,7 +107,7 @@ display_labels = [label_mapping.get(key, key) for key in paths_keys]
 x = np.arange(len(display_labels))
 width = 0.1
 
-fig, ax = plt.subplots(figsize=(18, 6))
+fig, ax = plt.subplots(figsize=(20, 6))
 
 for i, protocol in enumerate(protocols):
     protocol_avgs = []
@@ -138,20 +126,23 @@ for i, protocol in enumerate(protocols):
 
     ax.bar(offsets, protocol_avgs, width, label=plot_label, color=color)
 
-ax.set_ylabel('Average Goodput (Mbps)')
-ax.set_title('Average Goodput per Path')
+ax.set_ylabel('Average Goodput (Mbps)', fontsize=18)
+ax.set_title('Average Goodput per Path', fontsize=18)
 ax.set_xticks(x)
-ax.set_xticklabels(display_labels, rotation=20, ha='right')
-plt.setp(ax.get_xticklabels(), fontsize=11)
+ax.set_xticklabels(display_labels, rotation=20, ha='right', fontsize=14)
+plt.setp(ax.get_yticklabels(), fontsize=14)
 
 handles, labels = ax.get_legend_handles_labels()
 ax.legend(
     handles, 
     labels,
     loc='upper center',        
-    bbox_to_anchor=(0.5, 1.15),
+    bbox_to_anchor=(0.5, 1.25),
     ncol=len(protocols),        
-    frameon=False               
+    frameon=False,
+    fontsize=20,       # Increases legend text font size
+    handlelength=3,    # Increases the length of the legend handles
+    handletextpad=2    # Increases the spacing between handles and text
 )
 
 plt.tight_layout()
