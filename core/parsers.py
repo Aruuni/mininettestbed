@@ -190,7 +190,7 @@ def parse_iperf_json(file, offset):
     with open(file, 'r') as fin:
         iperfOutput = json.load(fin)
     
-    snd_mss = iperfOutput['start']['tcp_mss_default']
+    snd_mss = iperfOutput['start']['tcp_mss']
 
     time = []
     transferred = []

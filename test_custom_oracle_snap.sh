@@ -1,11 +1,11 @@
 source common.sh
 bash setup.sh
 
-PROTOCOLS="bbr1"
-BANDWIDTHS="100"
-DELAYS="5"
+PROTOCOLS="snap"
+BANDWIDTHS="5"
+DELAYS="10"
 RUNS="1"
-QMULTS="1"
+QMULTS="10"
 FLOWS="2"
 
 for bw in $BANDWIDTHS
@@ -20,7 +20,7 @@ do
                 do
                     for run in $RUNS
                     do
-                        run experiments_mininet/custom/experiment_custom.py $del $bw $qmult $protocol $run fifo 0 $flow
+                        run oracle_test/experiment_custom.py $del $bw $qmult $protocol $run fifo 0 $flow
                     done
                 done
             done

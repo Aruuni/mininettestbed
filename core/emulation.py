@@ -428,9 +428,9 @@ class Emulation:
         """
         node = self.network.get(node_name)
 
-        sscmd = f"./core/ss/ss_script_iperf3.sh 0.1 {self.path}/{node.name}_ss.csv &" 
-        printBlue(f'Sending command {sscmd} to host {node.name}')
-        node.cmd(sscmd)
+        # sscmd = f"./core/ss/ss_script_iperf3.sh 0.1 {self.path}/{node.name}_ss.csv &" 
+        # printBlue(f'Sending command {sscmd} to host {node.name}')
+        # node.cmd(sscmd)
 
         iperfCmd = f"iperf3 -p {port} --cport={11111} -i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}" 
         printBlueFill(f'Sending command {iperfCmd} to host {node.name}')
