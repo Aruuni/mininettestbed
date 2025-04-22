@@ -504,7 +504,7 @@ class Emulation:
     def start_vivace_sender(self, node_name, destination_name, duration, port=6666, perf_interval=1):
         node = self.network.get(node_name)
         destination = self.network.get(destination_name)
-        auroracmd = f"sudo -u {USERNAME} LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/sender/src {PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/sender/app/gradient_descent_pcc_client {destination.IP()} {port} 1 --duration {duration}"        
+        auroracmd = f"sudo -u {USERNAME} LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/sender/src {PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/sender/app/gradient_descent_pcc_client {destination.IP()} {port} 1 --duration {duration} --interval 0.1"        
         printRed(f"Sending command '{auroracmd}' to host {node.name}")
         node.sendCmd(auroracmd)
 

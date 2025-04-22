@@ -57,6 +57,14 @@ def process_raw_outputs(path):
             # Convert receiver output into csv
             df = parse_astraea_output(f"{path}/{receiver}_output.txt" , start_time)
             df.to_csv(f"{csv_path}/{receiver}.csv", index=False)
+        elif flow[-2] == 'vivace-uspace':
+            # Convert sender output into csv
+            df = parse_vivace_uspace_output(f"{path}/{sender}_output.txt" , start_time)
+            df.to_csv(f"{csv_path}/{sender}.csv", index=False)
+
+            # Convert receiver output into csv
+            df = parse_vivace_uspace_output(f"{path}/{receiver}_output.txt" , start_time)
+            df.to_csv(f"{csv_path}/{receiver}.csv", index=False)
         elif flow[-2] in IPERF:
             # Convert sender output into csv
             df = parse_iperf_json(f"{path}/{sender}_output.txt", start_time)
@@ -86,104 +94,105 @@ def plot_all_mn(path: str) -> None:
         except IndexError:
             if flow[6] == None:
                 flows.append([flow[0], flow[1]])  
+    try:
+        for flow in flows:
+            flow_client = flow[0]  # Client flow name like 'c1', 'c2', etc.
+            flow_server = flow[1]  # Server flow name like 'x1', 'x2', etc.
 
-    for flow in flows:
-        flow_client = flow[0]  # Client flow name like 'c1', 'c2', etc.
-        flow_server = flow[1]  # Server flow name like 'x1', 'x2', etc.
+            df_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}.csv'))
+            try:
+                df_ss_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}_ss.csv'))
+            except FileNotFoundError:
+                df_ss_client = pd.DataFrame()
+            df_server = pd.read_csv(os.path.join(path, f'csvs/{flow_server}.csv'))
 
-        df_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}.csv'))
-        try:
-            df_ss_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}_ss.csv'))
-        except FileNotFoundError:
-            df_ss_client = pd.DataFrame()
-        df_server = pd.read_csv(os.path.join(path, f'csvs/{flow_server}.csv'))
+            netem_bw = []
+            netem_rtt = []
+            netem_loss = []
 
-        netem_bw = []
-        netem_rtt = []
-        netem_loss = []
+            for flow in emulation_info['flows']:
+                if flow[6] == 'tbf':
+                    netem_bw.append([flow[4], flow[7][1]])  
+                if flow[6] == 'netem' and flow[7]:
+                    netem_rtt.append([flow[4], flow[7][2]])  
+                    netem_loss.append([flow[4], (flow[7][6])])  
 
-        for flow in emulation_info['flows']:
-            if flow[6] == 'tbf':
-                netem_bw.append([flow[4], flow[7][1]])  
-            if flow[6] == 'netem' and flow[7]:
-                netem_rtt.append([flow[4], flow[7][2]])  
-                netem_loss.append([flow[4], (flow[7][6])])  
+            if netem_bw:
+                bw_df = pd.DataFrame(netem_bw, columns=["time", "max_bw"])
+                bw_df.sort_values(by="time", inplace=True)
+                last_time = bw_df['time'].max() + 10
+                last_bw = bw_df['max_bw'].iloc[-1]
+                bw_df = pd.concat([bw_df, pd.DataFrame([{"time": last_time, "max_bw": last_bw}])], ignore_index=True)
+                axs[0].step(bw_df['time'], bw_df['max_bw'], label='Available Bandwidth', color='black', linestyle='--', where='post')
+                axs[2].step(bw_df['time'], bw_df['max_bw'], label='Available Bandwidth', color='black', linestyle='--', where='post')
 
-        if netem_bw:
-            bw_df = pd.DataFrame(netem_bw, columns=["time", "max_bw"])
-            bw_df.sort_values(by="time", inplace=True)
-            last_time = bw_df['time'].max() + 10
-            last_bw = bw_df['max_bw'].iloc[-1]
-            bw_df = pd.concat([bw_df, pd.DataFrame([{"time": last_time, "max_bw": last_bw}])], ignore_index=True)
-            axs[0].step(bw_df['time'], bw_df['max_bw'], label='Available Bandwidth', color='black', linestyle='--', where='post')
-            axs[2].step(bw_df['time'], bw_df['max_bw'], label='Available Bandwidth', color='black', linestyle='--', where='post')
+            if netem_rtt:
+                rtt_df = pd.DataFrame(netem_rtt, columns=["time", "rtt"])
+                rtt_df.sort_values(by="time", inplace=True)
+                last_time = rtt_df['time'].max() + 10
+                last_rtt = rtt_df['rtt'].iloc[-1]
+                rtt_df = pd.concat([rtt_df, pd.DataFrame([{"time": last_time, "rtt": last_rtt}])], ignore_index=True)
+                axs[1].step(rtt_df['time'], rtt_df['rtt'], label='Base RTT', color='black', linestyle='--', where='post')
 
-        if netem_rtt:
-            rtt_df = pd.DataFrame(netem_rtt, columns=["time", "rtt"])
-            rtt_df.sort_values(by="time", inplace=True)
-            last_time = rtt_df['time'].max() + 10
-            last_rtt = rtt_df['rtt'].iloc[-1]
-            rtt_df = pd.concat([rtt_df, pd.DataFrame([{"time": last_time, "rtt": last_rtt}])], ignore_index=True)
-            axs[1].step(rtt_df['time'], rtt_df['rtt'], label='Base RTT', color='black', linestyle='--', where='post')
+            if netem_loss and not netem_loss[0][1] == None: 
+                loss_df = pd.DataFrame(netem_loss, columns=["time", "loss"])
+                loss_df.sort_values(by="time", inplace=True)
+                last_time = loss_df['time'].max() + 10
+                last_loss = loss_df['loss'].iloc[-1]
+                loss_df = pd.concat([loss_df, pd.DataFrame([{"time": last_time, "loss": last_loss}])], ignore_index=True)
 
-        if netem_loss and not netem_loss[0][1] == None: 
-            loss_df = pd.DataFrame(netem_loss, columns=["time", "loss"])
-            loss_df.sort_values(by="time", inplace=True)
-            last_time = loss_df['time'].max() + 10
-            last_loss = loss_df['loss'].iloc[-1]
-            loss_df = pd.concat([loss_df, pd.DataFrame([{"time": last_time, "loss": last_loss}])], ignore_index=True)
-
-            ax_loss = axs[0].twinx()
-            ax_loss.step(loss_df['time'], loss_df['loss'], label='Loss (%)', color='red', linestyle='--', where='post')
-            ax_loss.set_ylabel('Loss (%)', color='red')
-            ax_loss.legend(loc='upper right')
-            ax_loss.set_ylim(0,None)
-
-
-        # Goodput 
-        axs[0].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
-        axs[0].set_title("Goodput (Mbps)")
-        axs[0].set_ylabel("Goodput (Mbps)")
-
-        # RTT
-        if 'srtt' in df_client.columns:
-            axs[1].plot(df_client['time'], df_client['srtt'], label=f'{flow_client} RTT')
-            axs[1].set_title("RTT from Iperf (ms)")
-        else:
-            axs[1].plot(df_ss_client['time'], df_ss_client['srtt'], label=f'{flow_client} RTT')
-            axs[1].set_title("RTT from SS (ms)")
-        
-        axs[1].set_ylabel("RTT (ms)")
+                ax_loss = axs[0].twinx()
+                ax_loss.step(loss_df['time'], loss_df['loss'], label='Loss (%)', color='red', linestyle='--', where='post')
+                ax_loss.set_ylabel('Loss (%)', color='red')
+                ax_loss.legend(loc='upper right')
+                ax_loss.set_ylim(0,None)
 
 
+            # Goodput 
+            axs[0].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
+            axs[0].set_title("Goodput (Mbps)")
+            axs[0].set_ylabel("Goodput (Mbps)")
 
-        # Throughput
-        axs[2].plot(df_client['time'], df_client['bandwidth'], label=f'{flow_client} CWND')
-        axs[2].set_title("Throughput (Mbps)")
-        axs[2].set_ylabel("Throughput (Mbps)")
-
-        # # Bytes/Transferred ????
-        # if 'transferred' in df_client.columns:
-        #     axs[3].plot(df_client['time'], df_client['transferred'], label=f'{flow_client} Bytes')
-        # else:
-        #     axs[3].plot(df_client['time'], df_client['bytes'], label=f'{flow_client} Bytes')
-
-        if not df_ss_client.empty:    
-            if 'cwnd' in df_ss_client.columns:
-                axs[3].plot(df_ss_client['time'], df_ss_client['cwnd'], label=f'{flow_client} CWND')
-                axs[3].set_title("Cwnd from SS (packets)")
-        else:
-            axs[3].plot(df_client['time'], df_client['cwnd'], label=f'{flow_client} CWND')
-            axs[3].set_title("Cwnd from Iperf (packets)")
+            # RTT
+            if 'srtt' in df_client.columns:
+                axs[1].plot(df_client['time'], df_client['srtt'], label=f'{flow_client} RTT')
+                axs[1].set_title("RTT from Iperf (ms)")
+            else:
+                axs[1].plot(df_ss_client['time'], df_ss_client['srtt'], label=f'{flow_client} RTT')
+                axs[1].set_title("RTT from SS (ms)")
+            
+            axs[1].set_ylabel("RTT (ms)")
 
 
-        if 'retr' in df_client.columns:
-            axs[4].plot(df_client['time'], df_client['retr'], label=f'{flow_client} Retransmits')
-            axs[4].set_title("Retransmits from Iperf (packets)")
-        else:
-            axs[4].plot(df_ss_client['time'], df_ss_client['retr'], label=f'{flow_client} Retransmits')
-            axs[4].set_title("Retransmits from SS (packets)")
 
+            # Throughput
+            axs[2].plot(df_client['time'], df_client['bandwidth'], label=f'{flow_client} CWND')
+            axs[2].set_title("Throughput (Mbps)")
+            axs[2].set_ylabel("Throughput (Mbps)")
+
+            # # Bytes/Transferred ????
+            # if 'transferred' in df_client.columns:
+            #     axs[3].plot(df_client['time'], df_client['transferred'], label=f'{flow_client} Bytes')
+            # else:
+            #     axs[3].plot(df_client['time'], df_client['bytes'], label=f'{flow_client} Bytes')
+
+            if not df_ss_client.empty:    
+                if 'cwnd' in df_ss_client.columns:
+                    axs[3].plot(df_ss_client['time'], df_ss_client['cwnd'], label=f'{flow_client} CWND')
+                    axs[3].set_title("Cwnd from SS (packets)")
+            else:
+                axs[3].plot(df_client['time'], df_client['cwnd'], label=f'{flow_client} CWND')
+                axs[3].set_title("Cwnd from Iperf (packets)")
+
+
+            if 'retr' in df_client.columns:
+                axs[4].plot(df_client['time'], df_client['retr'], label=f'{flow_client} Retransmits')
+                axs[4].set_title("Retransmits from Iperf (packets)")
+            else:
+                axs[4].plot(df_ss_client['time'], df_ss_client['retr'], label=f'{flow_client} Retransmits')
+                axs[4].set_title("Retransmits from SS (packets)")
+    except:
+        printRed("Error in plotting data for flows")
         # if 'rttvar' in df_client.columns:
         #     axs[5].plot(df_client['time'], df_client['rttvar'], label=f'{flow_client} Rttvar')
         #     axs[5].set_title("Rttvar from Iperf (ms)")

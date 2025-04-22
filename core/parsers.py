@@ -288,8 +288,28 @@ def parse_astraea_output(file, offset):
 
     
     return df
+def parse_vivace_uspace_output(file, offset):
+   # Read the CSV directly; let pandas ignore blank lines and bad rows
+    df = pd.read_csv(
+        file,
+        encoding="utf-8",
+        skip_blank_lines=True,
+        engine="python",      # more forgiving parser
+        on_bad_lines="skip"   # drop rows that have the wrong number of columns
+    )
 
+    # Make sure we have the expected column
+    if "time" not in df.columns:
+        raise ValueError("Input must contain a column named 'time'.")
 
+    # Convert to numeric if needed and apply the offset
+    df["time"] = pd.to_numeric(df["time"], errors="coerce") + offset
+
+    # Drop rows where *every* value is NaN (including any that became NaN above)
+    df = df.dropna(how="all").reset_index(drop=True)
+
+    return df
+    
 def parse_aurora_output(file, offset):
     with open(file, 'r') as fin:
         auroraOutput = fin.read()
