@@ -34,7 +34,7 @@ if __name__ == '__main__':
     BWS = [100]
     DELAYS = [20]
     QMULTS = [0.2, 1, 4]
-    RUNS = [1,]
+    RUNS = [1,2,3,4,5]
     LOSSES=[0]
     MAX_SIMULATIONS = 6
 

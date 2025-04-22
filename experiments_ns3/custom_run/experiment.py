@@ -51,7 +51,7 @@ def run_simulation(*args):
     rmdirp(path)
     mkdirp(path)
  
-    traffic_config = [TrafficConf('c1', 'x1', 0, 7, protocol)]
+    traffic_config = [TrafficConf('c1', 'x1', 0, 100, protocol), TrafficConf('c2', 'x2', 13, 100-13, protocol)]
     traffic_config.extend(generate_traffic_shape(run, qsize_in_bytes))
     printRed(traffic_config)
 
