@@ -28,9 +28,10 @@ sudo apt install -y openvswitch-testcontroller mininet moreutils sysstat ethtool
 echo "Setting up pcc vivace kernel"
 cd $CURRENT_DIR/CC/PCC-Kernel/src && make
 
+echo "Setting up pcc vivace uspace"
+cd $CURRENT_DIR/CC/PCC-Uspace/pcc-gradient && make
 
 echo "Downloading and setting up Orca"
-
 cd $CURRENT_DIR/CC/Orca
 bash build.sh
 
