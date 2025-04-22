@@ -8,12 +8,11 @@ import json
 import threading 
 
 class Emulation:
-    def __init__(self, network, network_config = None, traffic_config = None, path='.', interval=1):
+    def __init__(self, network, network_config = None, traffic_config = None, path='.', interval=1, pcap=False):
         self.network = network
         self.network_config = network_config
         self.traffic_config = traffic_config
         
-        # Lists used to run systats
         self.sending_nodes = []
         self.receiving_nodes = []
         
@@ -35,6 +34,7 @@ class Emulation:
         self.astraea_flows_counter = 0
         self.counter = 0
 
+        self.pcap = pcap
         self.flip = True
 
     def configure_network(self, network_config=None):
@@ -214,8 +214,6 @@ class Emulation:
             print("ERROR: no network config set for this experiment")
             exit(-1)
 
-        previous_start_time = 0
-
         for flowconfig in self.traffic_config:
             start_time = flowconfig.start
             duration = flowconfig.duration
@@ -259,17 +257,17 @@ class Emulation:
                 command = self.start_astraea_client
                 self.call_second.append(Command(command, params, start_time, source_node))
                 
-            elif protocol == 'aurora':
-                # Create server start up call
-                params = (destination, duration)
-                command = self.start_aurora_server
-                self.call_first.append(Command(command, params, None, ))
-
+            elif protocol == 'vivace-uspace':
                 # Create client start up call
-                params = (source_node,destination,duration,f"{HOME_DIR}/mininettestbed/saved_models/icml_paper_model" )
-                command = self.start_aurora_client
-                self.call_second.append(Command(command, params, start_time, destination))
+                command = self.start_vivace_receiver
+                params = (destination, duration)
+                self.call_first.append(Command(command, params, None, destination))
                 
+                # Create server start up call
+                params = (source_node, destination, duration)
+                command = self.start_vivace_sender
+                self.call_second.append(Command(command, params, start_time, source_node))
+
             elif protocol == 'tbf' or protocol == 'netem':
                 # Change the tbf rate to the value provided
                 params = list(flowconfig.params)
@@ -278,7 +276,7 @@ class Emulation:
                 command = self.configure_link
                 self.call_second.append(Command(command, params, start_time, 'TBF'))
 
-            elif protocol != 'aurora' and protocol not in ORCA:
+            else:
                 # Create server start up call
                 params = (destination, 1)
                 command = self.start_iperf_server
@@ -289,11 +287,6 @@ class Emulation:
                 command = self.start_iperf_client
                 self.call_second.append(Command(command, params, start_time, source_node))
 
-            else:
-                print("ERROR: Protocol %s not recognised. Terminating..." % (protocol))
-
-            previous_start_time = start_time
-
     def run(self):
         """
         The main function that runs the experiment. It works by starting the senders first, the monitors and then the receivers.
@@ -301,6 +294,7 @@ class Emulation:
         """
         tcpdump_processes = []
         wait_threads = []
+
         def start_tcpdump(node_name, interface, port):
             """
             Start tcpdump on the specified node and interface.
@@ -308,7 +302,8 @@ class Emulation:
             """
             node = self.network.get(node_name)
             pcap_file = f"{self.path}/{node_name}_{interface}_trace.pcap"
-            tcpdump_cmd = f"tcpdump -w {pcap_file} -s 120 -c 100000000 port {port} -i {interface} &"
+            #                                      snaplen 
+            tcpdump_cmd = f"tcpdump -w {pcap_file} -s 120 --count 100000000 port {port} -i {interface} &"
             print(f"Starting tcpdump on {node_name} ({interface}) with command: {tcpdump_cmd}")
             process = node.popen(tcpdump_cmd, shell=True)
             tcpdump_processes.append(process)
@@ -318,7 +313,7 @@ class Emulation:
             Stop all running tcpdump processes after the experiment ends.
             """
             for process in tcpdump_processes:
-                process.terminate()  # This will stop tcpdump
+                process.terminate()
 
         def wait_thread(node_name: str) -> None:
             """
@@ -345,7 +340,6 @@ class Emulation:
             time.sleep(call.waiting_time)
             call.command(*call.params)
 
-
         for call in self.call_first:
             call.command(*call.params)
             t = threading.Thread(target=wait_thread, args=(call.node,))
@@ -364,11 +358,12 @@ class Emulation:
             for node_name in self.sending_nodes:
                 start_sysstat(1,self.sysstat_length,self.path, self.network.get(node_name))
                 # Start tcpdump on all sender and receiver nodes
-        # for node_name in self.sending_nodes:
-        #     start_tcpdump(node_name, f"{node_name}-eth0", 5201)  # Adjust the interface name as per your setup
+        if self.pcap:
+            for node_name in self.sending_nodes:
+                start_tcpdump(node_name, f"{node_name}-eth0")
 
-        # for node_name in self.receiving_nodes:
-        #     start_tcpdump(node_name, f"{node_name}-eth0", 5201)  # Adjust the interface name as per your setup
+            for node_name in self.receiving_nodes:
+                start_tcpdump(node_name, f"{node_name}-eth0")  
 
         for call in self.call_second:
             # start all the receivers at the same time, they will individually wait for the correct time
@@ -381,7 +376,8 @@ class Emulation:
         for t in wait_threads:
             t.join()
 
-        #stop_tcpdump()  
+        if self.pcap:
+            stop_tcpdump()  
         printDebug3("All flows have finished")
         
         for monitor in self.qmonitors:
@@ -442,7 +438,7 @@ class Emulation:
         """
         node = self.network.get(node_name)
         cmd = f"sudo -u {USERNAME} {ASTRAEA_INSTALL_FOLDER}/src/build/bin/server --port={port} --perf-interval={monitor_interval * 1000}  --one-off --terminal-out"
-        printPink(f"Sending command '{cmd}' to host {node.name}")
+        printPinkFill(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
 
     def start_astraea_client(self, node_name: str, destination_name: str, duration: int,  monitor_interval=1 , port=44279):
@@ -471,8 +467,7 @@ class Emulation:
         orcacmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {ORCA_INSTALL_FOLDER}/sender.sh {port} {self.orca_flows_counter} {duration} {ORCA_INSTALL_FOLDER}"  
         printGreen(f"Sending command '{orcacmd}' to host {node.name}")
         node.sendCmd(orcacmd)
-
-        # global flow counter for orca flows
+        
         self.orca_flows_counter+= 1 
 
     def start_orca_receiver(self, node_name: str, destination_name: str, port=4444):
@@ -506,17 +501,17 @@ class Emulation:
         printPurple(f"Sending command '{sagecmd}' to host {node.name}" )
         node.sendCmd(sagecmd)
 
-    def start_aurora_client(self, node_name, destination_name, duration, model_path, port=9000, perf_interval=1):
+    def start_vivace_sender(self, node_name, destination_name, duration, port=6666, perf_interval=1):
         node = self.network.get(node_name)
         destination = self.network.get(destination_name)
-        auroracmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PCC_USPACE_INSTALL_FOLDER}/src/core {PCC_USPACE_INSTALL_FOLDER}/src/app/pccclient send {destination.IP()} {port} {perf_interval} {duration} --pcc-rate-control=python3 -pyhelper=loaded_client -pypath={PCC_RL_INSTALL_FOLDER}/src/udt-plugins/testing/ --history-len=10 --pcc-utility-calc=linear --model-path={model_path}"        
-        print(f"Sending command '{auroracmd}' to host {node.name}")
+        auroracmd = f"sudo -u {USERNAME} LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/sender/src {PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/sender/app/gradient_descent_pcc_client {destination.IP()} {port} 1 --duration {duration}"        
+        printRed(f"Sending command '{auroracmd}' to host {node.name}")
         node.sendCmd(auroracmd)
 
-    def start_aurora_server(self, node_name, duration, port=9000, perf_interval=1):
+    def start_vivace_receiver(self, node_name, duration, port=6666, perf_interval=1):
         node = self.network.get(node_name)
-        auroracmd = f"sudo -u {USERNAME} LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PCC_USPACE_INSTALL_FOLDER}/src/core {PCC_USPACE_INSTALL_FOLDER}/src/app/pccserver recv {port} {perf_interval} {duration}"
-        print("Sending command '%s' to host %s" % (auroracmd, node.name))
+        auroracmd = f"sudo -u {USERNAME} LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/receiver/src {PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/receiver/app/appserver --one-off --duration {duration} {port}"
+        printRed(f"Sending command '{auroracmd}' to host {node.name}")
         node.sendCmd(auroracmd)
 
     def dump_info(self):

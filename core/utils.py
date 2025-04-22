@@ -11,7 +11,7 @@ default_dir = '.'
 NetworkConf.__new__.__defaults__ = (None,) * len(NetworkConf._fields)
 TrafficConf.__new__.__defaults__ = (None,) * len(TrafficConf._fields)
 
-IPERF = ['bbr', 'bbr1', 'pcc', 'cubic']
+IPERF = ['bbr', 'bbr1', 'pcc', 'cubic', 'snap']
 ORCA = ['orca', 'sage']
 
 def mkdirp(path: str) -> None:
