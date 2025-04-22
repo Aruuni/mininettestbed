@@ -16,5 +16,5 @@
 	url = https://github.com/Aruuni/LeoEM
 [submodule "CC/PCC-Uspace"]
 	path = CC/PCC-Uspace
-	url = https://github.com/PCCproject/PCC-Uspace
-	branch = NSDI-2018
+	url = https://github.com/Aruuni/PCC-Uspace
+	branch = vivace-mininet
