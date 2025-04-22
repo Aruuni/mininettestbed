@@ -1,112 +1,217 @@
+import os
+import sys
+import json
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import scienceplots
 plt.style.use('science')
-import json
-import os, sys
 import matplotlib as mpl
-pd.set_option('display.max_rows', None)
-import numpy as np
 from matplotlib.pyplot import figure
-import statistics
 
+# Mandatory import settings
 plt.rcParams['text.usetex'] = False
-script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '../../../..')
-sys.path.append( mymodule_dir )
+script_dir = os.path.dirname(__file__)
+mymodule_dir = os.path.join(script_dir, '../../../..')
+sys.path.append(mymodule_dir)
 from core.config import *
 
-def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
-    BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
-    BDP_IN_PKTS = BDP_IN_BYTES / 1500
-    start_time = 0
-    end_time = 300
+mpl.rcParams.update({'font.size': 12})
+pd.set_option('display.max_rows', None)
 
-    # List containing each data point (each run). Values for each datapoint: protocol, run_number, average_goodput, optimal_goodput
-    data = []
-
-    for protocol in PROTOCOLS:
-        optimals = []
-        for run in RUNS:
-            PATH = ROOT_PATH + '/Dumbell_%smbit_%sms_%spkts_0loss_1flows_22tcpbuf_%s/run%s' % (
-            BW, DELAY, int(QMULT * BDP_IN_PKTS), protocol, run)
-            # Compute the average optimal throughput
-            with open(PATH + '/emulation_info.json', 'r') as fin:
-                emulation_info = json.load(fin)
-            bw_capacities = list(filter(lambda elem: elem[6] == 'tbf', emulation_info['flows']))
-            bw_capacities = [x[-1][1] for x in bw_capacities]
-            optimal_mean = sum(bw_capacities) / len(bw_capacities)
-
-            if os.path.exists(PATH + '/csvs/x1.csv'):
-                receiver = pd.read_csv(PATH + '/csvs/x1.csv').reset_index(drop=True)
-
-                receiver['time'] = receiver['time'].apply(lambda x: int(float(x)))
-
-                receiver = receiver[
-                    (receiver['time'] > start_time) & (receiver['time'] < end_time)]
-
-                receiver = receiver.drop_duplicates('time')
-
-                receiver = receiver.set_index('time')
-                protocol_mean = receiver.mean()['bandwidth']
-                data.append([protocol, run, protocol_mean, optimal_mean])
-
-            # min_rtts = list(filter(lambda elem: elem[5] == 'netem', emulation_info['flows']))
-            # min_rtts = [x[-1][2] for x in min_rtts]
-
-    COLUMNS = ['protocol', 'run_number', 'average_goodput', 'optimal_goodput']
-    return pd.DataFrame(data, columns=COLUMNS)
-
-
-COLOR = {'cubic': '#0C5DA5',
-             'bbr1': '#00B945',
-             'bbr3': '#FF9500',
-             'sage': '#FF2C01',
-             'orca': '#845B97',
-             'astraea': '#845B97',
-             }
-
-
+# --- Constants and Settings ---
 PROTOCOLS = ['cubic', 'astraea', 'bbr3', 'bbr1', 'sage']
-
-BW = 50
-DELAY = 50
+BW = 50                # Bandwidth in Mbit/s
+DELAY = 50             # Delay in ms
 QMULT = 1
-RUNS = list(range(1,51))
+RUN = 16               # Run number to use
+BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
+BDP_IN_PKTS = BDP_IN_BYTES / 1500
+start_time = 100       # Time window start (s)
+end_time = 200         # Time window end (s)
+LINEWIDTH = 2          # Thicker lines
 
-bw_rtt_data = get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_leo/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
-loss_data =  get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_loss_leo/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
+# Colors for protocols
+COLOR = {
+    'cubic':   '#0C5DA5',
+    'bbr1':    '#00B945',
+    'bbr3':    '#FF9500',
+    'sage':    '#FF2C01',
+    'astraea': '#845B97'
+}
 
-BINS = 50
-fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.5))
-ax = axes
+# Updated ROOT paths for the experiments
+ROOT_PATH_no_loss = f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_leo/fifo"
+ROOT_PATH_loss    = f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_loss_leo/fifo"
 
-optimals = bw_rtt_data[bw_rtt_data['protocol'] == 'cubic']['optimal_goodput']
-values, base = np.histogram(optimals, bins=BINS)
-# evaluate the cumulative
-cumulative = np.cumsum(values)
-# plot the cumulative function
-ax.plot(base[:-1], cumulative/50*100, c='black', label="link capacity")
+# --- Create a figure with 5 subplots (side by side, left to right) ---
+fig, axes = plt.subplots(1, len(PROTOCOLS), figsize=(15, 3), sharex=True)
+if len(PROTOCOLS) == 1:
+    axes = [axes]
 
-for protocol in PROTOCOLS:
-    avg_goodputs = bw_rtt_data[bw_rtt_data['protocol'] == protocol]['average_goodput']
-    values, base = np.histogram(avg_goodputs, bins=BINS)
-    # evaluate the cumulative
-    cumulative = np.cumsum(values)
-    # plot the cumulative function
-    ax.plot(base[:-1], cumulative/50*100, label="%s-rtt" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), c=COLOR[protocol])
+for ax, protocol in zip(axes, PROTOCOLS):
+    # Create a twin axis for the secondary metric (RTT or Loss Rate)
+    ax2 = ax.twinx()
+    
+    # Build the paths for the current protocol (non-loss and loss experiments)
+    PATH_no = os.path.join(
+        ROOT_PATH_no_loss,
+        f'Dumbell_{BW}mbit_{DELAY}ms_{int(QMULT * BDP_IN_PKTS)}pkts_0loss_1flows_22tcpbuf_{protocol}/run{RUN}'
+    )
+    PATH_loss = os.path.join(
+        ROOT_PATH_loss,
+        f'Dumbell_{BW}mbit_{DELAY}ms_{int(QMULT * BDP_IN_PKTS)}pkts_0loss_1flows_22tcpbuf_{protocol}/run{RUN}'
+    )
+    
+    # Debug prints for paths and data verification
+    print(f"Protocol: {protocol}")
+    print("Non-loss Path:", PATH_no)
+    print("Loss Path:", PATH_loss)
+    
+    # --- Load Data for the Non-Loss Experiment ---
+    sender_no = None
+    capacity_no = None
+    min_rtt = None
+    csv_no = os.path.join(PATH_no, 'csvs/c1.csv')
+    info_no = os.path.join(PATH_no, 'emulation_info.json')
+    if not os.path.exists(csv_no):
+        print(f"File not found: {csv_no}")
+    if not os.path.exists(info_no):
+        print(f"File not found: {info_no}")
+    if os.path.exists(csv_no) and os.path.exists(info_no):
+        sender_no = pd.read_csv(csv_no).reset_index(drop=True)
+        sender_no['time'] = sender_no['time'].apply(lambda x: int(float(x)))
+        sender_no = sender_no[(sender_no['time'] > start_time) & (sender_no['time'] < end_time)]
+        if sender_no.empty:
+            print(f"No data in CSV for protocol {protocol} in non-loss experiment after filtering time.")
+        else:
+            print(f"Non-loss sender data for {protocol} (first few rows):")
+            print(sender_no.head())
+        sender_no = sender_no.drop_duplicates('time').set_index('time')
+        with open(info_no, 'r') as fin:
+            emulation_info = json.load(fin)
+        flows = list(filter(lambda elem: start_time <= elem[4] <= end_time, emulation_info['flows']))
+        capacity_flows = list(filter(lambda elem: elem[5] == 'tbf', flows))
+        if capacity_flows:
+            capacity_no = [x[-1][1] for x in capacity_flows]
+        rtt_flows = list(filter(lambda elem: elem[5] == 'netem', flows))
+        if rtt_flows:
+            min_rtt = [x[-1][2] for x in rtt_flows]
+    
+    # --- Load Data for the Loss Experiment ---
+    sender_loss = None
+    capacity_loss = None
+    loss_rate = None
+    csv_loss = os.path.join(PATH_loss, 'csvs/c1.csv')
+    info_loss = os.path.join(PATH_loss, 'emulation_info.json')
+    if not os.path.exists(csv_loss):
+        print(f"File not found: {csv_loss}")
+    if not os.path.exists(info_loss):
+        print(f"File not found: {info_loss}")
+    if os.path.exists(csv_loss) and os.path.exists(info_loss):
+        sender_loss = pd.read_csv(csv_loss).reset_index(drop=True)
+        sender_loss['time'] = sender_loss['time'].apply(lambda x: int(float(x)))
+        sender_loss = sender_loss[(sender_loss['time'] > start_time) & (sender_loss['time'] < end_time)]
+        if sender_loss.empty:
+            print(f"No data in CSV for protocol {protocol} in loss experiment after filtering time.")
+        else:
+            print(f"Loss sender data for {protocol} (first few rows):")
+            print(sender_loss.head())
+        sender_loss = sender_loss.drop_duplicates('time').set_index('time')
+        with open(info_loss, 'r') as fin:
+            emulation_info_loss = json.load(fin)
+        flows_loss = list(filter(lambda elem: start_time <= elem[4] <= end_time, emulation_info_loss['flows']))
+        capacity_loss_flows = list(filter(lambda elem: elem[5] == 'tbf', flows_loss))
+        if capacity_loss_flows:
+            capacity_loss = [x[-1][1] for x in capacity_loss_flows]
+        loss_flows = list(filter(lambda elem: elem[5] == 'netem', flows_loss))
+        if loss_flows:
+            loss_rate = [x[-1][-2] for x in loss_flows]
+    
+    # --- Plot on Primary Axis (Left): Sender Bandwidth and Link Capacity ---
+    step_times = np.arange(start_time, end_time + 1, 10)
+    if sender_no is not None and not sender_no.empty:
+        ax.plot(
+            sender_no.index + 1,
+            sender_no['bandwidth'],
+            linewidth=LINEWIDTH,
+            label='BW (non-loss)',
+            color=COLOR[protocol],
+            linestyle='-'
+        )
+    else:
+        print(f"No non-loss sender data for protocol {protocol}")
+    if sender_loss is not None and not sender_loss.empty:
+        ax.plot(
+            sender_loss.index + 1,
+            sender_loss['bandwidth'],
+            linewidth=LINEWIDTH,
+            label='BW (loss)',
+            color=COLOR[protocol],
+            linestyle='--'
+        )
+    else:
+        print(f"No loss sender data for protocol {protocol}")
+    if capacity_no is not None:
+        ax.step(
+            step_times,
+            capacity_no,
+            where='post',
+            color='black',
+            linewidth=0.5 * LINEWIDTH,
+            label='Capacity (non-loss)',
+            alpha=0.5
+        )
+    if capacity_loss is not None:
+        ax.step(
+            step_times,
+            capacity_loss,
+            where='post',
+            color='black',
+            linewidth=0.5 * LINEWIDTH,
+            linestyle='dashed',
+            label='Capacity (loss)',
+            alpha=0.5
+        )
+    
+    # --- Plot on Secondary Axis (Right): min RTT and Loss Rate ---
+    if min_rtt is not None:
+        ax2.step(
+            step_times,
+            min_rtt,
+            where='post',
+            color='red',
+            linewidth=0.5 * LINEWIDTH,
+            label='min RTT',
+            linestyle='dashed',
+            alpha=0.5
+        )
+    if loss_rate is not None:
+        ax2.step(
+            step_times,
+            loss_rate,
+            where='post',
+            color='blue',
+            linewidth=0.5 * LINEWIDTH,
+            label='Loss Rate',
+            linestyle='-.',
+            alpha=0.5
+        )
+    
+    # --- Set subplot titles and labels ---
+    ax.set_title(protocol)
+    ax.set_xlabel("Time (s)")
+    if ax == axes[0]:
+        ax.set_ylabel("Sending Rate (Mbps)")
+    ax2.set_ylabel("min RTT (ms) / Loss Rate (%)")
 
-    avg_goodputs = loss_data[loss_data['protocol'] == protocol]['average_goodput']
-    values, base = np.histogram(avg_goodputs, bins=BINS)
-    # evaluate the cumulative
-    cumulative = np.cumsum(values)
-    # plot the cumulative function
-    ax.plot(base[:-1], cumulative / 50 * 100, label="%s-loss" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), linestyle='dashed', c=COLOR[protocol])
+# --- Create a common legend for all subplots ---
+lines_labels = [ax.get_legend_handles_labels() for ax in axes]
+lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+fig.legend(lines, labels, ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.10),
+           columnspacing=0.5, handletextpad=0.5, handlelength=1)
 
-ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percentage of Trials (\%)")
-ax.annotate('link capacity', xy=(76, 50), xytext=(32, 20), arrowprops=dict(arrowstyle="->", linewidth=0.5))
-ax.set_xlim(0, None)
-
-fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.50),columnspacing=0.5,handletextpad=0.5, handlelength=1)
-for format in ['pdf']:
-    fig.savefig("joined_goodput_cdf_mininet.%s" % (format), dpi=720)
+fig.tight_layout(rect=[0, 0, 1, 0.95])
+for fmt in ['pdf']:
+    fig.savefig(f"joined_sending_rate_combined.{fmt}", dpi=720)
+plt.show()
