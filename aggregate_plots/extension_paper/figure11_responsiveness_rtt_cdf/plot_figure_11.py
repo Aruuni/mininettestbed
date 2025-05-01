@@ -35,7 +35,7 @@ def get_rtt_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
                 emulation_info = json.load(fin)
             rtt_capacities = [x[-1][2] for x in filter(lambda elem: elem[6] == 'netem', emulation_info['flows'])]
             optimal_mean = sum(rtt_capacities) / len(rtt_capacities)
-            if protocol == 'astraea':
+            if protocol == 'astraea' or protocol == 'vivace-uspace':
                 if os.path.exists(PATH + '/csvs/c1.csv'):
                     
                     rtt_data = pd.read_csv(PATH + '/csvs/c1.csv').reset_index(drop=True)

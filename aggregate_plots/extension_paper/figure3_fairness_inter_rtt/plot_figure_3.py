@@ -51,9 +51,9 @@ for mult in QMULTS:
 
                       receiver1_total = receiver1_total.set_index('time')
                       receiver2_total = receiver2_total.set_index('time')
-                      total = total[(total['bandwidth1'] > 0) | (total['bandwidth2'] > 0)] # if one datapoint contains a nan from the divide by 0, the enire datapoint will not be plotted.
 
                       total = receiver1_total.join(receiver2_total, how='inner', lsuffix='1', rsuffix='2')[['bandwidth1', 'bandwidth2']]
+                      total = total[(total['bandwidth1'] > 0) | (total['bandwidth2'] > 0)] # if one datapoint contains a nan from the divide by 0, the enire datapoint will not be plotted.
                       goodput_ratios_total.append(total.min(axis=1)/total.max(axis=1))
                   else:
                       print(f"Folder {PATH} not found.")
@@ -69,7 +69,7 @@ for mult in QMULTS:
     fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.2))
     ax = axes
     for protocol in PROTOCOLS_EXTENSION:
-        plot_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], protocol, delay=True)
+        plot_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol], delay=True)
 
     ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio', ylim=[-0.1,1.1])
     for axis in [ax.xaxis, ax.yaxis]:
@@ -78,7 +78,11 @@ for mult in QMULTS:
 
     handles, labels = ax.get_legend_handles_labels()
     handles = [h[0] for h in handles]
-    legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.28),columnspacing=0.8,handletextpad=0.5)
-
+    legend = fig.legend(
+        handles, labels,
+        ncol=3, loc='upper center',
+        bbox_to_anchor=(0.5, 1.30),
+        columnspacing=0.8,
+        handletextpad=0.5
+    )
     plt.savefig(f"goodput_inter_rtt_qmult{mult}.pdf", dpi=1080)
-

@@ -90,10 +90,10 @@ def plot_data(data, filename, ylim=None, xlim=None):
         if i == len(PROTOCOLS_EXTENSION)-1:
             ax.set(xlabel='time (s)')
 
-        ax.text(70, 85, protocol, va='center', c=COLORS_EXTENSION[protocol])
+        ax.text(70, 85, PROTOCOLS_FRIENDLY_NAME_LEO[protocol], va='center', c=COLORS_EXTENSION[protocol])
         ax.grid()
 
-    fig.text(0.045, 0.6, 'Goodput (Mbps)', va='center', rotation='vertical')
+    fig.text(0.045, 0.5, 'Goodput (Mbps)', va='center', rotation='vertical')
     plt.subplots_adjust(top=0.95)
     plt.savefig(filename, dpi=1080)
 

@@ -4,9 +4,6 @@ from matplotlib.transforms import offset_copy
 import scienceplots
 plt.style.use('science')
 import os, sys
-from matplotlib.ticker import ScalarFormatter
-import numpy as np
-from mpl_toolkits.axes_grid1 import ImageGrid
 import numpy as np
 
 plt.rcParams['text.usetex'] = False
@@ -14,8 +11,10 @@ script_dir = os.path.dirname( __file__ )
 mymodule_dir = os.path.join( script_dir, '../../..')
 sys.path.append( mymodule_dir )
 from core.config import *
+from core.plotting import * 
 
-PROTOCOLS = ['cubic','bbr3',  'sage', 'orca',   'vivace', 'astraea',]
+
+PROTOCOLS = ['cubic','bbr3',  'sage', 'orca',   'vivace-uspace', 'astraea',]
 def parse_aurora_output(file, offset):
    with open(file, 'r') as fin:
       auroraOutput = fin.read()
@@ -101,22 +100,15 @@ def parse_orca_output(file, offset):
    return df
 
 if __name__ == "__main__":
-    for QMULT in [0.2,1,4]:
+    for mult in QMULTS:
         for mode in ['normal', 'inverse']:
             fig, axes = plt.subplots(nrows=len(PROTOCOLS), ncols=1, figsize=(5,3), sharex=True)
             plt.subplots_adjust(hspace=0.5)
-            COLORMAP = {'cubic': '#0C5DA5',
-             'orca': '#00B945',
-             'bbr3': '#FF9500',
-             'sage': '#FF2C01',
-             'vivace': '#845B97',
-             'astraea': '#686868',
-             }
             LEGENDMAP = {}
             BW = 100
             DELAY = 50
             
-            RUNS = [1,2,3,4,5]
+
 
             LINEWIDTH = 1
 
@@ -137,26 +129,16 @@ if __name__ == "__main__":
                   senders = {1: [], 2: [], 3: [], 4:[]}
                   receivers = {1: [], 2: [], 3: [], 4:[]}
                   for run in RUNS:
-                     PATH = ROOT_PATH + '/Dumbell_%smbit_%sms_%spkts_0loss_%sflows_22tcpbuf_%s/run%s' % (BW,DELAY,int(QMULT * BDP_IN_PKTS),FLOWS,protocol,run)
+                     PATH = f"{ROOT_PATH}/Dumbell_{BW}mbit_{DELAY}ms_{int(mult * BDP_IN_PKTS)}pkts_0loss_{FLOWS}flows_22tcpbuf_{protocol}/run{run}" 
                      for n in range(FLOWS):
-                        if not os.path.exists(PATH + '/csvs/c%s.csv' % (n+1)):
-                            try:
-                                if protocol == 'orca':
-                                    df = parse_orca_output(PATH + '/x%s_output.txt' % (n+1), 0 if n == 0 else DELAY)
-                                    df.to_csv(PATH + '/csvs/x%s.csv' % (n+1), index=False)
-                                if protocol == 'aurora':
-                                    df = parse_aurora_output(PATH + '/x%s_output.txt' % (n+1), 0 if n == 0 else DELAY)
-                                    df.to_csv(PATH + '/csvs/x%s.csv' % (n+1), index=False)
-                            except:
-                                print("Error parsing")
-                        if os.path.exists(PATH + '/csvs/c%s.csv' % (n+1)):
-                           sender = pd.read_csv(PATH +  '/csvs/c%s.csv' % (n+1))
+                        if os.path.exists(f"{PATH}/csvs/c{(n+1)}.csv"):
+                           sender = pd.read_csv(f"{PATH}/csvs/c{(n+1)}.csv")
                            senders[n+1].append(sender)
                         else:
                            print("Folder not found")
 
-                        if os.path.exists(PATH + '/csvs/x%s.csv' % (n+1)):
-                           receiver_total = pd.read_csv(PATH + '/csvs/x%s.csv' % (n+1)).reset_index(drop=True)
+                        if os.path.exists(f"{PATH}/csvs/x{(n+1)}.csv"):
+                           receiver_total = pd.read_csv(f"{PATH}/csvs/x{(n+1)}.csv").reset_index(drop=True)
                            receiver_total = receiver_total[['time', 'bandwidth']]
                            receiver_total['time'] = receiver_total['time'].apply(lambda x: int(float(x)))
                            receiver_total['bandwidth'] = receiver_total['bandwidth'].ewm(alpha=0.5).mean()
@@ -172,9 +154,9 @@ if __name__ == "__main__":
                   # exactly the same index. Now I can concatenate and compute mean and std
                   for n in range(FLOWS):
                       if len(receivers[n+1]) > 0:
-                         data[protocol][n+1]['mean'] = pd.concat(receivers[n+1], axis=1).mean(axis=1)
-                         data[protocol][n+1]['std'] = pd.concat(receivers[n+1], axis=1).std(axis=1)
-                         data[protocol][n+1].index = pd.concat(receivers[n+1], axis=1).index
+                         data[protocol][n+1]['mean'] = pd.concat(receivers[n+1], axis=1).mean(axis=1).sort_index()
+                         data[protocol][n+1]['std'] = pd.concat(receivers[n+1], axis=1).std(axis=1).sort_index()
+                         data[protocol][n+1].index = pd.concat(receivers[n+1], axis=1).sort_index().index
 
             for i,protocol in enumerate(PROTOCOLS):
                #remove index for single plot
@@ -182,18 +164,18 @@ if __name__ == "__main__":
 
                for n in range(FLOWS):
                    if mode == 'inverse':
-                       LABEL = protocol if n == 0 else 'cubic'
-                       COLOR = '#0C5DA5' if n == 1 else COLORMAP[protocol]
+                       LABEL = PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol] if n == 0 else 'Cubic'
+                       COLOR = '#0C5DA5' if n == 1 else COLORS_EXTENSION[protocol]
                    else:
-                       LABEL = protocol if n == 1 else 'cubic'
-                       COLOR = '#0C5DA5' if n == 0 else COLORMAP[protocol]
+                       LABEL = PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol] if n == 1 else 'Cubic'
+                       COLOR = '#0C5DA5' if n == 0 else COLORS_EXTENSION[protocol]
 
                    ax.plot(data[protocol][n+1].index, data[protocol][n+1]['mean'], linewidth=LINEWIDTH, label=LABEL, color=COLOR)
                    try:
                      if mode == 'inverse':
-                         FC = '#0C5DA5' if n == 1 else COLORMAP[protocol]
+                         FC = '#0C5DA5' if n == 1 else COLORS_EXTENSION[protocol]
                      else:
-                         FC = '#0C5DA5' if n == 0 else COLORMAP[protocol]
+                         FC = '#0C5DA5' if n == 0 else COLORS_EXTENSION[protocol]
                      ax.fill_between(data[protocol][n+1].index, data[protocol][n+1]['mean'] - data[protocol][n+1]['std'], data[protocol][n+1]['mean'] + data[protocol][n+1]['std'], alpha=0.2,  fc=FC)
                    except:
                      print("Fill between error")
@@ -210,11 +192,10 @@ if __name__ == "__main__":
                      LEGENDMAP[label] = handle
 
             fig.text(0.5, 0.01, 'time (s)', ha='center')
-            fig.text(0.045, 0.6, 'Goodput (Mbps)', va='center', rotation='vertical')
+            fig.text(0.030, 0.6, 'Goodput (Mbps)', va='center', rotation='vertical')
 
             
-            fig.legend(list(LEGENDMAP.values()), list(LEGENDMAP.keys()), loc='upper center',ncol=3, bbox_to_anchor=(0.5, 1.20))
+            fig.legend(list(LEGENDMAP.values()), list(LEGENDMAP.keys()), loc='upper center',ncol=3, bbox_to_anchor=(0.5, 1.17))
 
-            for format in ['pdf']:
-                plt.subplots_adjust(top=1)
-                plt.savefig('goodput_friendly_%sms_%s_%s.%s' % (DELAY, QMULT, mode, format), dpi=720, bbox_inches='tight')
+            plt.subplots_adjust(top=1)
+            plt.savefig(f"goodput_friendly_{DELAY}ms_{mult}_{mode}.pdf", dpi=720, bbox_inches='tight')

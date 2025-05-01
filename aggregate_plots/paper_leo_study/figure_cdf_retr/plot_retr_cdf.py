@@ -10,14 +10,15 @@ import numpy as np
 from matplotlib.pyplot import figure
 import statistics
 from matplotlib.ticker import LogLocator, FuncFormatter, FixedLocator
-
+from matplotlib.lines import Line2D
 plt.rcParams['text.usetex'] = False
 script_dir = os.path.dirname( __file__ )
 mymodule_dir = os.path.join( script_dir, '../../..')
 sys.path.append( mymodule_dir )
 from core.config import *
+from core.plotting import *
 
-def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
+def get_df(ROOT_PATH, RUNS, BW, DELAY, QMULT):
     BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
     BDP_IN_PKTS = BDP_IN_BYTES / 1500
     start_time = 0
@@ -26,7 +27,7 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
     # List containing each data point (each run). Values for each datapoint: protocol, run_number, average_goodput, optimal_goodput
     data = []
 
-    for protocol in PROTOCOLS:
+    for protocol in PROTOCOLS_LEO:
         optimals = []
         for run in RUNS:
             PATH = ROOT_PATH + '/Dumbell_%smbit_%sms_%spkts_0loss_1flows_22tcpbuf_%s/run%s' % (BW, DELAY, int(QMULT * BDP_IN_PKTS), protocol, run)
@@ -38,7 +39,7 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
             bw_capacities = [x[-1][1] for x in bw_capacities]
             optimal_mean = sum(bw_capacities)/len(bw_capacities)
 
-            if protocol != 'aurora':
+            if protocol != 'vivace-uspace':
                 if os.path.exists(PATH + '/sysstat/etcp_c1.log'):
                     systat1 = pd.read_csv(PATH + '/sysstat/etcp_c1.log', sep=';').rename(
                         columns={"# hostname": "hostname"})
@@ -70,16 +71,14 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
                 if os.path.exists(PATH + '/csvs/c1.csv'):
                     systat1 = pd.read_csv(PATH + '/csvs/c1.csv').rename(
                         columns={"retr": "retrans/s"})
-                    retr1 = systat1[['time', 'retrans/s']]
+                    retr1 = systat1[['time', 'retrans/s']].copy()
                     valid = True
                 else:
                     valid = False
 
             if valid:
                 retr1['time'] = retr1['time'].apply(lambda x: int(float(x)))
-
                 retr1 = retr1.drop_duplicates('time')
-
                 retr1_total = retr1[(retr1['time'] > start_time) & (retr1['time'] < end_time)]
                 retr1_total = retr1_total.set_index('time')
                 data.append([protocol, run, retr1_total.mean()['retrans/s']*1500*8/(1024*1024)])
@@ -87,51 +86,77 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
     COLUMNS = ['protocol', 'run_number', 'average_retr_rate']
     return pd.DataFrame(data, columns=COLUMNS)
 
-COLOR = {'cubic': '#0C5DA5',
-             'bbr1': '#00B945',
-             'bbr3': '#FF9500',
-             'sage': '#FF2C01',
-             'satcp': '#845B97',
-             'astraea': '#845B97',
-             }
-PROTOCOLS = ['cubic', 'astraea', 'bbr3', 'bbr1', 'sage']
+
 BW = 50
 DELAY = 50
 QMULT = 1
 RUNS = list(range(1,51))
 
-bw_rtt_data = get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_leo/fifo", PROTOCOLS, RUNS, BW, DELAY, QMULT)
-loss_data =  get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_loss_leo/fifo",  PROTOCOLS, RUNS, BW, DELAY, QMULT)
+bw_rtt_data = get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_leo/fifo", RUNS, BW, DELAY, QMULT)
+loss_data =  get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_loss_leo/fifo", RUNS, BW, DELAY, QMULT)
 
 BINS = 50
-fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.5))
-ax = axes
 
-for protocol in PROTOCOLS:
-    avg_goodputs = bw_rtt_data[bw_rtt_data['protocol'] == protocol]['average_retr_rate']
+fig, ax = plt.subplots(figsize=(3, 1.8))
+fig.subplots_adjust(left=0.15, right=0.98, bottom=0.15, top=0.80)
 
-    values, base = np.histogram(avg_goodputs, bins=BINS)
-    # evaluate the cumulative
-    cumulative = np.cumsum(values)
-    # plot the cumulative function
-    ax.plot(base[:-1], cumulative/50*100, label="%s-rtt" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), c=COLOR[protocol])
+protocol_handles = []
+protocol_labels = []
+for protocol in PROTOCOLS_LEO:
+    # RTT-only curve
+    data_rtt = bw_rtt_data[bw_rtt_data['protocol'] == protocol]['average_retr_rate']
+    vals, bins = np.histogram(data_rtt, bins=BINS)
+    cum = np.cumsum(vals)
+    line, = ax.plot(
+        bins[:-1], cum / 50 * 100,
+        c=COLORS_LEO[protocol], linewidth=1.0
+    )
+    # Loss curve (dashed)
+    data_loss = loss_data[loss_data['protocol'] == protocol]['average_retr_rate']
+    vals, bins = np.histogram(data_loss, bins=BINS)
+    cum = np.cumsum(vals)
+    ax.plot(
+        bins[:-1], cum / 50 * 100,
+        c=COLORS_LEO[protocol], linestyle='--', linewidth=1.0
+    )
+    protocol_handles.append(line)
+    protocol_labels.append(PROTOCOLS_FRIENDLY_NAME_LEO[protocol])
+
+ax.set(xlabel="Average Retr. Rate (Mbps)", ylabel="Percent of Trials (%)")
 
 
-    # Set x-axis scale and limits
-    # ax.set_xscale('log')  # Logarithmic scale
-    # ax.xaxis.set_major_formatter(FuncFormatter(
-    # lambda x, _: f"{x:.3f}".rstrip('0').rstrip('.') if x < 1 else f"{x:.1f}".rstrip('0').rstrip('.')))
-    # ax.set_xlim(0.001, 100)
-    #ax.tick_params(axis='x', labelsize=2)  # Set label size (e.g., 8)
-    avg_goodputs = loss_data[loss_data['protocol'] == protocol]['average_retr_rate']
-    values, base = np.histogram(avg_goodputs, bins=BINS)
-    # evaluate the cumulative
-    cumulative = np.cumsum(values)
-    # plot the cumulative function
-    ax.plot(base[:-1], cumulative / 50 * 100, label="%s-loss" % (lambda p: 'bbrv1' if p == 'bbr' else 'bbrv3' if p == 'bbr3' else 'vivace' if p == 'pcc' else p)(protocol), c=COLOR[protocol], linestyle='dashed')
+fig.legend(
+    protocol_handles, protocol_labels,
+    loc='upper center', bbox_to_anchor=(0.5, 1),
+    ncol=3, frameon=False,
+    fontsize=7, columnspacing=1.0,
+    handlelength=2.5, handletextpad=0.7
+)
+bw_rtt = Line2D(
+    [], [], 
+    color='black', 
+    linestyle='-', 
+    linewidth=1.0
+)
 
-ax.set(xlabel="Average Retr. Rate (Mbps)", ylabel="Percentage of Trials (\%)")
-
-fig.legend(ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.50),columnspacing=0.5,handletextpad=0.5, handlelength=1)
-for format in ['pdf']:
-    fig.savefig("joined_retr_cdf_nonlog.%s" % format, dpi=720)
+ax.legend(
+    [Line2D([], [], 
+        color='black', 
+        linestyle='-', 
+        linewidth=1.0
+    ), 
+    Line2D([], [], 
+        color='black', 
+        linestyle='--', 
+        linewidth=1.0
+    )],
+    ['bw-rtt', 'bw-rtt-loss'],
+    loc='lower right',
+    frameon=False,
+    fontsize=6,
+    handlelength=2,
+    handletextpad=0.5,
+    labelspacing=0.2
+)
+for ext in ['pdf']:
+    fig.savefig(f"joined_retr_cdf_nonlog.{ext}", dpi=720, bbox_inches='tight')

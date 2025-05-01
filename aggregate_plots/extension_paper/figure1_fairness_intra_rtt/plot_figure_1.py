@@ -76,7 +76,7 @@ for mult in QMULTS:
                         total = total[(total['bandwidth1'] > 0) | (total['bandwidth2'] > 0)] # if one datapoint contains a nan from the divide by 0, the enire datapoint will not be plotted.
                         
                         goodput_ratios_total.append(total.min(axis=1)/total.max(axis=1))
-                        delay_ratios_total.append(((receiver1_srtt['srtt']/delay)+(receiver2_srtt['srtt']/delay))/2)
+                        delay_ratios_total.append(((receiver1_srtt['srtt']/(2*delay))+(receiver2_srtt['srtt']/(2*delay)))/2)
                     else:
                         print(f"Folder {PATH} not found.")
 
@@ -98,7 +98,7 @@ for mult in QMULTS:
             'goodput_ratio_total_std', 
             PROTOCOLS_MARKERS_EXTENSION[protocol], 
             COLORS_EXTENSION[protocol], 
-            protocol, 
+            PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol], 
             delay=True
         )
 
@@ -109,7 +109,7 @@ for mult in QMULTS:
     handles, labels = ax.get_legend_handles_labels()
     handles = [h[0] for h in handles]
     #1.28
-    legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.08 + (0.15 * (len(PROTOCOLS_EXTENSION)) / 3)),columnspacing=0.8,handletextpad=0.5)
+    legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.30),columnspacing=0.8,handletextpad=0.5)
 
     plt.savefig(f"goodput_intra_rtt_qmult{mult}.pdf" , dpi=1080)
 
@@ -123,7 +123,7 @@ for mult in QMULTS:
             'delay_ratio_std',             
             PROTOCOLS_MARKERS_EXTENSION[protocol],
             COLORS_EXTENSION[protocol],
-            protocol,
+            PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol],
             delay=True
         )
 
@@ -134,7 +134,7 @@ for mult in QMULTS:
 
     handles, labels = ax2.get_legend_handles_labels()
     handles = [h[0] for h in handles]
-    fig2.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.10 + (0.15 * (len(PROTOCOLS_EXTENSION)) / 3)),columnspacing=0.8,handletextpad=0.5)
+    fig2.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.30),columnspacing=0.8,handletextpad=0.5)
 
     plt.savefig(f"delay_intra_rtt_qmult{mult}.pdf", dpi=1080)
     plt.close(fig2)

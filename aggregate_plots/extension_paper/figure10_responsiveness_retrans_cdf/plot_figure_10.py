@@ -9,7 +9,7 @@ pd.set_option('display.max_rows', None)
 import numpy as np
 from matplotlib.pyplot import figure
 import statistics
-from matplotlib.ticker import LogLocator, FuncFormatter, FixedLocator, Formatter, ScalarFormatter
+from matplotlib.lines import Line2D
 plt.rcParams['text.usetex'] = False
 script_dir = os.path.dirname(__file__)
 mymodule_dir = os.path.join(script_dir, '../../..')
@@ -40,9 +40,9 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT, loss=False):
                 if retr_rate:
                     retr_mean = np.mean(retr_rate)
 
-            log_path = f"{PATH}/sysstat/etcp_c1.log"
-            if os.path.exists(log_path):
-                systat1 = pd.read_csv(log_path, sep=';').rename(columns={"# hostname": "hostname"})
+
+            if protocol != 'vivace-uspace' and os.path.exists(f"{PATH}/sysstat/etcp_c1.log"):
+                systat1 = pd.read_csv(f"{PATH}/sysstat/etcp_c1.log", sep=';').rename(columns={"# hostname": "hostname"})
                 retr1 = systat1[['timestamp', 'retrans/s']]
 
                 diff = retr1.diff()
@@ -59,25 +59,26 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT, loss=False):
 
                 retr1['timestamp'] = retr1['timestamp'] - start_timestamp + 1
                 retr1 = retr1.rename(columns={'timestamp': 'time'})
+            
+            if protocol == 'vivace-uspace' and  os.path.exists(f"{PATH}/csvs/c1.csv"):
+                systat1 = pd.read_csv(PATH + '/csvs/c1.csv').rename(columns={"retr": "retrans/s"})
+                retr1 = systat1[['time', 'retrans/s']].copy()
 
-                valid = True
+
+
+            retr1['time'] = retr1['time'].apply(lambda x: int(float(x)))
+            retr1 = retr1.drop_duplicates('time')
+
+            retr1_total = retr1[(retr1['time'] > start_time) & (retr1['time'] < end_time)]
+            retr1_total = retr1_total.set_index('time')
+
+            avg_retrans_s = retr1_total['retrans/s'].mean()  # could be NaN if no data
+            if not np.isnan(avg_retrans_s):
+                rate_mbps = avg_retrans_s * 1500.0 * 8.0 / (1024.0 * 1024.0)
             else:
-                valid = False
+                rate_mbps = 0.0
 
-            if valid:
-                retr1['time'] = retr1['time'].apply(lambda x: int(float(x)))
-                retr1 = retr1.drop_duplicates('time')
-
-                retr1_total = retr1[(retr1['time'] > start_time) & (retr1['time'] < end_time)]
-                retr1_total = retr1_total.set_index('time')
-
-                avg_retrans_s = retr1_total['retrans/s'].mean()  # could be NaN if no data
-                if not np.isnan(avg_retrans_s):
-                    rate_mbps = avg_retrans_s * 1500.0 * 8.0 / (1024.0 * 1024.0)
-                else:
-                    rate_mbps = 0.0
-
-                data.append([protocol, run, rate_mbps, retr_mean])
+            data.append([protocol, run, rate_mbps, retr_mean])
 
     COLUMNS = ['protocol', 'run_number', 'average_retr_rate', 'retr_rate']
     return pd.DataFrame(data, columns=COLUMNS)
@@ -108,49 +109,75 @@ loss_data = get_df(
 )
 
 BINS = 50
-fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(3,1.5))
-ax = axes
+fig, ax = plt.subplots(figsize=(3, 1.8)) 
+fig.subplots_adjust(left=0.15, right=0.98, bottom=0.15, top=0.80)
 
-# optimals = loss_data[loss_data['protocol'] == 'cubic']['retr_rate']
-# values, base = np.histogram(optimals, bins=BINS)
-# cumulative = np.cumsum(values)
-# ax.plot(base[:-1], cumulative/50*100, c='black')
+optimals = bw_rtt_data[bw_rtt_data['protocol'] == 'cubic']['retr_rate']
+vals, bins = np.histogram(optimals, bins=BINS)
+cum = np.cumsum(vals)
+# bw_rtt_line_handle, = ax.plot(
+#     bins[:-1], cum / 50 * 100,
+#     c='black', linestyle='-', linewidth=1.0
+# )
 
-# Plot each protocol’s data
-for protocol in PROTOCOLS_EXTENSION:
-    # RTT scenario
-    avg_rates_rtt = bw_rtt_data[bw_rtt_data['protocol'] == protocol]['average_retr_rate']
-    values, base = np.histogram(avg_rates_rtt, bins=BINS)
-    cumulative = np.cumsum(values)
-    ax.plot(base[:-1], cumulative/50*100, label=f"{protocol}-rtt", c=COLORS_EXTENSION[protocol])
-
-    # Loss scenario
-    avg_rates_loss = loss_data[loss_data['protocol'] == protocol]['average_retr_rate']
-    values, base = np.histogram(avg_rates_loss, bins=BINS)
-    cumulative = np.cumsum(values)
-    ax.plot(base[:-1], cumulative / 50 * 100, label=f"{protocol}-loss",
-            c=COLORS_EXTENSION[protocol], linestyle='dashed')
-
-ax.set(xlabel="Average Retr. Rate (Mbps)", ylabel="Percentage of Trials (%)")
-
-def clean_log_format(x, pos):
-    if x < 0.1:
-        return f"{x:.3f}".rstrip('0').rstrip('.')
-    elif x < 1:
-        return f"{x:.2f}".rstrip('0').rstrip('.')
-    else:
-        return f"{x:.0f}"
-
-ax.set_xscale('log')
-ax.set_xticks([0.001, 0.01, 0.1, 1, 10, 100])
-ax.xaxis.set_major_formatter(FuncFormatter(clean_log_format))
-ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs=np.arange(1, 10)*0.1, numticks=100))
-
-fig.legend(
-    ncol=3, loc='upper center',
-    bbox_to_anchor=(0.5, 1.50),
-    columnspacing=0.5,
-    handletextpad=0.5,
-    handlelength=1
+optimals_loss = loss_data[loss_data['protocol'] == 'cubic']['retr_rate']
+vals, bins = np.histogram(optimals_loss, bins=BINS)
+cum = np.cumsum(vals)
+bw_rtt_loss = Line2D(
+    [], [], 
+    color='black', 
+    linestyle='-', 
+    linewidth=1.0
 )
-fig.savefig("joined_retr_cdf_log.pdf", dpi=1080)
+bw_rtt_loss_line = Line2D(
+    [], [], 
+    color='black', 
+    linestyle='--', 
+    linewidth=1.0
+)
+protocol_handles = []
+protocol_labels = []
+for protocol in PROTOCOLS_EXTENSION:
+    data_rtt = bw_rtt_data[bw_rtt_data['protocol'] == protocol]['average_retr_rate']
+    vals, bins = np.histogram(data_rtt, bins=BINS)
+    cum = np.cumsum(vals)
+    line, = ax.plot(bins[:-1], cum / 50 * 100, c=COLORS_EXTENSION[protocol], linewidth=1.0)
+    protocol_handles.append(line)
+    protocol_labels.append(PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol])
+    
+    # loss data
+    data_loss = loss_data[loss_data['protocol'] == protocol]['average_retr_rate']
+    vals, bins = np.histogram(data_loss, bins=BINS)
+    cum = np.cumsum(vals)
+    ax.plot(bins[:-1], cum / 50 * 100, c=COLORS_EXTENSION[protocol], linestyle='--', linewidth=1.0)
+
+ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percentage of Trials (%)")
+# ax.annotate(
+#     'link capacity',
+#     xy=(76, 50), xytext=(32, 20), color='black',
+#     arrowprops=dict(arrowstyle="->", linewidth=0.5, color='black')
+# )
+#ax.set_xlim(0, None)
+
+
+all_handles = protocol_handles
+all_labels = protocol_labels
+fig.legend(
+    all_handles, all_labels,
+    loc='upper center', bbox_to_anchor=(0.5, 1),
+    ncol=3, frameon=False,
+    fontsize=7, columnspacing=1.0,
+    handlelength=2.5, handletextpad=0.7
+)
+ax.legend(
+    [bw_rtt_loss, bw_rtt_loss_line],
+    ['bw-rtt', 'bw-loss'],
+    loc='lower right',
+    frameon=False,
+    fontsize=6,
+    handlelength=2,
+    handletextpad=0.5,
+    labelspacing=0.2
+)
+
+fig.savefig("joined_retr_cdf.pdf", dpi=1080)

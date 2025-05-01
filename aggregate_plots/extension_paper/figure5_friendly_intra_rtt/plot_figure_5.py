@@ -73,7 +73,7 @@ for mult in QMULTS:
    ax = axes
 
    for protocol in PROTOCOLS_EXTENSION:
-      plot_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], protocol, delay=True)
+      plot_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol], delay=True)
 
    ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio')
    for axis in [ax.xaxis, ax.yaxis]:
@@ -81,7 +81,7 @@ for mult in QMULTS:
 
    handles, labels = ax.get_legend_handles_labels()
    handles = [h[0] for h in handles]
-   legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.28),columnspacing=0.8,handletextpad=0.5)
+   legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.30),columnspacing=0.8,handletextpad=0.5)
 
    plt.savefig(f"goodput_friendly_rtt_qmult{mult}.pdf", dpi=1080)
 

@@ -3,10 +3,20 @@ LINEWIDTH = 0.30
 ELINEWIDTH = 0.75
 CAPTHICK = ELINEWIDTH
 CAPSIZE= 2
+PROTOCOLS_FRIENDLY_NAME_EXTENSION = {'cubic': 'Cubic', 'orca': 'Orca', 'bbr3': 'BBRv3', 'sage': 'Sage', 'vivace': 'Vivace', 'astraea': 'Astraea', 'vivace-uspace': 'Vivace', 'bbr1': 'BBRv1'}
+PROTOCOLS_EXTENSION = ['cubic', 'sage', 'orca', 'astraea', 'bbr3', 'vivace-uspace']
+PROTOCOLS_MARKERS_EXTENSION = {'cubic': 'x', 'orca': '+', 'bbr3': '^', 'sage': '*', 'vivace': '4', 'astraea': '2', 'vivace-uspace': '_', 'bbr1': '1', }
+COLORS_EXTENSION = {'cubic': '#0C5DA5', 'orca': '#00B945', 'bbr3': '#FF9500', 'sage': '#FF2C01', 'vivace': '#845B97', 'astraea': '#686868', 'vivace-uspace': '#845B97', 'bbr1': '#964B00'}
 
-PROTOCOLS_EXTENSION = ['cubic', 'sage', 'orca', 'astraea', 'bbr3', 'vivace', 'vivace-uspace', 'bbr1']
-PROTOCOLS_MARKERS_EXTENSION = {'cubic': 'x', 'orca': '+', 'bbr3': '^', 'sage': '*', 'vivace': '_', 'astraea': '2', 'vivace-uspace': '4', 'bbr1': '1', }
-COLORS_EXTENSION = {'cubic': '#0C5DA5', 'orca': '#00B945', 'bbr3': '#FF9500', 'sage': '#FF2C01', 'vivace': '#845B97', 'astraea': '#686868', 'vivace-uspace': '#ADD8E6', 'bbr1': '#964B00'}
+PROTOCOLS_FRIENDLY_NAME_LEO = {'cubic': 'Cubic', 'orca': 'Orca', 'bbr3': 'BBRv3', 'sage': 'Sage', 'vivace': 'Vivace', 'astraea': 'Astraea', 'vivace-uspace': 'Vivace', 'bbr1': 'BBRv1'}
+PROTOCOLS_LEO = ['cubic', 'sage', 'astraea', 'bbr3', 'vivace-uspace']
+PROTOCOLS_MARKERS_LEO = {'cubic': 'x', 'orca': '+', 'bbr3': '^', 'sage': '*', 'vivace': '4', 'astraea': '2', 'vivace-uspace': '_', 'bbr1': '1', }
+COLORS_LEO = {'cubic': '#0C5DA5', 'orca': '#00B945', 'bbr3': '#FF9500', 'sage': '#FF2C01', 'vivace': '#845B97', 'astraea': '#00B945', 'vivace-uspace': '#845B97', 'bbr1': '#964B00'}
+
+
+# PROTOCOLS_EXTENSION = ['cubic', 'sage', 'orca', 'astraea', 'bbr3', 'vivace', 'vivace-uspace', 'bbr1']
+# PROTOCOLS_MARKERS_EXTENSION = {'cubic': 'x', 'orca': '+', 'bbr3': '^', 'sage': '*', 'vivace': '_', 'astraea': '2', 'vivace-uspace': '4', 'bbr1': '1', }
+# COLORS_EXTENSION = {'cubic': '#0C5DA5', 'orca': '#00B945', 'bbr3': '#FF9500', 'sage': '#FF2C01', 'vivace': '#845B97', 'astraea': '#686868', 'vivace-uspace': '#ADD8E6', 'bbr1': '#964B00'}
 
 QMULTS = [0.2,1,4]
 RUNS = [1, 2, 3, 4, 5]

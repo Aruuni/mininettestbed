@@ -15,16 +15,13 @@ from core.config import *
 from core.plotting import * 
 
 ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_inter_rtt_async/fifo" 
-PROTOCOLS = ['cubic', 'astraea', 'bbr3', 'bbr1', 'sage']
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-QMULTS = [0.2,1,4]
-RUNS = [1, 2, 3, 4, 5]
-LOSSES=[0]
+
 
 for mult in QMULTS:
    data = []
-   for protocol in PROTOCOLS:
+   for protocol in PROTOCOLS_LEO:
      for bw in BWS:
         for delay in DELAYS:
            start_time = 3*delay
@@ -64,6 +61,7 @@ for mult in QMULTS:
 
                  total = receiver1_total.join(receiver2_total, how='inner', lsuffix='1', rsuffix='2')[['bandwidth1', 'bandwidth2']]
                  partial = receiver1.join(receiver2, how='inner', lsuffix='1', rsuffix='2')[['bandwidth1', 'bandwidth2']]
+                 total = total[(total['bandwidth1'] > 0) | (total['bandwidth2'] > 0)] # if one datapoint contains a nan from the divide by 0, the enire datapoint will not be plotted.
 
                  total = total.dropna()
                  partial = partial.dropna()
@@ -88,65 +86,41 @@ for mult in QMULTS:
    summary_data = pd.DataFrame(data,
                               columns=['protocol', 'bandwidth', 'delay', 'delay_ratio','qmult', 'goodput_ratio_20_mean',
                                        'goodput_ratio_20_std', 'goodput_ratio_total_mean', 'goodput_ratio_total_std'])
-
-   cubic_data = summary_data[summary_data['protocol'] == 'cubic'].set_index('delay')
-   orca_data = summary_data[summary_data['protocol'] == 'orca'].set_index('delay')
-   bbr3_data = summary_data[summary_data['protocol'] == 'bbr3'].set_index('delay')
-   bbr_data = summary_data[summary_data['protocol'] == 'bbr1'].set_index('delay')
-   sage_data = summary_data[summary_data['protocol'] == 'sage'].set_index('delay')
-   pcc_data = summary_data[summary_data['protocol'] == 'vivace'].set_index('delay')
-   astraea_data = summary_data[summary_data['protocol'] == 'astraea'].set_index('delay')
-
-
    fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.2))
    ax = axes
+   for protocol in PROTOCOLS_LEO:
+      plot_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std', PROTOCOLS_MARKERS_LEO[protocol], COLORS_LEO[protocol], PROTOCOLS_FRIENDLY_NAME_LEO[protocol], True)
 
-   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'cubic'].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',   'x', 'cubic')
-   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'bbr1'].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',  '.', 'bbrv1')
-   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'bbr3'].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',   '^', 'bbrv3')
-   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'sage'].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std',   '*', 'sage')
-   plot_points_rtt(ax, summary_data[summary_data['protocol'] == 'astraea'].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std','2', 'astraea')
 
    ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio')
    for axis in [ax.xaxis, ax.yaxis]:
        axis.set_major_formatter(ScalarFormatter())
-
-
-   # Build a 2-row "pyramid" legend
    handles, labels = ax.get_legend_handles_labels()
-   # Convert errorbar handles if needed
-   line_handles = [h[0] if isinstance(h, tuple) else h for h in handles]
-   legend_map   = dict(zip(labels, line_handles))
-
-   # Decide which protocols go top vs. bottom row
-   handles_top = [legend_map.get('cubic'), legend_map.get('bbrv1'), legend_map.get('bbrv3')]
-   labels_top  = ['cubic', 'bbrv1', 'bbrv3']
-
-   handles_bottom = [legend_map.get('sage'), legend_map.get('astraea')]
-   labels_bottom  = ['sage', 'astraea']
-
-   legend_top = plt.legend(
-      handles_top, labels_top,
+   handles = [h[0] for h in handles]
+   leg1 = fig.legend(
+      handles[:3], labels[:3],
       ncol=3,
       loc='upper center',
-      bbox_to_anchor=(0.5, 1.41),
-      columnspacing=1.0,
-      handletextpad=0.5,
-      labelspacing=0.1,
-      borderaxespad=0.0
+      bbox_to_anchor=(0.45, 1.15),
+      frameon=False,
+      fontsize=7,
+      columnspacing=0.8,
+      handlelength=2.5,
+      handletextpad=0.5
    )
-   plt.gca().add_artist(legend_top)
+   fig.add_artist(leg1)
 
-   legend_bottom = plt.legend(
-      handles_bottom, labels_bottom,
+   leg2 = fig.legend(
+      handles[3:], labels[3:],
       ncol=2,
       loc='upper center',
-      bbox_to_anchor=(0.5, 1.23),
-      columnspacing=1.0,
-      handletextpad=0.5,
-      labelspacing=0.1,
-      borderaxespad=0.0
+      bbox_to_anchor=(0.45, 1.05),
+      frameon=False,
+      fontsize=7,
+      columnspacing=0.8,
+      handlelength=2.5,
+      handletextpad=0.5
    )
 
-
+   #legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.30),columnspacing=0.8,handletextpad=0.5)
    plt.savefig(f"goodput_ratio_inter_rtt_{mult}.pdf" , dpi=1080)

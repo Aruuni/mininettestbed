@@ -9,14 +9,15 @@ pd.set_option('display.max_rows', None)
 import numpy as np
 from matplotlib.pyplot import figure
 import statistics
-
+from matplotlib.lines import Line2D
 plt.rcParams['text.usetex'] = False
 script_dir = os.path.dirname( __file__ )
 mymodule_dir = os.path.join( script_dir, '../../..')
 sys.path.append( mymodule_dir )
 from core.config import *
+from core.plotting import *
 
-def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
+def get_df(ROOT_PATH, RUNS, BW, DELAY, QMULT):
     BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
     BDP_IN_PKTS = BDP_IN_BYTES / 1500
     start_time = 0
@@ -24,7 +25,7 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
 
     data = []
 
-    for protocol in PROTOCOLS:
+    for protocol in PROTOCOLS_LEO:
         optimals = []
         for run in RUNS:
             PATH = f"{ROOT_PATH}/Dumbell_{BW}mbit_{DELAY}ms_{int(QMULT * BDP_IN_PKTS)}pkts_0loss_1flows_22tcpbuf_{protocol}/run{run}" 
@@ -52,25 +53,13 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
     COLUMNS = ['protocol', 'run_number', 'average_goodput', 'optimal_goodput']
     return pd.DataFrame(data, columns=COLUMNS)
 
-
-COLOR = {'cubic': '#0C5DA5',
-             'vivace-uspace': '#00B945',
-             'bbr3': '#FF9500',
-             'sage': '#FF2C01',
-             'orca': '#845B97',
-             'astraea': '#845B97',
-             }
-
-
-PROTOCOLS = ['cubic', 'astraea', 'bbr3', 'vivace-uspace', 'sage']
-
 BW = 50
 DELAY = 50
 QMULT = 1
 RUNS = list(range(1,51))
 
-bw_rtt_data = get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_leo/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
-loss_data =  get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_loss_leo/fifo" ,  PROTOCOLS, RUNS, BW, DELAY, QMULT)
+bw_rtt_data = get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_leo/fifo", RUNS, BW, DELAY, QMULT)
+loss_data =  get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt_loss_leo/fifo", RUNS, BW, DELAY, QMULT)
 
 BINS = 50
 
@@ -79,57 +68,50 @@ fig.subplots_adjust(left=0.15, right=0.98, bottom=0.15, top=0.80)
 
 optimals = bw_rtt_data[bw_rtt_data['protocol'] == 'cubic']['optimal_goodput']
 vals, bins = np.histogram(optimals, bins=BINS)
+
 cum = np.cumsum(vals)
-bw_rtt_line, = ax.plot(
+optimal_line, = ax.plot(
     bins[:-1], cum / 50 * 100,
     c='black', linestyle='-', linewidth=1.0
 )
-
 optimals_loss = loss_data[loss_data['protocol'] == 'cubic']['optimal_goodput']
 vals, bins = np.histogram(optimals_loss, bins=BINS)
 cum = np.cumsum(vals)
-bw_rtt_loss_line, = ax.plot(
-    bins[:-1], cum / 50 * 100,
-    c='black', linestyle='--', linewidth=1.0
-)
 
 protocol_handles = []
 protocol_labels = []
-for protocol in PROTOCOLS:
-    name = ('bbrv1' if protocol == 'bbr' else
-            'bbrv3' if protocol == 'bbr3' else
-            'vivace' if protocol == 'pcc' else protocol)
-    
+
+for protocol in PROTOCOLS_LEO:
     # RTT data
     data_rtt = bw_rtt_data[bw_rtt_data['protocol'] == protocol]['average_goodput']
     vals, bins = np.histogram(data_rtt, bins=BINS)
     cum = np.cumsum(vals)
     line, = ax.plot(
         bins[:-1], cum / 50 * 100,
-        c=COLOR[protocol], linewidth=1.0
+        c=COLORS_LEO[protocol], linewidth=1.0
     )
-    protocol_handles.append(line)
-    protocol_labels.append(name)
     # loss data
     data_loss = loss_data[loss_data['protocol'] == protocol]['average_goodput']
     vals, bins = np.histogram(data_loss, bins=BINS)
     cum = np.cumsum(vals)
     ax.plot(
         bins[:-1], cum / 50 * 100,
-        c=COLOR[protocol], linestyle='--', linewidth=1.0
+        c=COLORS_LEO[protocol], linestyle='--', linewidth=1.0
     )
 
-ax.set(xlabel="Average Goodput (Mbps)", ylabel="% of Trials")
+    protocol_handles.append(line)
+    protocol_labels.append(PROTOCOLS_FRIENDLY_NAME_LEO[protocol])
+ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percent of Trials (%)")
 # ax.annotate(
 #     'link capacity',
 #     xy=(76, 50), xytext=(32, 20), color='black',
 #     arrowprops=dict(arrowstyle="->", linewidth=0.5, color='black')
 # )
-ax.set_xlim(0, None)
+# ax.set_xlim(0, None)
 
 
-all_handles = [bw_rtt_line] + protocol_handles
-all_labels = ['link capacity'] + protocol_labels
+all_handles = [optimal_line] + protocol_handles
+all_labels = ['Optimal'] + protocol_labels
 fig.legend(
     all_handles, all_labels,
     loc='upper center', bbox_to_anchor=(0.5, 1),
@@ -138,7 +120,16 @@ fig.legend(
     handlelength=2.5, handletextpad=0.7
 )
 ax.legend(
-    [bw_rtt_line, bw_rtt_loss_line],
+    [Line2D([], [], 
+        color='black', 
+        linestyle='-', 
+        linewidth=1.0
+    ), 
+    Line2D([], [], 
+        color='black', 
+        linestyle='--', 
+        linewidth=1.0
+    )],
     ['bw-rtt', 'bw-rtt-loss'],
     loc='upper left',
     frameon=False,
@@ -147,5 +138,4 @@ ax.legend(
     handletextpad=0.5,
     labelspacing=0.2
 )
-
 fig.savefig("joined_goodput_cdf_mininet.pdf", dpi=720, bbox_inches='tight')

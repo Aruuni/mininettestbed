@@ -31,7 +31,7 @@ for mult in QMULTS:
            retr_total = []
            for run in RUNS:
               PATH = f"{EXPERIMENT_PATH}/Dumbell_{bw}mbit_{delay}ms_{int(mult * BDP_IN_PKTS)}pkts_0loss_2flows_22tcpbuf_{protocol}/run{run}" 
-              if protocol != 'aurora':
+              if protocol != 'vivace-uspace':
                  if os.path.exists(f"{PATH}/sysstat/etcp_c1.log"):
                     systat1 = pd.read_csv(f"{PATH}/sysstat/etcp_c1.log", sep=';').rename(
                        columns={"# hostname": "hostname"})
@@ -56,7 +56,7 @@ for mult in QMULTS:
               else:
                  if os.path.exists(f"{PATH}/csvs/c1.csv"):
                     systat1 = pd.read_csv(f"{PATH}/csvs/c1.csv").rename(
-                       columns={"retr": "retrans/s"})
+                       columns={"retr": "retrans/s"}) 
                     retr1 = systat1[['time', 'retrans/s']]
                     systat2 = pd.read_csv(f"{PATH}/csvs/c1.csv").rename(
                        columns={"retr": "retrans/s"})
@@ -89,7 +89,7 @@ for mult in QMULTS:
               data.append(data_entry)
 
    summary_data = pd.DataFrame(data, columns=['protocol', 'bandwidth', 'delay', 'delay_ratio','qmult', 'retr_total_mean', 'retr_total_std'])
-   SCALE = 'log'
+   SCALE = 'linear'
    LOC = 4 if SCALE == 'log' else 2
 
    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(3,1.2))
@@ -99,23 +99,24 @@ for mult in QMULTS:
    for axis in [ax.xaxis, ax.yaxis]:
        axis.set_major_formatter(ScalarFormatter())
    for protocol in PROTOCOLS_EXTENSION:
-      plot_retrans_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('bandwidth'), 'retr_total_mean', 'retr_total_mean', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], protocol)
+      plot_retrans_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('bandwidth'), 'retr_total_mean', 'retr_total_mean', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol])
 
+
+   ax.set(xlabel='Bandwidth (Mbps)', ylabel='Retr. Rate (Mbps)', yscale=SCALE)
+   for axis in [ax.xaxis, ax.yaxis]:
+       axis.set_major_formatter(ScalarFormatter())
 
    handles, labels = ax.get_legend_handles_labels()
    # remove the errorbars
    handles = [h[0] for h in handles]
-   ax.set_ylim(0.002, 100)
-   # Configure major ticks on the y-axis at powers of 10
-   # Major ticks at powers of 10
-   ax.yaxis.set_major_locator(LogLocator(base=10.0, numticks=10))
-   # Minor ticks at each integer multiple of powers of 10
-   ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs=(2,3,4,5,6,7,8,9), numticks=12))
-   # Often, we don't label the minor ticks:
-   ax.yaxis.set_minor_formatter(NullFormatter())
 
-   legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.28),columnspacing=0.8,handletextpad=0.5)
+   legend = fig.legend(
+      handles, labels,
+      ncol=3, loc='upper center',
+      bbox_to_anchor=(0.5, 1.30),
+      columnspacing=0.8,
+      handletextpad=0.5
+   )
    # ax.grid()
 
-   for format in ['pdf']:
-      plt.savefig('retr_async_bw_%s_%s.%s' % (SCALE,mult, format), dpi=1080)
+   plt.savefig(f"retr_async_bw_{SCALE}_{mult}.pdf", dpi=720)
