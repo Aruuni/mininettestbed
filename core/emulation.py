@@ -8,11 +8,10 @@ import json
 import threading 
 
 class Emulation:
-    def __init__(self, network, network_config = None, traffic_config = None, path='.', interval=1, pcap=False):
+    def __init__(self, network, network_config = None, traffic_config = None, path='.', interval=1, pcap=False, ubuntu16=False):
         self.network = network
         self.network_config = network_config
         self.traffic_config = traffic_config
-        
         self.sending_nodes = []
         self.receiving_nodes = []
         
@@ -36,6 +35,7 @@ class Emulation:
 
         self.pcap = pcap
         self.flip = True
+        self.ubuntu16 = ubuntu16
 
     def configure_network(self, network_config=None):
         if network_config:
@@ -424,11 +424,17 @@ class Emulation:
         """
         node = self.network.get(node_name)
 
-        sscmd = f"./core/ss/{('ss_script_sage' if __import__('distro').id().lower()=='ubuntu' and __import__('distro').version().startswith('16.') else 'ss_script_iperf3.sh')} 0.1 {self.path}/{node.name}_ss.csv &"
+        sscmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_iperf3.sh'} 0.1 {self.path}/{node.name}_ss.csv &"
         printBlue(f'Sending command {sscmd} to host {node.name}')
         node.cmd(sscmd)
 
-        iperfCmd = (f"iperf3 -p {port} " + ("--cport=11111 " if __import__('distro').id().lower()=="ubuntu" and __import__('distro').version().startswith("16.") else "") + f"-i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}").replace("  "," ").strip()        printBlueFill(f'Sending command {iperfCmd} to host {node.name}')
+        iperfCmd = (
+            f"iperf3 -p {port} "
+            + ("" if self.ubuntu16
+            else "--cport=11111 ")
+            + f"-i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}"
+        ).replace("  ", " ").strip()       
+        printBlueFill(f'Sending command {iperfCmd} to host {node.name}')
         node.sendCmd(iperfCmd)
 
     def start_astraea_server(self, node_name: str, monitor_interval=1, port=44279):
