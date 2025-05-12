@@ -181,7 +181,11 @@ def plot_all_mn(path: str) -> None:
                     axs[3].plot(df_ss_client['time'], df_ss_client['cwnd'], label=f'{flow_client} CWND')
                     axs[3].set_title("Cwnd from SS (packets)")
             else:
-                axs[3].plot(df_client['time'], df_client['cwnd'], label=f'{flow_client} CWND')
+                axs[3].plot(
+                    df_client['time'][df_client['cwnd'] != 100000],
+                    df_client['cwnd'][df_client['cwnd'] != 100000],
+                    label=f'{flow_client} CWND'
+                )
                 axs[3].set_title("Cwnd from Iperf (packets)")
 
 
