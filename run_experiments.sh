@@ -4,15 +4,10 @@ bash setup.sh
 
 # PROTOCOLS="astraea orca bbr1 bbr3 cubic vivace"
 # PROTOCOLS="sage"
-PROTOCOLS="astraea"
+
+
 STEPS="10 20 30 40 50 60 70 80 90 100"
-hSTEPS="5 10 15 20 25 30 35 40 45 50"
-
-tSTEPS="10"
-tQMULTS="1"
-tRUNS="6"
-
-# PROTOCOLS="astraea bbr3 bbr1 cubic"
+FLOWS_STEPS="2 4 6 8 10 12 14 16 18 20"
 QMULTS="0.2 1 4"
 RUNS="1 2 3 4 5"
 
@@ -65,15 +60,15 @@ RUNS="1 2 3 4 5"
 #done
 
 # CUBIC COEXISTANCE/BACKWARDS COMPATIBILITY WITH FLOWS
-for del in $tSTEPS
+for flows in $FLOWS_STEPS
 do
-   for qmult in $tQMULTS
+   for qmult in $QMULTS
    do
        for protocol in $PROTOCOLS
        do
-           for run in $tRUNS
+           for run in $RUNS
            do
-              run experiments_mininet/cubic_flows_friendliness/experiment_cubic_flow_friendliness.py $del "100" $qmult $protocol $run fifo 0 "3"
+              run experiments_mininet/cubic_flows_friendliness/experiment_cubic_flow_friendliness.py "15" "100" $qmult $protocol $run fifo 0 $flows
            done
        done
    done
