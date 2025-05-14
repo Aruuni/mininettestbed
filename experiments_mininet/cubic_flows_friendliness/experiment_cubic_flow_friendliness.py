@@ -46,9 +46,9 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     traffic_config = []
 
     for i in range(2, n_flows+1):
-        traffic_config.append(TrafficConf(f"c{i}", f"x{i}", 0, 2*duration, 'cubic'))
+        traffic_config.append(TrafficConf(f"c{i}", f"x{i}", int(duration/2), int(duration/2)+duration, 'cubic'))
 
-    traffic_config.append(TrafficConf("c1", "x1", int(duration/2), int(duration/2)+duration, protocol))
+    traffic_config.append(TrafficConf("c1", "x1", 0, 2*duration, protocol))
     
     em = Emulation(net, network_config, traffic_config, path, 1, False, protocol == 'sage')
 

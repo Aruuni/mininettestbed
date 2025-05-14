@@ -2,9 +2,8 @@
 source common.sh
 bash setup.sh
 
-# PROTOCOLS="astraea orca bbr1 bbr3 cubic vivace"
+PROTOCOLS="astraea orca bbr3 cubic vivace-uspace"
 # PROTOCOLS="sage"
-
 
 STEPS="10 20 30 40 50 60 70 80 90 100"
 FLOWS_STEPS="3 5 7 9 11 13 15 17 19 21"
@@ -62,16 +61,16 @@ RUNS="1 2 3 4 5"
 # CUBIC COEXISTANCE/BACKWARDS COMPATIBILITY WITH FLOWS
 for flows in $FLOWS_STEPS
 do
-   for qmult in $QMULTS
-   do
-       for protocol in $PROTOCOLS
-       do
-           for run in $RUNS
-           do
+    for qmult in $QMULTS
+    do
+        for protocol in $PROTOCOLS
+        do
+            for run in $RUNS
+            do
               run experiments_mininet/cubic_flows_friendliness/experiment_cubic_flow_friendliness.py "15" "100" $qmult $protocol $run fifo 0 $flows
-           done
-       done
-   done
+            done
+        done
+    done
 done
 
 # CUBIC COEXISTANCE/BACKWARDS COMPATIBILITY
