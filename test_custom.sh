@@ -1,11 +1,11 @@
 source common.sh
 bash setup.sh
 
-PROTOCOLS="bbr1"
+PROTOCOLS="vivace-uspace"
 BANDWIDTHS="100"
-DELAYS="5"
+DELAYS="20"
 RUNS="1"
-QMULTS="1"
+QMULTS="0.2"
 FLOWS="2"
 
 for bw in $BANDWIDTHS
@@ -28,6 +28,19 @@ do
     done
 done
 
-
-                               # delay bw qmult protocol run qdisc loss flows
-             #   run experiments_mininet/parking_lot/experiment_parking_lot.py "20" "100" "1" "astraea" "1" "fifo" 0 "4"
+# STEPS="10 20 30 40 50 60 70 80 90 100"
+# QMULTS="0.2 1 4"
+# # FAIRNESS INTRA RTT 
+# for del in $STEPS
+# do
+#     for qmult in $QMULTS
+#     do
+#         for protocol in $PROTOCOLS
+#         do
+#             for run in $RUNS
+#             do
+#                 run experiments_mininet/intra_rtt_fairness/experiment_intra_rtt_fairness.py $del "100" $qmult $protocol $run fifo 0 "2"
+#             done
+#         done
+#     done
+# done
