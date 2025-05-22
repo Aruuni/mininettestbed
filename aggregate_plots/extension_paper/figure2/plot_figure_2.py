@@ -22,7 +22,30 @@ script_dir = os.path.dirname(__file__)
 mymodule_dir = os.path.join(script_dir, '../../..')
 sys.path.append(mymodule_dir)
 from core.config import *
+from core.plotting import *
+COORD_KEYS = ('x1', 'y1', 'x2', 'y2')
+plt.rcParams['ytick.labelsize'] = 7
 
+
+def load_pacing(path):
+    with open(path, 'r') as f:
+        lines = f.read().splitlines()
+
+    df = pd.DataFrame({'raw': lines})
+
+    df['time'] = df['raw'].str.split(',').str[0].astype(float)
+
+    df['pacing_rate'] = (
+        df['raw']
+          .str.extract(r'pacing_rate\s+(\d+)bps')[0]
+          .astype(float)
+    )
+
+    t0 = df['time'].iloc[0]
+    df['time'] = df['time'] - t0
+    df['pacing_rate'] = df['pacing_rate'] / 1e6
+    # 6) rename pacing_rate → bandwidth for downstream compatibility
+    return df[['time','pacing_rate']].rename(columns={'pacing_rate':'bandwidth'})
 
 class HandlerDashedLines(HandlerLineCollection):
     """
@@ -73,13 +96,7 @@ def plot_one(QMULT, RUN):
     SCALE = 'linear'
     LINEWIDTH = 0.8
     FIGSIZE = (4, 3)
-    COLOR = {'cubic': '#0C5DA5',
-             'orca': '#00B945',
-             'bbr3': '#FF9500',
-             'sage': '#FF2C01',
-             'vivace': '#845B97',
-             'astraea': '#686868',
-             }
+
     LINESTYLE = 'dashed'
     # Compute the time slice limits based on delay and global multipliers.
     lower_time = DELAY * GLOBAL_TIME_RANGE_MULTIPLIERS[0]
@@ -87,44 +104,30 @@ def plot_one(QMULT, RUN):
     # Also use these values to set the x-axis limits.
     XLIM = [lower_time, upper_time]
     
-    PROTOCOLS = ['cubic', 'sage', 'orca', 'bbr3', 'vivace', 'astraea']
 
     BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
     BDP_IN_PKTS = BDP_IN_BYTES / 1500
-    PROTOCOL_DATA = {'cubic': {'x1': None, 'y1': None, 'x2': None, 'y2': None},
-                     'orca': {'x1': None, 'y1': None, 'x2': None, 'y2': None},
-                     'bbr3': {'x1': None, 'y1': None, 'x2': None, 'y2': None},
-                     'astraea': {'x1': None, 'y1': None, 'x2': None, 'y2': None},
-                     'sage': {'x1': None, 'y1': None, 'x2': None, 'y2': None},
-                     'vivace': {'x1': None, 'y1': None, 'x2': None, 'y2': None},
-                     }
+    PROTOCOL_DATA = {
+        proto: {k: None for k in COORD_KEYS}
+        for proto in PROTOCOLS_EXTENSION
+    }
     # Get the data:
-    for protocol in PROTOCOLS:
-        PATH = ROOT_PATH + '/Dumbell_%smbit_%sms_%spkts_0loss_2flows_22tcpbuf_%s/run%s' % (BW, DELAY, int(QMULT * BDP_IN_PKTS), protocol, RUN)
-        if protocol != 'aurora' or protocol != 'astraea':
-            if os.path.exists(PATH + '/csvs/c1_ss.csv') and os.path.exists(PATH + '/csvs/c2_ss.csv'):
-                sender1 = pd.read_csv(PATH + '/csvs/c1_ss.csv').reset_index(drop=True)
-                sender2 = pd.read_csv(PATH + '/csvs/c2_ss.csv').reset_index(drop=True)
-               
-                sender1 = sender1[['time', 'cwnd']]
-                sender2 = sender2[['time', 'cwnd']]
+    for protocol in PROTOCOLS_EXTENSION:
+        PATH = f"{ROOT_PATH}/Dumbell_{BW}mbit_{DELAY}ms_{int(mult * BDP_IN_PKTS)}pkts_0loss_2flows_22tcpbuf_{protocol}/run{RUN}" 
+        if protocol != 'vivace-uspace' and protocol != 'bbr3':
+            p1 = f"{PATH}/csvs/c1_ss.csv" if os.path.exists(f"{PATH}/csvs/c1_ss.csv") else f"{PATH}/csvs/c1.csv"
+            p2 = f"{PATH}/csvs/c2_ss.csv" if os.path.exists(f"{PATH}/csvs/c2_ss.csv") else f"{PATH}/csvs/c2.csv"
 
-                sender1['time'] = sender1['time'].astype(float)
-                sender2['time'] = sender2['time'].astype(float)
-            else:
-                sender1 = pd.read_csv(PATH + f"/csvs/c1.csv").reset_index(drop=True)
-                sender2 = pd.read_csv(PATH + f"/csvs/c1.csv").reset_index(drop=True)
+            sender1 = pd.read_csv(p1, usecols=['time','cwnd'])
+            sender2 = pd.read_csv(p2, usecols=['time','cwnd'])
 
-                sender1 = sender1[['time', 'cwnd']]
-                sender2 = sender2[['time', 'cwnd']]
-
-                sender1['time'] = sender1['time'].astype(float)
-                sender2['time'] = sender2['time'].astype(float)
+            sender1['time'] = sender1['time'].astype(float)
+            sender2['time'] = sender2['time'].astype(float)
         else:
-            if os.path.exists(PATH + '/csvs/c1.csv') and os.path.exists(PATH + '/csvs/c2.csv'):
-                sender1 = pd.read_csv(PATH + '/csvs/c1.csv').reset_index(drop=True)
-                sender2 = pd.read_csv(PATH + '/csvs/c2.csv').reset_index(drop=True)
-                
+            if os.path.exists(f"{PATH}/csvs/c1.csv") and os.path.exists(f"{PATH}/csvs/c2.csv"):
+                sender1 = pd.read_csv(f"{PATH}/csvs/c1.csv").reset_index(drop=True) if protocol == 'vivace-uspace' else load_pacing(f"{PATH}/c1_ss.csv").reset_index(drop=True)
+                sender2 = pd.read_csv(f"{PATH}/csvs/c2.csv").reset_index(drop=True) if protocol == 'vivace-uspace' else load_pacing(f"{PATH}/c2_ss.csv").reset_index(drop=True)
+
                 sender1 = sender1[['time', 'bandwidth']]
                 sender2 = sender2[['time', 'bandwidth']]
 
@@ -143,61 +146,68 @@ def plot_one(QMULT, RUN):
 
         x1 = c1['time']
         x2 = c2['time']
-
-        if protocol != 'aurora':
-            y1 = c1['cwnd']
-            y2 = c2['cwnd']
-        else:
+        # print(f"Protocol: {protocol}, x1: {c1}, x2: {x2} {c1}")
+        if protocol in ('vivace-uspace','bbr3'):
             y1 = c1['bandwidth']
             y2 = c2['bandwidth']
-            
+        else:
+            y1 = c1['cwnd']
+            y2 = c2['cwnd']
         PROTOCOL_DATA[protocol]['x1'] = x1
         PROTOCOL_DATA[protocol]['x2'] = x2
 
         PROTOCOL_DATA[protocol]['y1'] = y1
         PROTOCOL_DATA[protocol]['y2'] = y2
 
-    fig, axes = plt.subplots(nrows=len(PROTOCOLS), ncols=1, figsize=FIGSIZE, sharex=True)
-    # Get the max value for ylim across protocols.
-    max_cubic_y = max(PROTOCOL_DATA['cubic']['y1'].max(), PROTOCOL_DATA['cubic']['y2'].max())
-    max_orca_y = max(PROTOCOL_DATA['orca']['y1'].max(), PROTOCOL_DATA['orca']['y2'].max())
-    max_bbr_y = max(PROTOCOL_DATA['bbr3']['y1'].max(), PROTOCOL_DATA['bbr3']['y2'].max())
-    max_sage_y = max(PROTOCOL_DATA['sage']['y1'].max(), PROTOCOL_DATA['sage']['y2'].max())
-    max_pcc_y = max(PROTOCOL_DATA['vivace']['y1'].max(), PROTOCOL_DATA['vivace']['y2'].max())
-    max_astraea_y = max(PROTOCOL_DATA['astraea']['y1'].max(), PROTOCOL_DATA['astraea']['y2'].max())
+    fig, axes = plt.subplots(nrows=len(PROTOCOLS_EXTENSION), ncols=1, figsize=FIGSIZE, sharex=True)
 
-    max_y = max(max_cubic_y, max_bbr_y, max_pcc_y, max_astraea_y)
 
-    for i, protocol in enumerate(PROTOCOLS):
+    for i, protocol in enumerate(PROTOCOLS_EXTENSION):
         ax = axes[i]
         flow1, = ax.plot(PROTOCOL_DATA[protocol]['x1'], PROTOCOL_DATA[protocol]['y1'],
-                         linewidth=LINEWIDTH, alpha=1, color=COLOR[protocol],
-                         label=protocol)
+                         linewidth=LINEWIDTH, alpha=1, color=COLORS_EXTENSION[protocol],
+                         label=PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol])
         flow2, = ax.plot(PROTOCOL_DATA[protocol]['x2'], PROTOCOL_DATA[protocol]['y2'],
-                         linewidth=LINEWIDTH, alpha=0.75, color=COLOR[protocol], linestyle=LINESTYLE)
+                         linewidth=LINEWIDTH, alpha=0.75, color=COLORS_EXTENSION[protocol], linestyle=LINESTYLE)
         ax.set(yscale=SCALE, xlim=XLIM)
         ax.grid()
-        if protocol != 'aurora':
+        if protocol == 'vivace-uspace' or protocol == 'bbr3':
             ax.set(ylim=[0, None])
-            ax.axhline(BDP_IN_PKTS/4, c='red', linestyle='dashed')
-
+            ax.axhline(0.5 * BW, c='magenta', linestyle='dashed')
+        else:
+            ax.axhline(BDP_IN_PKTS/2, c='magenta', linestyle='dashed')
+            ax.set(ylim=[0, None])
+            if protocol == 'astraea':
+                max_val = max(PROTOCOL_DATA[protocol]['y1'].max(), PROTOCOL_DATA[protocol]['y2'].max())
+                ax.set(ylim=[0, max_val + 100])
     # Create Legend
     line = [[(0, 0)]]
     linecollections = []
-    for protocol in PROTOCOLS:
+    for protocol in PROTOCOLS_EXTENSION:
         styles = ['solid', 'dashed']
-        colors = [COLOR[protocol], COLOR[protocol]]
+        colors = [COLORS_EXTENSION[protocol], COLORS_EXTENSION[protocol]]
         lc = mcol.LineCollection(2 * line, linestyles=styles, colors=colors)
         linecollections.append(lc)
+    friendly_labels = [PROTOCOLS_FRIENDLY_NAME_EXTENSION[p] for p in PROTOCOLS_EXTENSION]
+    optimal_handle = Line2D([0], [0],
+                            color='magenta',
+                            linestyle='dashed',
+                            linewidth=LINEWIDTH)
 
-    PROTOCOLS.append('optimal')
-    fig.legend(linecollections, PROTOCOLS, handler_map={type(lc): HandlerDashedLines()},
-               handlelength=1, handleheight=0.5, ncol=3, columnspacing=2,
-               handletextpad=0.5, loc='upper center', bbox_to_anchor=(0.5, 1.16))
+    # append it to the same lists you already hand to the legend
+    linecollections.append(optimal_handle)
+    friendly_labels.append('Optimal')
 
-    for fmt in ['pdf']:
-        plt.savefig("sending_%srtt_%sqmult_run%s.%s" % (DELAY*2, QMULT, RUN, fmt), dpi=1080)
+    # now your existing legend call picks it up as one of the entries
+    fig.legend(linecollections, friendly_labels,
+            handler_map={type(lc): HandlerDashedLines()},
+            handlelength=1, handleheight=0.5,
+            ncol=4, columnspacing=1,
+            handletextpad=0.5,
+            loc='upper center', bbox_to_anchor=(0.5, 1.06))
+
+    plt.savefig(f"sending_{DELAY*2}rtt_{QMULT}qmult_run{RUN}.pdf", dpi=1080)
 
 if __name__ == "__main__":
-    for mult, run in zip([0.2, 1, 4], [1, 2, 3]):
+    for mult, run in zip([0.2, 1, 4], [3, 3, 3]):
         plot_one(mult, run)

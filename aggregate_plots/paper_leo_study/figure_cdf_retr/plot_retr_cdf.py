@@ -81,6 +81,9 @@ def get_df(ROOT_PATH, RUNS, BW, DELAY, QMULT):
                 retr1 = retr1.drop_duplicates('time')
                 retr1_total = retr1[(retr1['time'] > start_time) & (retr1['time'] < end_time)]
                 retr1_total = retr1_total.set_index('time')
+                if protocol == 'sage':
+                    print(retr1_total)
+                    print(f"run number: {run} protocol: {protocol}")
                 data.append([protocol, run, retr1_total.mean()['retrans/s']*1500*8/(1024*1024)])
 
     COLUMNS = ['protocol', 'run_number', 'average_retr_rate']

@@ -18,8 +18,6 @@ EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_intra_rtt_asyn
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
-
-
 for mult in QMULTS:
     data = []
     for protocol in PROTOCOLS_LEO:
@@ -104,7 +102,7 @@ for mult in QMULTS:
         handles[:3], labels[:3],
         ncol=3,
         loc='upper center',
-        bbox_to_anchor=(0.45, 1.15),
+        bbox_to_anchor=(0.5, 1.15),
         frameon=False,
         fontsize=7,
         columnspacing=0.8,
@@ -117,7 +115,7 @@ for mult in QMULTS:
         handles[3:], labels[3:],
         ncol=2,
         loc='upper center',
-        bbox_to_anchor=(0.45, 1.05),
+        bbox_to_anchor=(0.5, 1.05),
         frameon=False,
         fontsize=7,
         columnspacing=0.8,
@@ -152,7 +150,7 @@ for mult in QMULTS:
         handles[:3], labels[:3],
         ncol=3,
         loc='upper center',
-        bbox_to_anchor=(0.45, 1.15),
+        bbox_to_anchor=(0.5, 1.15),
         frameon=False,
         fontsize=7,
         columnspacing=0.8,
@@ -165,7 +163,7 @@ for mult in QMULTS:
         handles[3:], labels[3:],
         ncol=2,
         loc='upper center',
-        bbox_to_anchor=(0.45, 1.05),
+        bbox_to_anchor=(0.5, 1.05),
         frameon=False,
         fontsize=7,
         columnspacing=0.8,

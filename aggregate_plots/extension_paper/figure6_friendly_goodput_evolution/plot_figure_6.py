@@ -106,7 +106,7 @@ if __name__ == "__main__":
             plt.subplots_adjust(hspace=0.5)
             LEGENDMAP = {}
             BW = 100
-            DELAY = 50
+            DELAY = 80
             
 
 

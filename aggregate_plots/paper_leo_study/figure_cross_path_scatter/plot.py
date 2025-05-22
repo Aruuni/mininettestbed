@@ -8,13 +8,14 @@ plt.style.use('science')
 import matplotlib as mpl
 mpl.rcParams['text.usetex'] = False
 pd.set_option('display.max_rows', None)
-
+from matplotlib.lines import Line2D
 from matplotlib.patches import Ellipse
 import matplotlib.transforms as transforms
 script_dir = os.path.dirname(__file__)
 mymodule_dir = os.path.join(script_dir, '../../..')
 sys.path.append(mymodule_dir)
 from core.config import *  # e.g. HOME_DIR, etc.
+from core.plotting import * 
 
 def confidence_ellipse(x, y, ax, n_std=1.0, facecolor='none', **kwargs):
     if x.size != y.size:
@@ -46,14 +47,13 @@ def calculate_jains_index(bandwidths):
     return (sum_bw**2) / (n * sum_bw_sq) if sum_bw_sq != 0 else 0
 
 def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
-                  flows, runs, change1):
+                  flows, runs):
 
     results = []
     for mult in qmults:
         for bw in bws:
             for delay in delays:
-                cross_start = change1
-                cross_end = change1 + delay  # cross interval duration remains 50 seconds
+
                 for protocol in protocols:
                     BDP_IN_BYTES = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
                     BDP_IN_PKTS = BDP_IN_BYTES / 1500
@@ -65,15 +65,17 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                     rejoin_retr_list = []  # List for rejoin retransmission averages
 
                     for run in runs:
-                        # Define the rejoin interval for retransmission calculations
-                        rejoin_start = 200
-                        rejoin_end = 200 + delay
+
                         rejoin_retr_values = []
 
                         receivers_goodput = { i: pd.DataFrame() for i in range(1, flows*2+1) }
                         retr_values = []
                         for dumbbell in range(1, 3):
                             for flow_id in range(1, flows+1):
+                                cross_start = CHANGE1
+                                cross_end = CHANGE1 + int((delay if dumbbell == 1 else 25) / 5) # cross interval duration remains 50 seconds
+                                rejoin_start = CHANGE2
+                                rejoin_end = CHANGE2 + int((delay if dumbbell == 1 else 25) / 5)
                                 real_flow_id = flow_id + flows*(dumbbell-1)
                                 csv_path = (f"{root_path}/{aqm}/DoubleDumbell_{bw}mbit_{delay}ms_"
                                             f"{int(mult * BDP_IN_PKTS)}pkts_0loss_{flows}flows_22tcpbuf_"
@@ -90,11 +92,14 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                                                 f"{int(mult * BDP_IN_PKTS)}pkts_0loss_{flows}flows_22tcpbuf_"
                                                 f"{protocol}/run{run}/sysstat/etcp_c{dumbbell}_{flow_id}.log")
                                 if os.path.exists(sysstat_path):
-                                    systat = pd.read_csv(sysstat_path, sep=';').rename(columns={"# hostname": "hostname"})
-                                    retr_df = systat[['timestamp','retrans/s']]
-                                    start_timestamp = retr_df['timestamp'].iloc[0]
-                                    retr_df.loc[:, 'timestamp'] = retr_df['timestamp'] - start_timestamp + 1
-                                    retr_df = retr_df.rename(columns={'timestamp':'time'})
+                                    systat = pd.read_csv(sysstat_path, sep=';').rename(columns={"# hostname": "hostname"}) if protocol != 'vivace-uspace' else pd.read_csv(f"{root_path}/{aqm}/DoubleDumbell_{bw}mbit_{delay}ms_{int(mult * BDP_IN_PKTS)}pkts_0loss_{flows}flows_22tcpbuf_{protocol}/run{run}/csvs/c{dumbbell}_{flow_id}.csv").rename(columns={"retr": "retrans/s"})
+                                    if protocol == 'vivace-uspace':
+                                        systat = systat[['time', 'retrans/s']]
+                                    else:
+                                        retr_df = systat[['timestamp','retrans/s']]
+                                        start_timestamp = retr_df['timestamp'].iloc[0]
+                                        retr_df.loc[:, 'timestamp'] = retr_df['timestamp'] - start_timestamp + 1
+                                        retr_df = retr_df.rename(columns={'timestamp':'time'})
                                     retr_df['time'] = retr_df['time'].astype(float).astype(int)
                                     cross_df = retr_df[(retr_df['time'] >= cross_start) & (retr_df['time'] < cross_end)]
                                     cross_df = cross_df.drop_duplicates('time').set_index('time')
@@ -223,21 +228,12 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
     return pd.DataFrame(results, columns=columns)
 
 def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
-    COLOR_MAP = {'cubic': '#0C5DA5',
-                 'bbr1': '#00B945',
-                 'bbr3': '#FF9500',
-                 'sage': '#FF2C01',
-                 'orca': '#845B97',
-                 'astraea': '#686868',
-                 }
-
     CROSS_MARKER   = '^'  # triangle for Cross
     REJOIN_MARKER  = '*'  # circle for Rejoin
 
     for q in qmults:
-        fig, ax = plt.subplots(figsize=(5, 3))  # Adjust as desired
+        fig, ax = plt.subplots(figsize=(3,1.9))  
 
-        # 1) Plot data (unfilled markers, no legend labels)
         for prot in df['protocol'].unique():
             sub_df = df[(df['qmult'] == q) & (df['protocol'] == prot)]
             if sub_df.empty:
@@ -260,15 +256,15 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
             ellipseYCross =  sub_df['util_list'].values[0].flatten()/100
             ellipseYRejoin =  sub_df['rejoin_util_list'].values[0].flatten()/100
 
-            confidence_ellipse(ellipseX, ellipseYRejoin, ax, facecolor=COLOR_MAP.get(prot, 'gray'), edgecolor='none', alpha=0.6)
-            confidence_ellipse(ellipseX, ellipseYCross, ax, facecolor=COLOR_MAP.get(prot, 'gray'), edgecolor='none', alpha=0.6)
+            confidence_ellipse(ellipseX, ellipseYRejoin, ax, facecolor=COLORS_LEO.get(prot, 'gray'), edgecolor='none', alpha=0.6)
+            confidence_ellipse(ellipseX, ellipseYCross, ax, facecolor=COLORS_LEO.get(prot, 'gray'), edgecolor='none', alpha=0.6)
 
 
             ax.scatter(
                 x, y_cross,
                 marker=CROSS_MARKER, s=60,
                 facecolors='none',
-                edgecolors=COLOR_MAP.get(prot, 'gray'),
+                edgecolors=COLORS_LEO.get(prot, 'gray'),
                 alpha=1.0
             )
             # Cross minus retrans
@@ -276,7 +272,7 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
                 x, y_cross_minus_retr,
                 marker=CROSS_MARKER, s=60,
                 facecolors='none',
-                edgecolors=COLOR_MAP.get(prot, 'gray'),
+                edgecolors=COLORS_LEO.get(prot, 'gray'),
                 alpha=0.5
             )
             # Rejoin (circle)
@@ -284,7 +280,7 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
                 x, y_rejoin,
                 marker=REJOIN_MARKER, s=60,
                 facecolors='none',
-                edgecolors=COLOR_MAP.get(prot, 'gray'),
+                edgecolors=COLORS_LEO.get(prot, 'gray'),
                 alpha=1.0
             )
             # Rejoin minus retrans
@@ -292,7 +288,7 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
                 x, y_rejoin_minus_retr,
                 marker=REJOIN_MARKER, s=60,
                 facecolors='none',
-                edgecolors=COLOR_MAP.get(prot, 'gray'),
+                edgecolors=COLORS_LEO.get(prot, 'gray'),
                 alpha=0.5
             )
             
@@ -300,31 +296,31 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
             if len(x) > 1:
                 confidence_ellipse(
                     x, y_cross, ax, n_std=1,
-                    edgecolor=COLOR_MAP.get(prot, 'gray'),
+                    edgecolor=COLORS_LEO.get(prot, 'gray'),
                     linestyle='--'
                 )
 
-        # 2) TOP LEGEND (protocols only) - in figure coords so it’s truly above
-        protocol_handles = []
-        protocol_labels  = []
-        for prot in sorted(df['protocol'].unique()):
-            handle = ax.scatter(
-                [], [],
-                marker='o', s=80,
-                facecolors=COLOR_MAP[prot],
-                edgecolors=COLOR_MAP[prot],
-            )
-            protocol_handles.append(handle)
-            protocol_labels.append(prot)
 
-        top_legend = ax.legend(
-            protocol_handles, protocol_labels,
-            loc='center',
-            bbox_to_anchor=(0.5, 0.92),
-            bbox_transform=fig.transFigure,
-            ncol=4
+        proto_handles = [Line2D([], [], color=COLORS_LEO[p], linewidth=1) for p in PROTOCOLS_LEO]
+        proto_labels = [PROTOCOLS_FRIENDLY_NAME_LEO[p] for p in PROTOCOLS_LEO]
+        leg1 = fig.legend(
+            proto_handles[:3], proto_labels[:3],
+            loc='upper center',
+            bbox_to_anchor=(0.5, 1.10),
+            ncol=3, frameon=False,
+            fontsize=7, columnspacing=1.0,
+            handlelength=2.5, handletextpad=0.7
         )
-        ax.add_artist(top_legend)
+        fig.add_artist(leg1)
+
+        leg2 = fig.legend(
+            proto_handles[3:], proto_labels[3:],
+            loc='upper center',
+            bbox_to_anchor=(0.5, 1.),
+            ncol=2, frameon=False,
+            fontsize=7, columnspacing=1.0,
+            handlelength=2.5, handletextpad=0.7
+        )
 
         # 3) IN-PLOT LEGEND: Cross vs Rejoin
         cross_handle = ax.scatter(
@@ -342,34 +338,36 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
         shape_legend = ax.legend(
             [cross_handle, rejoin_handle],
             ['Cross', 'Rejoin'],
-            loc='upper left'
+            fontsize=6,
+            loc='upper left',
+            markerscale=0.7
         )
         ax.add_artist(shape_legend)
 
         ax.set_xlabel("Jain's Fairness Index")
         ax.set_ylabel("Norm. Throughput")
-        ax.set_xlim([0.6, 1.05])
+        ax.set_xlim([0.4, 1.05])
         ax.set_ylim([0.5, 1.05])
-        ax.grid(True)
+
 
         fig.tight_layout()
         plt.subplots_adjust(top=0.85)
 
-        plt.savefig(f"jains_vs_util_qmult_{q}.pdf", dpi=720)
+        plt.savefig(f"jains_vs_util_qmult_{q}.pdf", dpi=1080)
         plt.close(fig)
 
 if __name__ == "__main__":
+    #ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_soft_handover_fairness_inter_rtt"
     ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_soft_handover_fairness_inter_rtt"
     AQM = "fifo"
     BWS = [100]       # in Mbit/s
     DELAYS = [10]     # one way delays in ms; final stored two way in DF
     QMULTS = [0.2,1,4]
-    PROTOCOLS = ['cubic', 'bbr1', 'bbr3', 'astraea', 'sage']
     FLOWS = 2
     RUNS = [1,2,3,4,5]
     CHANGE1 = 100     # cross interval start time
+    CHANGE2 = 200     # rejoin interval start time
 
-    dd_df = data_to_dd_df(ROOT_PATH, AQM, BWS, DELAYS, QMULTS,
-                          PROTOCOLS, FLOWS, RUNS, CHANGE1)
+    dd_df = data_to_dd_df(ROOT_PATH, AQM, BWS, DELAYS, QMULTS, PROTOCOLS_LEO, FLOWS, RUNS)
     print(dd_df)
     plot_dd_scatter_jains_vs_util(dd_df, delays=DELAYS, qmults=QMULTS)

@@ -55,8 +55,7 @@ for mult in QMULTS:
                       total = receiver1_total.join(receiver2_total, how='inner', lsuffix='1', rsuffix='2')[['bandwidth1', 'bandwidth2']]
                       total = total[(total['bandwidth1'] > 0) | (total['bandwidth2'] > 0)] # if one datapoint contains a nan from the divide by 0, the enire datapoint will not be plotted.
                       
-                      goodput_ratios_total.append(total.min(axis=1)/total.max(axis=1))
-                      #goodput_ratios_total.append(total['bandwidth1']/total['bandwidth2'])
+                      goodput_ratios_total.append(total['bandwidth1']/total['bandwidth2'])
                   else:
                       print(f"Folder {PATH} not found.")
 
@@ -73,10 +72,13 @@ for mult in QMULTS:
     for protocol in PROTOCOLS_EXTENSION:
         plot_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol], delay=True)
 
-    ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio', ylim=[-0.1, 1.1])
+    ax.set(yscale='log',xlabel='RTT (ms)', ylabel='Goodput Ratio', ylim=[0.01, 100])
     # x-axis remains linear; use ScalarFormatter to keep “100”, “200”, … style
     ax.xaxis.set_major_formatter(ScalarFormatter())
 
+    # for the log-y axis, put ticks at each power of ten
+    ax.yaxis.set_major_locator(LogLocator(base=10))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda y, pos: f"{y:g}"))
 
     handles, labels = ax.get_legend_handles_labels()
     handles = [h[0] for h in handles]
