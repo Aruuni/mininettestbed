@@ -111,6 +111,17 @@ class Emulation:
                 # node.cmd("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
                 node.cmd(cmd)
 
+    def cut_link(self, node_name: str, if_name: str, interrupt: int, duration: int, interval: int): 
+        node = self.network.get(node_name)
+        cmd = f"ifconfig {node_name}-{if_name}"
+        for i in range(interval, duration, interval):
+            time.sleep(interval)
+            printTC(f"Running '{cmd} down'")
+            node.cmd(f"{cmd} down")
+            printTC(f"waiting {interrupt} ms")
+            time.sleep(interrupt / 1000.0)
+            printTC(f"Running '{cmd} up'")
+            node.cmd(f"{cmd} up")
 
 
     def configure_routing(self, num_pairs):
