@@ -34,8 +34,7 @@ for protocol in PROTOCOLS_LEO:
             PATH = f"{EXPERIMENT_PATH}/Dumbell_{BW}mbit_{DELAY}ms_{interupt}ms_interrupt_{int(QMULT * BDP_IN_PKTS)}pkts_0loss_1flows_22tcpbuf_{protocol}/run{run}" 
             if os.path.exists(f"{PATH}/csvs/x1.csv"):
                 goodput = pd.read_csv(f"{PATH}/csvs/x1.csv").reset_index(drop=True)
-                if protocol == 'vivace-uspace':
-                    goodput = 
+                goodput = goodput[['time', 'bandwidth']]
                 goodput['time'] = goodput['time'].apply(lambda x: int(float(x)))
                 goodput = goodput[(goodput['time'] > start_time) & (goodput['time'] < end_time)]
                 goodput = goodput.drop_duplicates('time')

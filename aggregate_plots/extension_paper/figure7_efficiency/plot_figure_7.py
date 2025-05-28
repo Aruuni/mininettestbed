@@ -264,13 +264,13 @@ if __name__ == "__main__":
                     confidence_ellipse(x, y, axes, facecolor=COLORS_EXTENSION[protocol], edgecolor='none', alpha=0.25)
 
         handles, labels = axes.get_legend_handles_labels()
-        fig.legend(
-            proto_handles, proto_labels, 
-            loc='upper center', bbox_to_anchor=(0.5, 1.15),
-            ncol=3, frameon=False,
-            fontsize=7, columnspacing=1.0,
-            handlelength=2.5, handletextpad=0.7
-        )
+        # fig.legend(
+        #     proto_handles, proto_labels, 
+        #     loc='upper center', bbox_to_anchor=(0.5, 1.15),
+        #     ncol=3, frameon=False,
+        #     fontsize=7, columnspacing=1.0,
+        #     handlelength=2.5, handletextpad=0.7
+        # )
 
         axes.set(ylabel="Norm. Throughput", xlabel="Norm. Delay", ylim=[0.5,1])
         axes.legend(

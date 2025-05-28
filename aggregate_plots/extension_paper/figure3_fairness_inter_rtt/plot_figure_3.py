@@ -78,13 +78,13 @@ for mult in QMULTS:
     ax.xaxis.set_major_formatter(ScalarFormatter())
 
 
-    handles, labels = ax.get_legend_handles_labels()
-    handles = [h[0] for h in handles]
-    legend = fig.legend(
-        handles, labels,
-        ncol=3, loc='upper center',
-        bbox_to_anchor=(0.5, 1.30),
-        columnspacing=0.8,
-        handletextpad=0.5
-    )
+    # handles, labels = ax.get_legend_handles_labels()
+    # handles = [h[0] for h in handles]
+    # legend = fig.legend(
+    #     handles, labels,
+    #     ncol=3, loc='upper center',
+    #     bbox_to_anchor=(0.5, 1.30),
+    #     columnspacing=0.8,
+    #     handletextpad=0.5
+    # )
     plt.savefig(f"goodput_inter_rtt_qmult{mult}.pdf", dpi=1080)

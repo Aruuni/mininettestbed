@@ -118,7 +118,7 @@ class Emulation:
             time.sleep(interval)
             printTC(f"Running '{cmd} down'")
             node.cmd(f"{cmd} down")
-            printTC(f"waiting {interrupt} ms")
+            printTC(f"waiting for {interrupt / 1000.0 } s")
             time.sleep(interrupt / 1000.0)
             printTC(f"Running '{cmd} up'")
             node.cmd(f"{cmd} up")

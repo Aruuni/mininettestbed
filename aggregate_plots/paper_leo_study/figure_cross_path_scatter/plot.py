@@ -67,7 +67,6 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                     for run in runs:
 
                         rejoin_retr_values = []
-
                         receivers_goodput = { i: pd.DataFrame() for i in range(1, flows*2+1) }
                         retr_values = []
                         for dumbbell in range(1, 3):
@@ -128,6 +127,7 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                             
                             util_if['txkB/s'] = util_if['txkB/s'] * 8 / 1024
                             util_if = util_if[~util_if.index.duplicated(keep='first')]
+
                             util_series = util_if['txkB/s'].reindex(range(cross_start, cross_end), fill_value=0)
                             util_list.append(util_series.mean())
                         else:
@@ -145,6 +145,8 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                             util_rejoin_a_df = util_rejoin_a_df[['time', 'txkB/s']].set_index('time')
                             util_rejoin_a_df['txkB/s'] = util_rejoin_a_df['txkB/s'] * 8 / 1024
                             util_rejoin_a_df = util_rejoin_a_df[~util_rejoin_a_df.index.duplicated(keep='first')]
+                            rejoin_start = CHANGE2
+                            rejoin_end = CHANGE2 + int(25 / 5)
                             util_series_a = util_rejoin_a_df['txkB/s'].reindex(range(rejoin_start, rejoin_end), fill_value=0)
                             util_rejoin_a = util_series_a.mean()
                         util_rejoin_b = 0
@@ -162,6 +164,8 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                             util_rejoin_b_df = util_rejoin_b_df[['time', 'txkB/s']].set_index('time')
                             util_rejoin_b_df['txkB/s'] = util_rejoin_b_df['txkB/s'] * 8 / 1024
                             util_rejoin_b_df = util_rejoin_b_df[~util_rejoin_b_df.index.duplicated(keep='first')]
+                            rejoin_start = CHANGE2
+                            rejoin_end = CHANGE2 + int(delay / 5)
                             util_series_b = util_rejoin_b_df['txkB/s'].reindex(range(rejoin_start, rejoin_end), fill_value=0)
                             util_rejoin_b = util_series_b.mean()
                         avg_rejoin_util = (util_rejoin_a + util_rejoin_b) / 2
@@ -173,7 +177,10 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
                             if df_flow.empty:
                                 cross_averages.append(0)
                             else:
-                                cross_slice = df_flow[(df_flow.index >= cross_start) & (df_flow.index < cross_start+50)]
+                                cross_start = CHANGE1
+                                cross_end = CHANGE1 + int((delay if f_id <= flows else 25) / 5)
+
+                                cross_slice = df_flow[(df_flow.index >= cross_start) & (df_flow.index < cross_end)]
                                 cross_averages.append(cross_slice['bandwidth'].mean() if not cross_slice.empty else 0)
                         cross_jain = calculate_jains_index(cross_averages)
                         cross_jains_list.append(cross_jain)
@@ -228,8 +235,8 @@ def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
     return pd.DataFrame(results, columns=columns)
 
 def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
-    CROSS_MARKER   = '^'  # triangle for Cross
-    REJOIN_MARKER  = '*'  # circle for Rejoin
+    CROSS_MARKER   = '^'
+    REJOIN_MARKER  = '*'
 
     for q in qmults:
         fig, ax = plt.subplots(figsize=(3,1.9))  
@@ -346,8 +353,8 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
 
         ax.set_xlabel("Jain's Fairness Index")
         ax.set_ylabel("Norm. Throughput")
-        ax.set_xlim([0.4, 1.05])
-        ax.set_ylim([0.5, 1.05])
+        ax.set_xlim([0.5, 1.05])
+        ax.set_ylim([0.4, 1.05])
 
 
         fig.tight_layout()

@@ -16,7 +16,7 @@ from core.plotting import *
 
 EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_bw_async/fifo" 
 BWS = [10,20,30,40,50,60,70,80,90,100]
-BWS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 300, 350, 400, 450, 500]
+BWS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 DELAYS = [20]
 RUNS = [1, 2, 3, 4, 5]
 LOSSES=[0]
@@ -72,13 +72,13 @@ for mult in QMULTS:
    for protocol in PROTOCOLS_EXTENSION:
       plot_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol])
 
-   ax.set(yscale='linear', xscale='log', xlabel='Bandwidth (Mbps)', ylabel='Goodput Ratio')
+   ax.set(yscale='linear', xlabel='Bandwidth (Mbps)', ylabel='Goodput Ratio')
    for axis in [ax.xaxis, ax.yaxis]:
        axis.set_major_formatter(ScalarFormatter())
 
-   handles, labels = ax.get_legend_handles_labels()
-   handles = [h[0] for h in handles]
-   legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.30),columnspacing=0.8,handletextpad=0.5)# ax.grid()
+   # handles, labels = ax.get_legend_handles_labels()
+   # handles = [h[0] for h in handles]
+   # legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.30),columnspacing=0.8,handletextpad=0.5)# ax.grid()
    plt.savefig(f"goodput_ratio_bw_qmult{mult}.pdf", dpi=1080)
 
 

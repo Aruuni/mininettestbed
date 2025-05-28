@@ -13,8 +13,8 @@ mymodule_dir = os.path.join( script_dir, '../../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 from core.plotting import * 
-
-EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_friendly_intra_rtt_flows_async/fifo" 
+sys.dont_write_bytecode = True
+EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_friendly_intra_rtt_flows/fifo" 
 
 BWS = [100]
 DELAY = 15
@@ -50,7 +50,6 @@ for mult in QMULTS:
                             .set_index('time')
                         )
                         dfs[f"bw{i}"] = df.bandwidth
-                    print(f"Loaded {len(dfs)} flows from {PATH}")
                     total = pd.concat(dfs, axis=1, join='inner')
                     total = total[(total > 0).any(axis=1)]  # drop all-zero rows
 
@@ -87,7 +86,7 @@ for mult in QMULTS:
 
     ax.set(
         yscale='log',
-        xlabel='RTT (ms)',
+        xlabel='Number of Cubic Flows',
         ylabel='Goodput Ratio',
         ylim=[0.1, 100]
     )
@@ -100,17 +99,17 @@ for mult in QMULTS:
     ax.yaxis.set_major_formatter(FuncFormatter(lambda y, pos: f"{y:g}"))
 
     # rebuild the legend
-    handles, labels = ax.get_legend_handles_labels()
-    handles = [h[0] for h in handles]
-    fig.legend(
-        handles, labels,
-        ncol=3, loc='upper center',
-        bbox_to_anchor=(0.5, 1.30),
-        columnspacing=0.8,
-        handletextpad=0.5
-    )
+    # handles, labels = ax.get_legend_handles_labels()
+    # handles = [h[0] for h in handles]
+    # fig.legend(
+    #     handles, labels,
+    #     ncol=3, loc='upper center',
+    #     bbox_to_anchor=(0.5, 1.30),
+    #     columnspacing=0.8,
+    #     handletextpad=0.5
+    # )
 
 
-    plt.savefig(f"goodput_intra_rtt_qmult{mult}.pdf" , dpi=1080)
+    plt.savefig(f"friendly_flows_random_start_qmult{mult}.pdf" , dpi=1080)
 
 

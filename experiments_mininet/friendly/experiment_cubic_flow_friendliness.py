@@ -8,7 +8,8 @@ sys.path.append( mymodule_dir )
 from core.topologies import *
 from mininet.net import Mininet
 from core.analysis import *
-import json
+import random
+
 from core.utils import *
 from core.emulation import *
 from core.config import *
@@ -25,8 +26,8 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     net = Mininet(topo=topo)
     duration = int((2*delay*1000)/1000)
     
-    path = f"{HOME_DIR}/cctestbed/mininet/results_friendly_intra_rtt_flows_async/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
-
+    path = f"{HOME_DIR}/cctestbed/mininet/results_friendly_intra_rtt_flows/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
+    random.seed(run * n_flows)
     rmdirp(path)
     printGreen(path)
     mkdirp(path)
@@ -46,7 +47,11 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     traffic_config = []
 
     for i in range(2, n_flows+1):
-        traffic_config.append(TrafficConf(f"c{i}", f"x{i}", int(duration/2), int(duration/2)+duration, 'cubic'))
+        start = random.randint(1, duration / 2)
+        end   = duration *2 -start
+        print(f"Adding flow c{i} from x{i} with start {start} and end {end}")
+        traffic_config.append(TrafficConf(f"c{i}", f"x{i}", start, end, 'cubic'))
+
 
     traffic_config.append(TrafficConf("c1", "x1", 0, 2*duration, protocol))
     

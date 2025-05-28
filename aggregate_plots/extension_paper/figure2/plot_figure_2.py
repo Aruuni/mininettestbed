@@ -199,12 +199,12 @@ def plot_one(QMULT, RUN):
     friendly_labels.append('Optimal')
 
     # now your existing legend call picks it up as one of the entries
-    fig.legend(linecollections, friendly_labels,
-            handler_map={type(lc): HandlerDashedLines()},
-            handlelength=1, handleheight=0.5,
-            ncol=4, columnspacing=1,
-            handletextpad=0.5,
-            loc='upper center', bbox_to_anchor=(0.5, 1.06))
+    # fig.legend(linecollections, friendly_labels,
+    #         handler_map={type(lc): HandlerDashedLines()},
+    #         handlelength=1, handleheight=0.5,
+    #         ncol=4, columnspacing=1,
+    #         handletextpad=0.5,
+    #         loc='upper center', bbox_to_anchor=(0.5, 1.06))
 
     plt.savefig(f"sending_{DELAY*2}rtt_{QMULT}qmult_run{RUN}.pdf", dpi=1080)
 

@@ -106,12 +106,8 @@ if __name__ == "__main__":
             plt.subplots_adjust(hspace=0.5)
             LEGENDMAP = {}
             BW = 100
-            DELAY = 80
-            
-
-
+            DELAY = 50
             LINEWIDTH = 1
-
             if mode == 'inverse':
                 ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_friendly_intra_rtt_async_inverse/fifo" 
             else:
@@ -135,7 +131,8 @@ if __name__ == "__main__":
                            sender = pd.read_csv(f"{PATH}/csvs/c{(n+1)}.csv")
                            senders[n+1].append(sender)
                         else:
-                           print("Folder not found")
+                           prin = f"{PATH}/csvs/c{(n+1)}.csv"
+                           print(f"Folder not {prin} found")
 
                         if os.path.exists(f"{PATH}/csvs/x{(n+1)}.csv"):
                            receiver_total = pd.read_csv(f"{PATH}/csvs/x{(n+1)}.csv").reset_index(drop=True)
@@ -194,8 +191,6 @@ if __name__ == "__main__":
             fig.text(0.5, 0.01, 'time (s)', ha='center')
             fig.text(0.030, 0.6, 'Goodput (Mbps)', va='center', rotation='vertical')
 
-            
-            fig.legend(list(LEGENDMAP.values()), list(LEGENDMAP.keys()), loc='upper center',ncol=3, bbox_to_anchor=(0.5, 1.17))
-
+            # fig.legend(list(LEGENDMAP.values()), list(LEGENDMAP.keys()), loc='upper center',ncol=3, bbox_to_anchor=(0.5, 1.17))
             plt.subplots_adjust(top=1)
             plt.savefig(f"goodput_friendly_{DELAY}ms_{mult}_{mode}.pdf", dpi=720, bbox_inches='tight')

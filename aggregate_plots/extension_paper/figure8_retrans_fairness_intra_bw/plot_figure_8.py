@@ -110,13 +110,13 @@ for mult in QMULTS:
    # remove the errorbars
    handles = [h[0] for h in handles]
 
-   legend = fig.legend(
-      handles, labels,
-      ncol=3, loc='upper center',
-      bbox_to_anchor=(0.5, 1.30),
-      columnspacing=0.8,
-      handletextpad=0.5
-   )
+   # legend = fig.legend(
+   #    handles, labels,
+   #    ncol=3, loc='upper center',
+   #    bbox_to_anchor=(0.5, 1.30),
+   #    columnspacing=0.8,
+   #    handletextpad=0.5
+   # )
    # ax.grid()
 
    plt.savefig(f"retr_async_bw_{SCALE}_{mult}.pdf", dpi=720)
