@@ -3,8 +3,7 @@ source common.sh
 bash setup.sh
 
 # PROTOCOLS="sage"
-PROTOCOLS="cubic bbr3 vivace-uspace astraea"
-
+PROTOCOLS="orca"
 STEPS="10 20 30 40 50 60 70 80 90 100"
 halfSTEPS="5 10 15 20 25 30 35 40 45 50"
 bwSTEPS="150 200 250 300 350 400 450 500"
@@ -12,7 +11,6 @@ FLOWS_STEPS="3 5 7 9 11 13 15 17 19 21"
 QMULTS="0.2 1 4"
 RUNS="1 2 3 4 5"
 HOPS="3 5 6"
-
 
 # # FAIRNESS INTRA RTT 
 # for del in $STEPS
@@ -60,20 +58,20 @@ HOPS="3 5 6"
 #     done
 # done
 
-# # CUBIC COEXISTANCE/BACKWARDS COMPATIBILITY WITH FLOWS
-# for flows in $FLOWS_STEPS
-# do
-#     for qmult in $QMULTS
-#     do
-#         for protocol in $PROTOCOLS
-#         do
-#             for run in $RUNS
-#             do
-#               run experiments_mininet/friendly/experiment_cubic_flow_friendliness.py "15" "100" $qmult $protocol $run fifo 0 $flows
-#             done
-#         done
-#     done
-# done
+# CUBIC COEXISTANCE/BACKWARDS COMPATIBILITY WITH FLOWS
+for flows in $FLOWS_STEPS
+do
+    for qmult in $QMULTS
+    do
+        for protocol in $PROTOCOLS
+        do
+            for run in $RUNS
+            do
+              run experiments_mininet/friendly/experiment_cubic_flow_friendliness.py "15" "100" $qmult $protocol $run fifo 0 $flows
+            done
+        done
+    done
+done
 
 # # CUBIC COEXISTANCE/BACKWARDS COMPATIBILITY
 # for del in $STEPS
@@ -301,15 +299,15 @@ HOPS="3 5 6"
 #         done
 # done
 
-# HARD HANDOVER
-for protocol in $PROTOCOLS
-do 
-    for interrupt in $STEPS
-    do
-        for run in $RUNS
-        do
-            run experiments_mininet/handover/hard.py "25" "100" "1" $protocol $run fifo 0 "1" $(( interrupt * 2 ))
-        done
-    done
-done
+# # HARD HANDOVER
+# for protocol in $PROTOCOLS
+# do 
+#     for interrupt in $STEPS
+#     do
+#         for run in $RUNS
+#         do
+#             run experiments_mininet/handover/hard.py "25" "100" "1" $protocol $run fifo 0 "1" $(( interrupt * 2 ))
+#         done
+#     done
+# done
 
