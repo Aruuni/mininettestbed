@@ -42,8 +42,12 @@ def get_goodput_data(bw, delay, qmult, runs, aqm, num_flows=4):
                  receiver_total['time'] = receiver_total['time'].apply(lambda x: int(float(x)))
                  # Filter time range per flow
                  receiver_total = receiver_total[(receiver_total['time'] >= (start_time + n*25)) & (receiver_total['time'] <= (end_time + n*25))]
-                 receiver_total = receiver_total.drop_duplicates('time')
-                 receiver_total = receiver_total.set_index('time')
+                 receiver_total = (
+                        receiver_total
+                        .drop_duplicates('time')
+                        .sort_values('time')     # ← sort by time
+                        .set_index('time')
+                    )
                  receivers[n+1].append(receiver_total)
               else:
                  print("Folder %s not found" % PATH)
@@ -100,7 +104,7 @@ def plot_data(data, filename, ylim=None, xlim=None):
 if __name__ == "__main__":
     EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_aqm"
     BW = 100
-    DELAY = 10
+    DELAY = 50
     AQM = 'fifo'
     AQM_LIST = ['fifo']
 

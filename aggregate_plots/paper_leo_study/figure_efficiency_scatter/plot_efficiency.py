@@ -276,27 +276,27 @@ if __name__ == "__main__":
 
                     confidence_ellipse(x, y, axes, facecolor=COLORS_LEO[protocol], edgecolor='none', alpha=0.25)
 
-        handles, labels = axes.get_legend_handles_labels()
-        # 1) Top row with 3 entries
-        leg1 = fig.legend(
-            proto_handles[:3], proto_labels[:3],
-            loc='upper center',
-            bbox_to_anchor=(0.45, 1.15),  # same as before
-            ncol=3, frameon=False,
-            fontsize=7, columnspacing=1.0,
-            handlelength=2.5, handletextpad=0.7
-        )
-        fig.add_artist(leg1)  # keep this legend so the next one can also be drawn
+        # handles, labels = axes.get_legend_handles_labels()
+        # # 1) Top row with 3 entries
+        # leg1 = fig.legend(
+        #     proto_handles[:3], proto_labels[:3],
+        #     loc='upper center',
+        #     bbox_to_anchor=(0.45, 1.15),  # same as before
+        #     ncol=3, frameon=False,
+        #     fontsize=7, columnspacing=1.0,
+        #     handlelength=2.5, handletextpad=0.7
+        # )
+        # fig.add_artist(leg1)  # keep this legend so the next one can also be drawn
 
-        # 2) Bottom row with the remaining 2 entries, perfectly centered in 2 columns
-        leg2 = fig.legend(
-            proto_handles[3:], proto_labels[3:],
-            loc='upper center',
-            bbox_to_anchor=(0.45, 1.05),  # tweak this for vertical spacing
-            ncol=2, frameon=False,
-            fontsize=7, columnspacing=1.0,
-            handlelength=2.5, handletextpad=0.7
-        )
+        # # 2) Bottom row with the remaining 2 entries, perfectly centered in 2 columns
+        # leg2 = fig.legend(
+        #     proto_handles[3:], proto_labels[3:],
+        #     loc='upper center',
+        #     bbox_to_anchor=(0.45, 1.05),  # tweak this for vertical spacing
+        #     ncol=2, frameon=False,
+        #     fontsize=7, columnspacing=1.0,
+        #     handlelength=2.5, handletextpad=0.7
+        # )
         axes.set(ylabel="Norm. Throughput", xlabel="Norm. Delay", ylim=[0.5,1])
         axes.legend([ Line2D([], [], 
             marker=MARKER_MAP[d],

@@ -90,5 +90,4 @@ leg2 = fig.legend(
 )
 
 #legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.30),columnspacing=0.8,handletextpad=0.5)
-plt.savefig(f"Avg_goodput.pdf" , dpi=1080)
-
+plt.savefig(f"Avg_goodput_eth2.pdf" , dpi=1080)

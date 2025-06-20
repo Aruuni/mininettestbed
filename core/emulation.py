@@ -239,7 +239,7 @@ class Emulation:
                 self.sending_nodes.append(source_node)
                 self.receiving_nodes.append(destination)
 
-            if protocol == 'orca':
+            if 'orca' in protocol:
                 params = (source_node,duration)
                 command = self.start_orca_sender
                 self.call_first.append(Command(command, params, None, source_node))

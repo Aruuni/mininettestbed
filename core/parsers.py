@@ -4,6 +4,7 @@ import json
 import os
 from core.utils import *
 from collections import defaultdict
+
 def parse_tc_show_output(output):
     '''
     Parse tc show dev output. Assumes that dev can only have one netem and/or one tbf. 
@@ -40,8 +41,6 @@ def parse_tc_show_output(output):
             ret[qdisc_type] = {'dropped': dropped, 'bytes': bytes_queued, 'pkts': packets_queued}
     
     return ret
-
-
 
 def parse_ss_output(file_path, offset=0):
     #df = pd.read_csv(file_path)
@@ -84,7 +83,6 @@ def parse_ss_output(file_path, offset=0):
     df['time'] = df['time'] - min_time + offset
     return df
 
-
 def parse_ss_sage_output(file_path, offset=0):
     #df = pd.read_csv(file_path)
     estab = {
@@ -126,7 +124,6 @@ def parse_ss_sage_output(file_path, offset=0):
     min_time = df['time'].min()
     df['time'] = df['time'] - min_time + offset
     return df
-
 
 def parse_iperf_output(output):
     """Parse iperf output and return bandwidth.
@@ -288,6 +285,7 @@ def parse_astraea_output(file, offset):
 
     
     return df
+
 def parse_vivace_uspace_output(file, offset):
     df = pd.read_csv(
         file,

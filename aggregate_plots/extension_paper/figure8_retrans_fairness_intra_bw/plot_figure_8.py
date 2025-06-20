@@ -89,6 +89,7 @@ for mult in QMULTS:
               data.append(data_entry)
 
    summary_data = pd.DataFrame(data, columns=['protocol', 'bandwidth', 'delay', 'delay_ratio','qmult', 'retr_total_mean', 'retr_total_std'])
+   print(summary_data)
    SCALE = 'linear'
    LOC = 4 if SCALE == 'log' else 2
 

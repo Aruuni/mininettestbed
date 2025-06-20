@@ -310,24 +310,24 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
 
         proto_handles = [Line2D([], [], color=COLORS_LEO[p], linewidth=1) for p in PROTOCOLS_LEO]
         proto_labels = [PROTOCOLS_FRIENDLY_NAME_LEO[p] for p in PROTOCOLS_LEO]
-        leg1 = fig.legend(
-            proto_handles[:3], proto_labels[:3],
-            loc='upper center',
-            bbox_to_anchor=(0.5, 1.10),
-            ncol=3, frameon=False,
-            fontsize=7, columnspacing=1.0,
-            handlelength=2.5, handletextpad=0.7
-        )
-        fig.add_artist(leg1)
+        # leg1 = fig.legend(
+        #     proto_handles[:3], proto_labels[:3],
+        #     loc='upper center',
+        #     bbox_to_anchor=(0.5, 1.10),
+        #     ncol=3, frameon=False,
+        #     fontsize=7, columnspacing=1.0,
+        #     handlelength=2.5, handletextpad=0.7
+        # )
+        # fig.add_artist(leg1)
 
-        leg2 = fig.legend(
-            proto_handles[3:], proto_labels[3:],
-            loc='upper center',
-            bbox_to_anchor=(0.5, 1.),
-            ncol=2, frameon=False,
-            fontsize=7, columnspacing=1.0,
-            handlelength=2.5, handletextpad=0.7
-        )
+        # leg2 = fig.legend(
+        #     proto_handles[3:], proto_labels[3:],
+        #     loc='upper center',
+        #     bbox_to_anchor=(0.5, 1.),
+        #     ncol=2, frameon=False,
+        #     fontsize=7, columnspacing=1.0,
+        #     handlelength=2.5, handletextpad=0.7
+        # )
 
         # 3) IN-PLOT LEGEND: Cross vs Rejoin
         cross_handle = ax.scatter(
@@ -358,9 +358,9 @@ def plot_dd_scatter_jains_vs_util(df, delays=[10,20], qmults=[0.2,1,4]):
 
 
         fig.tight_layout()
-        plt.subplots_adjust(top=0.85)
+        plt.subplots_adjust(left=0.18, top=0.85)
 
-        plt.savefig(f"jains_vs_util_qmult_{q}.pdf", dpi=1080)
+        plt.savefig(f"jains_vs_util_qmult_{q}.pdf", dpi=1080, bbox_inches='tight',  pad_inches=0.1)
         plt.close(fig)
 
 if __name__ == "__main__":

@@ -96,32 +96,32 @@ for mult in QMULTS:
     ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio')
     for axis in [ax.xaxis, ax.yaxis]:
         axis.set_major_formatter(ScalarFormatter())
-    handles, labels = ax.get_legend_handles_labels()
-    handles = [h[0] for h in handles]
-    leg1 = fig.legend(
-        handles[:3], labels[:3],
-        ncol=3,
-        loc='upper center',
-        bbox_to_anchor=(0.5, 1.15),
-        frameon=False,
-        fontsize=7,
-        columnspacing=0.8,
-        handlelength=2.5,
-        handletextpad=0.5
-    )
-    fig.add_artist(leg1)
+    # handles, labels = ax.get_legend_handles_labels()
+    # handles = [h[0] for h in handles]
+    # leg1 = fig.legend(
+    #     handles[:3], labels[:3],
+    #     ncol=3,
+    #     loc='upper center',
+    #     bbox_to_anchor=(0.5, 1.15),
+    #     frameon=False,
+    #     fontsize=7,
+    #     columnspacing=0.8,
+    #     handlelength=2.5,
+    #     handletextpad=0.5
+    # )
+    # fig.add_artist(leg1)
 
-    leg2 = fig.legend(
-        handles[3:], labels[3:],
-        ncol=2,
-        loc='upper center',
-        bbox_to_anchor=(0.5, 1.05),
-        frameon=False,
-        fontsize=7,
-        columnspacing=0.8,
-        handlelength=2.5,
-        handletextpad=0.5
-    )
+    # leg2 = fig.legend(
+    #     handles[3:], labels[3:],
+    #     ncol=2,
+    #     loc='upper center',
+    #     bbox_to_anchor=(0.5, 1.05),
+    #     frameon=False,
+    #     fontsize=7,
+    #     columnspacing=0.8,
+    #     handlelength=2.5,
+    #     handletextpad=0.5
+    # )
 
     #legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.30),columnspacing=0.8,handletextpad=0.5)
     plt.savefig(f"goodput_ratio_intra_rtt_{mult}.pdf" , dpi=1080)

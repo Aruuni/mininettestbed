@@ -7,10 +7,10 @@ sys.path.append(mymodule_dir)
 sys.dont_write_bytecode = True 
 
 from core.plotting import (
-    COLORS_EXTENSION,
-    PROTOCOLS_MARKERS_EXTENSION,
-    PROTOCOLS_FRIENDLY_NAME_EXTENSION,
-    PROTOCOLS_EXTENSION
+    COLORS_LEO,
+    PROTOCOLS_MARKERS_LEO,
+    PROTOCOLS_FRIENDLY_NAME_LEO,
+    PROTOCOLS_LEO
 )
 
 fig, ax = plt.subplots(figsize=(40, 3))
@@ -18,13 +18,13 @@ ax.axis('off')
 
 handles = [
     mlines.Line2D(
-        [], [], color=COLORS_EXTENSION[p],
-        marker=PROTOCOLS_MARKERS_EXTENSION[p],
+        [], [], color=COLORS_LEO[p],
+        marker=PROTOCOLS_MARKERS_LEO[p],
         linestyle='None', linewidth=3.0,
-        markersize=180, label=PROTOCOLS_FRIENDLY_NAME_EXTENSION[p],
+        markersize=180, label=PROTOCOLS_FRIENDLY_NAME_LEO[p],
         markeredgewidth=30,                          # make border thicker
     )
-    for p in PROTOCOLS_EXTENSION
+    for p in PROTOCOLS_LEO
 ]
 
 

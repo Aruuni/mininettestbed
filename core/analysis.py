@@ -21,7 +21,7 @@ def process_raw_outputs(path):
         sender_ip = str(flow[2])
         receiver_ip = str(flow[3])
         start_time = int(flow[-4])
-        if flow[-2] == 'orca':
+        if 'orca' in flow[-2]:
             # Convert sender output into csv
             df = parse_orca_output(path+"/%s_output.txt" % sender, start_time)
             df.to_csv("%s/%s.csv" %  (csv_path, sender), index=False)
