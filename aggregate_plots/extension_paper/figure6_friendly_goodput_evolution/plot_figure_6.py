@@ -14,7 +14,7 @@ from core.config import *
 from core.plotting import * 
 
 
-PROTOCOLS = ['cubic','bbr3',  'sage', 'orca',   'vivace-uspace', 'astraea',]
+
 def parse_aurora_output(file, offset):
    with open(file, 'r') as fin:
       auroraOutput = fin.read()
@@ -102,7 +102,7 @@ def parse_orca_output(file, offset):
 if __name__ == "__main__":
     for mult in QMULTS:
         for mode in ['normal', 'inverse']:
-            fig, axes = plt.subplots(nrows=len(PROTOCOLS), ncols=1, figsize=(5,3), sharex=True)
+            fig, axes = plt.subplots(nrows=len(PROTOCOLS_EXTENSION), ncols=1, figsize=(5,3), sharex=True)
             plt.subplots_adjust(hspace=0.5)
             LEGENDMAP = {}
             BW = 100
@@ -113,13 +113,13 @@ if __name__ == "__main__":
             else:
                 ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_friendly_intra_rtt_async/fifo" 
             for FLOWS in [2]:
-               data = {protocol: {i: pd.DataFrame([], columns=['time', 'mean', 'std']) for i in range(1, 5)} for protocol in PROTOCOLS}
+               data = {protocol: {i: pd.DataFrame([], columns=['time', 'mean', 'std']) for i in range(1, 5)} for protocol in PROTOCOLS_EXTENSION}
 
 
                start_time = 0
                end_time = 4*DELAY-2
                # Plot throughput over time
-               for protocol in PROTOCOLS:
+               for protocol in PROTOCOLS_EXTENSION:
                   BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
                   BDP_IN_PKTS = BDP_IN_BYTES / 1500
                   senders = {1: [], 2: [], 3: [], 4:[]}
@@ -155,7 +155,7 @@ if __name__ == "__main__":
                          data[protocol][n+1]['std'] = pd.concat(receivers[n+1], axis=1).std(axis=1).sort_index()
                          data[protocol][n+1].index = pd.concat(receivers[n+1], axis=1).sort_index().index
 
-            for i,protocol in enumerate(PROTOCOLS):
+            for i,protocol in enumerate(PROTOCOLS_EXTENSION):
                #remove index for single plot
                ax = axes[i]
 

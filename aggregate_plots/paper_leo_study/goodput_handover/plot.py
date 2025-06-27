@@ -14,7 +14,7 @@ sys.path.append( mymodule_dir )
 from core.config import *
 from core.plotting import * 
 
-EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_handover_hard/fifo" 
+EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_handover_hard_eth1/fifo" 
 BW = 100
 DELAY = 25
 INTERRUPTS = [20, 40 , 60, 80, 100, 120, 140, 160, 180, 200]
@@ -22,8 +22,7 @@ QMULT = 1
 data = []
 for protocol in PROTOCOLS_LEO:
     for interupt in INTERRUPTS:
-        start_time = 3*DELAY
-        end_time = 4*DELAY-1
+
         keep_last_seconds = int(0.25*DELAY)
 
         BDP_IN_BYTES = int(BW * (2 ** 20) * 2 * DELAY * (10 ** -3) / 8)
@@ -36,7 +35,7 @@ for protocol in PROTOCOLS_LEO:
                 goodput = pd.read_csv(f"{PATH}/csvs/x1.csv").reset_index(drop=True)
                 goodput = goodput[['time', 'bandwidth']]
                 goodput['time'] = goodput['time'].apply(lambda x: int(float(x)))
-                goodput = goodput[(goodput['time'] > start_time) & (goodput['time'] < end_time)]
+                #goodput = goodput[(goodput['time'] > start_time) & (goodput['time'] < end_time)]
                 goodput = goodput.drop_duplicates('time')
 
                 goodput = goodput.set_index('time')
@@ -90,4 +89,4 @@ leg2 = fig.legend(
 )
 
 #legend = fig.legend(handles, labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.30),columnspacing=0.8,handletextpad=0.5)
-plt.savefig(f"Avg_goodput_eth2.pdf" , dpi=1080)
+plt.savefig(f"Avg_goodput_eth1.pdf" , dpi=1080)

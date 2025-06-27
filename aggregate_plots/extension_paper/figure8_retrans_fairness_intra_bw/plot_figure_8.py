@@ -96,14 +96,13 @@ for mult in QMULTS:
    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(3,1.2))
    ax = axes
    
-   ax.set(xlabel='Bandwidth (Mbps)', ylabel='Retr. Rate (Mbps)',yscale=SCALE)
    for axis in [ax.xaxis, ax.yaxis]:
        axis.set_major_formatter(ScalarFormatter())
    for protocol in PROTOCOLS_EXTENSION:
       plot_retrans_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('bandwidth'), 'retr_total_mean', 'retr_total_mean', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol])
 
 
-   ax.set(xlabel='Bandwidth (Mbps)', ylabel='Retr. Rate (Mbps)', yscale=SCALE)
+   ax.set(xlabel='Bandwidth (Mbps)', ylabel='Retr. (Mbps)', yscale=SCALE)
    for axis in [ax.xaxis, ax.yaxis]:
        axis.set_major_formatter(ScalarFormatter())
 
