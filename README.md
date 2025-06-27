@@ -24,14 +24,6 @@ bash install.sh # DO NOT RUN WITH SUDO
 
 
 ## Configuration
-Set your username in *core/config.py*
-
-```python
-USERNAME=None
-```
-
-Make sure installation location of Orca, PCC-RL and PCC-Uspace match the path set in core/config.py (home directory)
-
 check for the available kernel conegstion control using: 
 ```bash 
 sysctl net.ipv4.tcp_available_congestion_control
