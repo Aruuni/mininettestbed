@@ -232,6 +232,7 @@ class Emulation:
             destination = flowconfig.dest
             protocol = flowconfig.protocol
 
+
             if protocol != 'tbf' and protocol != 'netem' and protocol != 'cross_traffic':
                 self.waitoutput.append(source_node)
                 self.waitoutput.append(destination)
@@ -286,10 +287,9 @@ class Emulation:
                 params[0] = self.network.linksBetween(self.network.get(nodes_names[0]), self.network.get(nodes_names[1]))[0]
                 command = self.configure_link
                 self.call_second.append(Command(command, params, start_time, 'TBF'))
-
             else:
                 # Create server start up call
-                params = (destination, 1)
+                params = (destination, self.interval,)
                 command = self.start_iperf_server
                 self.call_first.append(Command(command, params, None, destination))
 
@@ -418,16 +418,27 @@ class Emulation:
                 monitor = Process(target=monitor_qlen_on_router, args=(iface, mininode, interval_sec,f"{self.path}/queues"))
                 self.qmonitors.append(monitor)
 
-    def start_iperf_server(self, node_name: str, monitor_interval=1, port=5201):
+
+    def start_iperf_server(self, node_name: str, monitor_interval=1, port=5201, monitor_intf=True, mptcpize=True):
         """
         Start a one-off iperf3 server on the given node with the given port at a default interval of 1 second
         """
         node = self.network.get(node_name)
-        cmd = f"iperf3 -p {port} -i {monitor_interval} --one-off --json -s"
+
+        # Monitor per-interface statistics with ifstat
+        if monitor_intf:
+            ifstat = f"ifstat -nbt {monitor_interval}"
+            timestamp = "while IFS= read -r line; do echo \"$(date +%s.%6N) $line\"; done" # Appends timestamps to each output line with 6 digits of precision
+            ifstat_cmd = f'{ifstat} | {timestamp} > {self.path}/{node.name}_ifstat.txt &' # runs ifstat and outputs the results
+            printBlue(f'Sending command {ifstat_cmd} to host {node.name}')
+            node.cmd(ifstat_cmd)
+
+        # Start iperf server. "mptcpize" forces iperf to open an MPTCP socket
+        cmd = ("mptcpize run " if mptcpize else "") + f"iperf3 -p {port} -i {monitor_interval} --one-off --json -s"
         printBlueFill(f"Sending command '{cmd}' to host {node.name}")
         node.sendCmd(cmd)
 
-    def start_iperf_client(self, node_name: str, destination_name: str, duration: int, protocol: str, monitor_interval=0.1, port=5201):
+    def start_iperf_client(self, node_name: str, destination_name: str, duration: int, protocol: str, monitor_interval=0.1, port=5201, monitor_intf=True, mptcpize=True):
         """
         Start a iperf3 client on the given node with the given destination and port at a default interval of 1 second. 
         Additioanlly, the SS script is started on the client node with a default interval of 0.01 seconds (lowest possible). 
@@ -435,14 +446,26 @@ class Emulation:
         """
         node = self.network.get(node_name)
 
+        # Monitor statistics about this connection with ss
         sscmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_iperf3.sh'} 0.1 {self.path}/{node.name}_ss.csv &"
         printBlue(f'Sending command {sscmd} to host {node.name}')
         node.cmd(sscmd)
 
+        # Monitor per-interface statistics with ifstat
+        if monitor_intf:
+            timeout = f"timeout {duration}" # forces the ifstat to stop running after duration seconds
+            ifstat = f"ifstat -nbt {monitor_interval}"
+            #awk = "awk \'{ \"date +%s.%6N\" | getline t; print t, $0; fflush() }\'" # Captures timestamps per line with 6 digits of precision (i hope)
+            timestamp = "while IFS= read -r line; do echo \"$(date +%s.%6N) $line\"; done" # Appends timestamps to each output line with 6 digits of precision
+            ifstat_cmd = f'{timeout} {ifstat} | {timestamp} > {self.path}/{node.name}_ifstat.txt &' # runs ifstat and outputs the results
+            printBlue(f'Sending command {ifstat_cmd} to host {node.name}')
+            node.cmd(ifstat_cmd)
+
+        # Start iperf client. "mptcpize" forces iperf to open an MPTCP socket.
         iperfCmd = (
-            f"iperf3 -p {port} "
-            + ("" if self.ubuntu16
-            else "--cport=11111 ")
+            ("mptcpize run " if mptcpize else "")
+            + f"iperf3 -p {port} "
+            + ("" if self.ubuntu16 else "--cport=11111 ")
             + f"-i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}"
         ).replace("  ", " ").strip()       
         printBlueFill(f'Sending command {iperfCmd} to host {node.name}')

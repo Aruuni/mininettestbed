@@ -2,6 +2,7 @@ import re
 import pandas as pd
 import json
 import os
+from datetime import datetime
 from core.utils import *
 from collections import defaultdict
 
@@ -41,6 +42,104 @@ def parse_tc_show_output(output):
             ret[qdisc_type] = {'dropped': dropped, 'bytes': bytes_queued, 'pkts': packets_queued}
     
     return ret
+
+def time_to_epoch(time_str, date_str=None):
+    """
+    Convert a HH:MM:SS 24-hour time string (optionally with a date) to epoch timestamp.
+    If date_str is None, today's date is used.
+    """
+    printBlue(f"CONVERTING {time_str} TO EPOCH. DATE_STR = {date_str}")
+
+    if date_str is None:
+        date_str = datetime.today().strftime("%Y-%m-%d")
+    
+    full_dt_str = f"{date_str} {time_str}"  # e.g. "2025-07-08 14:37:38"
+    dt_obj = datetime.strptime(full_dt_str, "%Y-%m-%d %H:%M:%S")
+    return dt_obj.timestamp()
+
+def parse_ifstat_output(file_path, offset=0):
+    data = defaultdict(list)
+    intf_names = list()
+    with open(file_path, "r") as f:
+        for l, line in enumerate(f):
+            # Split the line into a list of entries (time/if)
+            parts = line.split()
+            
+            # Skip useless header line
+            if parts[1] == "HH:MM:SS":
+                continue
+
+            # If this is the interface name header - grab the interface names from the first row, and then move on
+            if parts[1] == "Time":
+                for i in range(2, len(parts)): # 2 skips the appended timestamp and the "Time" header
+                    intf_names.append(parts[i])
+                continue
+            
+            # Extract values and append to data list
+            # timestamp = time_to_epoch(parts[0]) # returns float, like ss output # deprecated, remove if its working
+            timestamp = float(parts[0]) # no longer needs to be converted
+            # printGreen(timestamp)
+            for i, intf in enumerate(intf_names):
+                try:
+                    # Extract throughputs and convert to mbps
+                    mbps_in = float(parts[2 + 2*i]) * .001
+                    mbps_out = float(parts[3 + 2*i]) * .001
+                except ValueError:
+                    # Skip the line if float conversion fails (line contains "n/a")
+                    continue
+
+                # Append values to the dictionary
+                data["time"].append(timestamp)
+                data["intf"].append(intf)
+                data["mbps_in"].append(mbps_in)
+                data["mbps_out"].append(mbps_out)
+
+    # Create empty dataframe
+    df = pd.DataFrame(data)
+
+    # Convert the 'time' column to relative time (seconds since the minimum timestamp)
+    min_time = df['time'].min()
+    df['time'] = df['time'] - min_time + offset    
+
+    if df.empty:
+        raise ValueError("No usable lines found in the ifstat output.")
+    return df
+
+# def parse_sar_output(file_path, offset=0):
+#     data = defaultdict(list)
+
+#     with open(file_path, "r") as f:
+#         for line in f:
+#             # Skip header and blank lines
+#             if line.strip() == "" or line.startswith("IFACE") or line.startswith("Linux") or re.match(r"\s*IFACE", line):
+#                 continue
+
+#             # Split the line into a list of entries (time/if)
+#             parts = line.split()
+#             print(parts)
+
+#             # Extract and convert values
+#             timestamp = time_to_epoch(parts[0])  # returns float, like ss output
+#             iface = parts[1]
+#             rx_kbps = float(parts[2])
+#             tx_kbps = float(parts[3])
+
+#             # Append values to the dictionary
+#             data["time"].append(timestamp)
+#             data["intf"].append(iface)
+#             data["rx_mbps"].append(rx_kbps * .008)
+#             data["tx_mbps"].append(tx_kbps * .008)
+
+#     # Create empty dataframe
+#     df = pd.DataFrame(data)
+
+#     # Convert the 'time' column to relative time (seconds since the minimum timestamp)
+#     min_time = df['time'].min()
+#     df['time'] = df['time'] - min_time + offset    
+
+#     if df.empty:
+#         raise ValueError("No usable lines found in the sar output.")
+#     return df
 
 def parse_ss_output(file_path, offset=0):
     #df = pd.read_csv(file_path)

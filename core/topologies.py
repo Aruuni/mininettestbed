@@ -1,5 +1,6 @@
 from mininet.topo import Topo
 from mininet.node import OVSKernelSwitch, Host, Node
+from mininet.net import Mininet
 
 class DumbellTopo(Topo):
     "Single bottleneck topology with n pairs of client/servers interconnected by two switches."
@@ -109,5 +110,105 @@ class ParkingLot(Topo):
     def __str__(self):
         return "ParkingLotTopo(n=%d)" % self.n
 
+# The simplest possible setup for testing MPTCP. A source/destination pair with 2 independent paths between them.
+# This might just be a double dumbell. But this is simpler and uses switches I know work with MPTCP. I can advance to double dumbell later.
+class MinimalMP(Topo):
+    def build(self, n=3):
+        self.n = n
 
-topos = { 'dumbell': DumbellTopo, 'double_dumbell': DoubleDumbbellTopo, 'parking_lot': ParkingLot }
+        s1a = self.addSwitch('s1a', cls=OVSKernelSwitch)
+        s1b = self.addSwitch('s1b', cls=OVSKernelSwitch)
+        s1c = self.addSwitch('s1c', cls=OVSKernelSwitch)
+
+        self.addLink('s1a', 's1b')
+        self.addLink('s1b', 's1c')
+
+        s2a = self.addSwitch('s2a', cls=OVSKernelSwitch)
+        s2b = self.addSwitch('s2b', cls=OVSKernelSwitch)
+        s2c = self.addSwitch('s2c', cls=OVSKernelSwitch)
+
+        self.addLink('s2a', 's2b')
+        self.addLink('s2b', 's2c')
+
+        c1 = self.addHost('c1', cls=Host)
+        self.addLink('c1', 's1a')
+        self.addLink('c1', 's2a')
+
+        x1 = self.addHost('x1', cls=Host)
+        self.addLink('x1', 's1c')
+        self.addLink('x1', 's2c')
+
+    def __str__(self):
+        return "MultiTopo(n=%d)" % self.n
+
+
+# basic topology with multiple independent paths from client to server
+class MultiTopo(Topo):
+    def build(self, n=3):
+        self.n = n
+        c1 = self.addHost('c1', cls=Host)
+        x1 = self.addHost('x1', cls=Host)
+
+
+        pathLen = 3
+        last_switch = None
+        for path in range(1, n+1): # for every path (n)
+            for sw in range(1, pathLen+1): # for every switch (per path, pathLen=3)
+                curr_switch = None
+                if sw ==1:
+                    # START SWITCH
+                    curr_switch = self.addSwitch('s' + str(path) + "." + str(sw), cls=OVSKernelSwitch)
+                    self.addLink(c1, curr_switch)
+                elif sw < pathLen:
+                    # MIDDLE SWITCH
+                    curr_switch = self.addSwitch('s' + str(path) + "." + str(sw), cls=OVSKernelSwitch)
+                    self.addLink(curr_switch, last_switch)
+                else:
+                    # END SWITCH
+                    curr_switch = self.addSwitch('s' + str(path) + "." + str(sw), cls=OVSKernelSwitch)
+                    self.addLink(x1, curr_switch)
+                    self.addLink(curr_switch, last_switch)
+                last_switch = curr_switch
+    def __str__(self):
+        return "MultiTopo(n=%d)" % self.n
+
+# Topology with n independent paths from c1 to x1
+# c2 and x2 are connected over a single one of these paths, intended as a competing flow
+class MultiCompetitionTopo(Topo):
+    def build(self, n=3):
+        self.n = n
+        # Main client/server pair
+        c1 = self.addHost('c1', cls=Host)
+        x1 = self.addHost('x1', cls=Host)
+
+        # Competing client/server pair to generate traffic for
+        c2 = self.addHost('c2', cls=Host)
+        x2 = self.addHost('x2', cls=Host)
+
+        pathLen = 3
+        last_switch = None
+        for path in range(1, n+1): # for every path (n)
+            for sw in range(1, pathLen+1): # for every switch (per path, pathLen=3)
+                curr_switch = None
+                if sw ==1:
+                    # START SWITCH
+                    curr_switch = self.addSwitch('s' + str(path) + "." + str(sw), cls=OVSKernelSwitch)
+                    self.addLink(c1, curr_switch)
+                    if path == 1: 
+                        self.addLink(c2, curr_switch) 
+                elif sw < pathLen:
+                    # MIDDLE SWITCH
+                    curr_switch = self.addSwitch('s' + str(path) + "." + str(sw), cls=OVSKernelSwitch)
+                    self.addLink(curr_switch, last_switch)
+                else:
+                    # END SWITCH
+                    curr_switch = self.addSwitch('s' + str(path) + "." + str(sw), cls=OVSKernelSwitch)
+                    self.addLink(x1, curr_switch)
+                    self.addLink(curr_switch, last_switch)
+                    if path == 1: 
+                        self.addLink(x2, curr_switch) 
+                last_switch = curr_switch
+    def __str__(self):
+        return "MultiTopo(n=%d)" % self.n
+
+topos = { 'dumbell': DumbellTopo, 'double_dumbell': DoubleDumbbellTopo, 'parking_lot': ParkingLot, 'multi_topo': MultiTopo, "multi_competition_topo" : MultiCompetitionTopo, "minimal_mp" : MinimalMP  }

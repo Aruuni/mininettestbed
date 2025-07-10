@@ -242,46 +242,47 @@ HOPS="3 5 6"
 #
 # PROTOCOLS="satcp"
 
-PATHS=( "Starlink_SD_NY_15_ISL_path.log" \
-        "Starlink_SD_NY_15_BP_path.log" \
-        "Starlink_SEA_NY_15_ISL_path.log" \
-        "Starlink_SEA_NY_15_BP_path.log" \
-        "Starlink_SD_SEA_15_ISL_path.log" \
-        "Starlink_SD_SEA_15_BP_path.log" 
-        "Starlink_NY_LDN_15_ISL_path.log" \
-        "Starlink_SD_Shanghai_15_ISL_path.log" )
-QUEUE_PKTS=(522 408 388 326 582 219 696 740)
-# TESTING
-# PATHS=( "Starlink_SEA_BsAs_15_ISL_path.log" )
-# QUEUE_PKTS=(9999)
+# PATHS=( "Starlink_SD_NY_15_ISL_path.log" \
+#         "Starlink_SD_NY_15_BP_path.log" \
+#         "Starlink_SEA_NY_15_ISL_path.log" \
+#         "Starlink_SEA_NY_15_BP_path.log" \
+#         "Starlink_SD_SEA_15_ISL_path.log" \
+#         "Starlink_SD_SEA_15_BP_path.log" 
+#         "Starlink_NY_LDN_15_ISL_path.log" \
+#         "Starlink_SD_Shanghai_15_ISL_path.log" )
+# QUEUE_PKTS=(522 408 388 326 582 219 696 740)
+# # TESTING
+# # PATHS=( "Starlink_SEA_BsAs_15_ISL_path.log" )
+# # QUEUE_PKTS=(9999)
 
-for qmult in $QMULTS; do
-    for protocol in $PROTOCOLS; do
-        for idx in "${!PATHS[@]}"; do
-            path="${PATHS[$idx]}"
-            base_pkts="${QUEUE_PKTS[$idx]}"
-            adj_pkts=$(awk "BEGIN {printf \"%d\", $base_pkts * $qmult}")
-            for run in $RUNS; do
-                run experiments_mininet/LeoEM/emulator.py \
-                    "$path" "[0]" 100 "$adj_pkts" "$protocol" "$run" 300
-            done
-        done
-    done
-done
+# for qmult in $QMULTS; do
+#     for protocol in $PROTOCOLS; do
+#         for idx in "${!PATHS[@]}"; do
+#             path="${PATHS[$idx]}"
+#             base_pkts="${QUEUE_PKTS[$idx]}"
+#             adj_pkts=$(awk "BEGIN {printf \"%d\", $base_pkts * $qmult}")
+#             for run in $RUNS; do
+#                 run experiments_mininet/LeoEM/emulator.py \
+#                     "$path" "[0]" 100 "$adj_pkts" "$protocol" "$run" 300
+#             done
+#         done
+#     done
+# done
 
-for qmult in $QMULTS; do
-    for protocol in $PROTOCOLS; do
-        for idx in "${!PATHS[@]}"; do
-            path="${PATHS[$idx]}"
-            base_pkts="${QUEUE_PKTS[$idx]}"
-            adj_pkts=$(awk "BEGIN {printf \"%d\", $base_pkts * $qmult}")
-            for run in $RUNS; do
-                run experiments_mininet/LeoEM/emulator.py \
-                    "$path" "[0, 100]" 100 "$adj_pkts" "$protocol" "$run" 300
-            done
-        done
-    done
-done
+# for qmult in $QMULTS; do
+#     for protocol in $PROTOCOLS; do
+#         for idx in "${!PATHS[@]}"; do
+#             path="${PATHS[$idx]}"
+#             base_pkts="${QUEUE_PKTS[$idx]}"
+#             adj_pkts=$(awk "BEGIN {printf \"%d\", $base_pkts * $qmult}")
+#             for run in $RUNS; do
+#                 run experiments_mininet/LeoEM/emulator.py \
+#                     "$path" "[0, 100]" 100 "$adj_pkts" "$protocol" "$run" 300
+#             done
+#         done
+#     done
+# done
+
 # PROTOCOLS="satcpbbr1"
 # RUNS="6"
 # PATHS=(  "Starlink_SD_SEA_15_ISL_path.log" )

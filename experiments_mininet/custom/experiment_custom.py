@@ -5,25 +5,27 @@ script_dir = os.path.dirname( __file__ )
 mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
 
-
 from core.topologies import *
 from core.analysis import *
 from core.utils import *
 from core.emulation import *
 from core.config import *
-
+from mininet.link import TCLink
 
 def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
     if topology == 'Dumbell':
         topo = DumbellTopo(**params)
+        net = Mininet(topo=topo, link=TCLink)
+    elif topology == "MultiTopo":
+        topo = MultiTopo(**params)
+        net = MPMininetWrapper(topo=topo, link=TCLink)
     else:
         print("ERROR: topology \'%s\' not recognised" % topology)
 
     bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
-    duration = 120
-    
-    net = Mininet(topo=topo)
+    duration = 10
+
     path = f"{HOME_DIR}/cctestbed/mininet/results_custom/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
     printRed(path)
 
@@ -39,33 +41,52 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
 
     net.start()
-    #disable_offload(net)
+    disable_offload(net)
 
-    network_config = [NetworkConf('s1', 's2', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
-                      NetworkConf('s2', 's3', bw, None, qsize_in_bytes, False, aqm, None)]
-    
+    monitors=[]         # list of stats/interfaces to monitor
+    network_config=[]   # list of network conditions, such as bandwidth, delay, and loss on each link
+    traffic_config=[]   # list of connections open/close during the experiment
+    if topology == 'Dumbell':
+        network_config = [NetworkConf('s1', 's2', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss),
+                        NetworkConf('s2', 's3', bw, None, qsize_in_bytes, False, aqm, None)]
+        
 
-    traffic_config = [TrafficConf('c1', 'x1', 0, duration, 'cubic'),
-                    TrafficConf('c2', 'x2', 30, duration-30, protocol)
-                      
-                      
-                      ]
+        traffic_config = [TrafficConf('c1', 'x1', 0, duration, 'cubic'),
+                        TrafficConf('c21', 'x2', 30, duration-30, protocol)]
+        
+        monitors = ['s1-eth1', 's2-eth2', 'sysstat']
+    elif topology == 'MultiTopo':
+        numPaths = params.get('n')
+        c1, x1 = net.get('c1', 'x1')    
 
+        network_config = []
+        for p in range(1, numPaths+1):
+            # Generate network configurations for each link in a path
+            if p == -1: # -1 = disabled, for testing
+                network_config.append(NetworkConf('s' + str(p) + '.1', 's' + str(p) + '.2', None, 10*delay, 3*bdp_in_bytes, False, 'fifo', 50))
+                network_config.append(NetworkConf('s' + str(p) + '.2', 's' + str(p) + '.3', .02*bw, None, .1*qsize_in_bytes, False, aqm, None))
+            else:
+                network_config.append(NetworkConf('s' + str(p) + '.1', 's' + str(p) + '.2', None, 2*delay, 3*bdp_in_bytes, False, 'fifo', loss))
+                network_config.append(NetworkConf('s' + str(p) + '.2', 's' + str(p) + '.3', bw, None, qsize_in_bytes, False, aqm, None))
+            monitors.append('s' + str(p) + '.1' + '-eth1')
+            monitors.append('s' + str(p) + '.2' + '-eth1')
+            monitors.append('s' + str(p) + '.3' + '-eth1')
+            monitors.append('s' + str(p) + '.1' + '-eth2')
+            monitors.append('s' + str(p) + '.2' + '-eth2')
+            monitors.append('s' + str(p) + '.3' + '-eth2')
+        monitors.append('sysstat')
+        #traffic_config = [TrafficConf('c1', 'x1', 0, duration, 'cubic'),
+         #               TrafficConf('c1', 'x1', 30, duration-30, protocol)]
+        traffic_config = [TrafficConf('c1', 'x1', 0, duration, protocol)] # Start traffic from c1 to x1 using the given protocol for the entire duration of the experiment (start at t=0)
 
-    
     em = Emulation(net, network_config, traffic_config, path, 0.1)
 
     em.configure_network()
     em.configure_traffic()
-    
-    monitors = ['s1-eth1', 's2-eth2', 'sysstat']
-        
     em.set_monitors(monitors)
-    
     em.run()
-
-
     em.dump_info()
+    CLI(net)
     net.stop()
     
     change_all_user_permissions(path)

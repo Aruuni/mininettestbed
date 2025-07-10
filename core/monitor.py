@@ -7,8 +7,6 @@ import os
 import re
 from core.utils import *
 
-
-
 def monitor_qlen(iface, interval_sec = 0.1, path = default_dir, ):
     mkdirp(path)
     fname='%s/%s.txt' % (path, iface)
@@ -117,10 +115,10 @@ def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
 def start_sysstat(interval, count, folder, node=None):
     mkdirp("%s/sysstat" % (folder))
     if node == None:
-        cmd = "sudo /usr/lib/sysstat/sadc -S SNMP %s %s %s/sysstat/datafile_root.log &" % (interval, count, folder)
+        cmd = "sudo /usr/lib/sysstat/sadc -S SNMP %s %s %s/sysstat/datafile_root.log &" % (interval, int(count), folder)
         os.system(cmd)
     else:
-        cmd = "sudo /usr/lib/sysstat/sadc -S SNMP %s %s %s/sysstat/datafile_%s.log &" % (interval, count, folder, node.name )
+        cmd = "sudo /usr/lib/sysstat/sadc -S SNMP %s %s %s/sysstat/datafile_%s.log &" % (interval, int(count), folder, node.name )
         print("\033[38;2;165;42;42mSending command '%s' to node %s\033[0m" % (cmd, node.name))
         node.popen(cmd,shell=True)
 

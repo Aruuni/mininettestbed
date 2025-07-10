@@ -19,7 +19,7 @@ from core.config import *
  
 def  generate_traffic_shape(seed, qsize_in_bytes):
     random.seed(seed)
-    RUN_LENGTH = 300 #s
+    RUN_LENGTH = 30 #s
     CHANGE_PERIOD = 10 #s
     start_time = CHANGE_PERIOD
     traffic_config = []
@@ -45,9 +45,9 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     bdp_in_bytes = int(bw*(2**20)*2*delay*(10**-3)/8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
  
-    net = Mininet(topo=topo)
+    net = MPMininetWrapper(topo=topo)
  
-    path = f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
+    path = f"{HOME_DIR}/cctestbed/mininet/results_mptcp_leo_test/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
 
     rmdirp(path)
     mkdirp(path)
@@ -66,13 +66,13 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
  
     # Changes in the network parameters are treated as traffic configurations and are added in the same config
     if n_flows == 1:
-        traffic_config = [TrafficConf('c1', 'x1', 0, 300, protocol)]
+        traffic_config = [TrafficConf('c1', 'x1', 0, 30, protocol)]
         traffic_config.extend(generate_traffic_shape(run, qsize_in_bytes))
     else:
         print("ERROR: number of flows greater than 1")
         exit()
  
-    em = Emulation(net, network_config, traffic_config, path)
+    em = Emulation(net, network_config, traffic_config, path, .1)
  
     em.configure_network()
     em.configure_traffic()

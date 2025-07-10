@@ -2,6 +2,7 @@ import json
 from core.parsers import *
 from core.utils import *
 import pandas as pd
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 def process_raw_outputs(path):
@@ -70,21 +71,33 @@ def process_raw_outputs(path):
             df = parse_iperf_json(f"{path}/{sender}_output.txt", start_time)
             df.to_csv(f"{csv_path}/{sender}.csv", index=False)
             
+            # Convert sender ss into csv
             df = parse_ss_output(path+"/%s_ss.csv" % sender, start_time)
             df.to_csv("%s/%s_ss.csv" % (csv_path,sender), index=False)
-            
+
+            # Convert sender ifstat into csv
+            df = parse_ifstat_output(path+"/%s_ifstat.txt" % sender, start_time)
+            df.to_csv("%s/%s_ifstat.csv" % (csv_path,sender), index=False)
+
             # Convert receiver output into csv
-            df = parse_iperf_json(path+"/%s_output.txt" % receiver, start_time)
+            df = parse_iperf_json(path+"/%s_output.txt" % receiver, start_time) 
             df.to_csv("%s/%s.csv" %  (csv_path, receiver), index=False)
 
+            # Convert receiver ifstat into csv
+            df = parse_ifstat_output(path+"/%s_ifstat.txt" % receiver, 0) # server starts tracking as soon as the experiment begins, even for late flows
+            df.to_csv("%s/%s_ifstat.csv" % (csv_path,receiver), index=False)
+        else:
+            pass
+            #printRed("ERROR: analysis.py: " +  str(flow[-2]) + " not supported for analysis. This may lead to x_max error. Have you tried adding it to the protocol list in utils.py?" )
 
 
 def plot_all_mn(path: str) -> None:
+
     def remove_outliers(df, column, threshold):
         """Remove outliers from a DataFrame column based on a threshold."""
         return df[df[column] < threshold]
-    fig, axs = plt.subplots(7, 1, figsize=(16, 36))
-    with open(os.path.join(path, 'emulation_info.json'), 'r') as f:
+    fig, axs = plt.subplots(9, 1, figsize=(16, 36))
+    with open(os.path.join(path, 'emulation_info.json'), 'r') as f: # {"topology": "MultiTopo(n=3)", "flows": [["c1", "x1", "10.0.0.1", "10.0.0.3", 0, 10, "wvegas", null], ["c2", "x2", "10.0.0.2", "10.0.0.4", 5.0, 5.0, "wvegas", null]]}
         emulation_info = json.load(f)
     flows = []
     for flow in emulation_info['flows']:
@@ -104,6 +117,17 @@ def plot_all_mn(path: str) -> None:
                 df_ss_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}_ss.csv'))
             except FileNotFoundError:
                 df_ss_client = pd.DataFrame()
+
+            try:
+                df_ifstat_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}_ifstat.csv'))
+            except FileNotFoundError:
+                df_ifstat_client = pd.DataFrame()
+
+            try:
+                df_ifstat_server = pd.read_csv(os.path.join(path, f'csvs/{flow_server}_ifstat.csv'))
+            except FileNotFoundError:
+                df_ifstat_server = pd.DataFrame
+
             df_server = pd.read_csv(os.path.join(path, f'csvs/{flow_server}.csv'))
 
             netem_bw = []
@@ -147,6 +171,21 @@ def plot_all_mn(path: str) -> None:
                 ax_loss.legend(loc='upper right')
                 ax_loss.set_ylim(0,None)
 
+            # Client interface throughputs
+            intf_names = sorted(df_ifstat_client['intf'].unique())
+            for intf in intf_names:
+                df_sub = df_ifstat_client[df_ifstat_client['intf'] == intf]
+                axs[7].plot(df_sub['time'], df_sub['mbps_out'], label=f'{intf} Throughput')
+                axs[7].set_title("Client Interface Throughput (Mbps)")
+                axs[7].set_ylabel("Interface Throughput (Mbps)")
+            
+            # Server interface recv amounts
+            intf_names = sorted(df_ifstat_server['intf'].unique())
+            for intf in intf_names:
+                df_sub = df_ifstat_server[df_ifstat_server['intf'] == intf]
+                axs[8].plot(df_sub['time'], df_sub['mbps_in'], label=f'{intf} received')
+                axs[8].set_title("Server Interface Goodput? (Mbps)")
+                axs[8].set_ylabel("Interface Goodput? (Mbps)")
 
             # Goodput 
             axs[0].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
@@ -176,6 +215,7 @@ def plot_all_mn(path: str) -> None:
             # else:
             #     axs[3].plot(df_client['time'], df_client['bytes'], label=f'{flow_client} Bytes')
 
+            # CWND
             if not df_ss_client.empty:    
                 if 'cwnd' in df_ss_client.columns:
                     axs[3].plot(df_ss_client['time'], df_ss_client['cwnd'], label=f'{flow_client} CWND')
