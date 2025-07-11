@@ -95,7 +95,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     plot_all_mn(path)
 
 if __name__ == '__main__':
-    topology = 'Dumbell'
+    topology = 'MultiTopo'
     delay = int(sys.argv[1])
     bw = int(sys.argv[2])
     qmult = float(sys.argv[3])

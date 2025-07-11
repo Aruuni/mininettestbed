@@ -25,7 +25,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Experiment properties
     bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
-    duration = 30
+    duration = 20
 
     # Generate path for plots, and delete old plot if necessary
     path = f"{HOME_DIR}/cctestbed/mininet/results_mptcp_load_balancing/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
@@ -59,29 +59,25 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     # Configure each path from c1 to x1
     for p in range(1, numPaths+1):
-        # Generate network configurations for each link
-        if p==-1: # -1 = disabled
-            # Shorter delay on the competing path ensure the MPTCP connection wants to send more data there when possible.
-            network_config.append(NetworkConf('s' + str(p) + '.1', 's' + str(p) + '.2', None, delay, 3*bdp_in_bytes, False, 'fifo', loss))
-            network_config.append(NetworkConf('s' + str(p) + '.2', 's' + str(p) + '.3', bw, None, qsize_in_bytes, False, aqm, None))
-        else:
-            network_config.append(NetworkConf('s' + str(p) + '.1', 's' + str(p) + '.2', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss))
-            network_config.append(NetworkConf('s' + str(p) + '.2', 's' + str(p) + '.3', bw,     None,       qsize_in_bytes, False,    aqm,    None))
+        printRed(p)
+        network_config.append(NetworkConf('s' + str(p) + '.1', 's' + str(p) + '.2', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss))
+
+        network_config.append(NetworkConf('s' + str(p) + '.2', 's' + str(p) + '.3', bw,     None,       qsize_in_bytes, False,    aqm,    None))
 
         # only two switch interfaces actually produce useful information- something about outgoing vs incoming interfaces and how the netwrok config is split into two
         # monitors.append('s' + str(p) + '.1' + '-eth1')
         # monitors.append('s' + str(p) + '.1' + '-eth2')
         # monitors.append('s' + str(p) + '.2' + '-eth1')
-        # monitors.append('s' + str(p) + '.2' + '-eth2')
+        monitors.append('s' + str(p) + '.2' + '-eth2') # This is the only interface that should have a monitor! This is where the queue lives
         # monitors.append('s' + str(p) + '.3' + '-eth1')
-        monitors.append('s' + str(p) + '.3' + '-eth2')
+        # monitors.append('s' + str(p) + '.3' + '-eth2')
     monitors.append('sysstat') # Not sure what this does? Seems necessary, and is also the source of my x_max issues
 
 
     # Generate traffic configurations
     traffic_config.append(TrafficConf('c1', 'x1', 0, duration, protocol)) # Start main flow (c1->x1) for entire experiment
     traffic_config.append(TrafficConf('c2', 'x2', (duration/2), duration/2, 'cubic')) # Start competing flow (c2->x2) halfway through the experiment
-   
+    # -------------------------------------------------------------------------------------------------------------------------------------------
 
     # note to self: ss is run from the iperf functions
     em = Emulation(net, network_config, traffic_config, path, .1)
@@ -90,14 +86,13 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     em.set_monitors(monitors) # monitors switch and router queue sizes
     em.run()
     em.dump_info() # seems to create a .json that plot_all_mn() will use. Necessary if you want to plot. 
-    #CLI(net)
+    CLI(net)
     net.stop()
     
     change_all_user_permissions(path)
     process_raw_outputs(path) # Properly formats output files to prepare for plotting. I probably should move my formatting here? Oh well
     change_all_user_permissions(path)
     plot_all_mn(path)
-    # -------------------------------------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
     topology = 'MultiCompetitionTopo'

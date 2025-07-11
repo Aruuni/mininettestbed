@@ -108,7 +108,10 @@ class MPMininetWrapper(Mininet):
         # Loop through each host in the network
         for h, host in enumerate(self.hosts, start=1):
             # Set appropriate MPTCP config values (I don't think either of these work right now??)
-            host.cmd('ip mptcp limits set add_addr_accepted 1') # upstream kernel
+            host.cmd('sudo sysctl -w net.mptcp.path_manager=kernel') # Mininet hosts need kernel path manager, host machine needs userspace
+            host.cmd('sudo sysctl -w net.mptcp.pm=0') # Mininet hosts need pm=0, host machine needs pm=1
+            host.cmd('ip mptcp limits set subflows 8') # Max number of accepted subflows (upstream kernel, client and server)
+            host.cmd('ip mptcp limits set add_addr_accepted 3') # Max number of accepted ADD_ADDR requests (upstream kernel, client)
             host.cmd('sudo sysctl net.mptcp.mptcp_path_manager=fullmesh') # out-of-tree kernel
 
             # Loop through each interface in all hosts
@@ -129,17 +132,17 @@ class MPMininetWrapper(Mininet):
                 host.cmd(f'ip mptcp endpoint add {ip} dev {intf_name} id {endpoint_id} subflow signal')
 
                 # Debug prints
-                # print('-------------------')
-                # print("host: " + str(host))
-                # print("h: "  + str(h))
-                # print("i: " + str(i))
-                # print("host_id: " + str(host_id))
-                # print("intf_name " + str(intf_name))
-                # print("ip: " + str(ip))
-                # print("gateway: " + str(gateway))
-                # print("mac: " + str(mac))
-                # print("endpoint_id: " + str(endpoint_id))
-                # print('-------------------')
+                print('-------------------')
+                print("host: " + str(host))
+                print("h: "  + str(h))
+                print("i: " + str(i))
+                print("host_id: " + str(host_id))
+                print("intf_name " + str(intf_name))
+                print("ip: " + str(ip))
+                print("gateway: " + str(gateway))
+                print("mac: " + str(mac))
+                print("endpoint_id: " + str(endpoint_id))
+                print('-------------------')
             host.cmd("echo " + str(host) + " initialized by MPMininetWrapper!")
             
             

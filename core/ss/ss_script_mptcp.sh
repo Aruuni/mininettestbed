@@ -7,6 +7,8 @@ if [ "$#" -ne 2 ]; then
 fi
 
 while true; do
-    ss -OHtin | ts '%.s,' >> "$2" 
+    # filters out the iperf3 control socket which messes up the ss script as it looks at all sockets
+    # maplen:0 packets 
+    ss -OHtin | grep maplen:0 | grep ESTAB | ts '%.s,' >> "$2" 
     sleep "$1"
 done &

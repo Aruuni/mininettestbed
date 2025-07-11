@@ -74,6 +74,10 @@ def process_raw_outputs(path):
             # Convert sender ss into csv
             df = parse_ss_output(path+"/%s_ss.csv" % sender, start_time)
             df.to_csv("%s/%s_ss.csv" % (csv_path,sender), index=False)
+            
+            # Convert sender ss_mp into csv
+            df = parse_ss_mp_output(path+"/%s_ss_mp.csv" % sender, start_time)
+            df.to_csv("%s/%s_ss_mp.csv" % (csv_path,sender), index=False)
 
             # Convert sender ifstat into csv
             df = parse_ifstat_output(path+"/%s_ifstat.txt" % sender, start_time)
@@ -96,7 +100,7 @@ def plot_all_mn(path: str) -> None:
     def remove_outliers(df, column, threshold):
         """Remove outliers from a DataFrame column based on a threshold."""
         return df[df[column] < threshold]
-    fig, axs = plt.subplots(9, 1, figsize=(16, 36))
+    fig, axs = plt.subplots(11, 1, figsize=(16, 36))
     with open(os.path.join(path, 'emulation_info.json'), 'r') as f: # {"topology": "MultiTopo(n=3)", "flows": [["c1", "x1", "10.0.0.1", "10.0.0.3", 0, 10, "wvegas", null], ["c2", "x2", "10.0.0.2", "10.0.0.4", 5.0, 5.0, "wvegas", null]]}
         emulation_info = json.load(f)
     flows = []
@@ -127,6 +131,11 @@ def plot_all_mn(path: str) -> None:
                 df_ifstat_server = pd.read_csv(os.path.join(path, f'csvs/{flow_server}_ifstat.csv'))
             except FileNotFoundError:
                 df_ifstat_server = pd.DataFrame
+
+            try:
+                df_ss_mp_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}_ss_mp.csv'))
+            except FileNotFoundError:
+                df_ss_mp_client = pd.DataFrame()
 
             df_server = pd.read_csv(os.path.join(path, f'csvs/{flow_server}.csv'))
 
@@ -171,6 +180,8 @@ def plot_all_mn(path: str) -> None:
                 ax_loss.legend(loc='upper right')
                 ax_loss.set_ylim(0,None)
 
+            
+
             # Client interface throughputs
             intf_names = sorted(df_ifstat_client['intf'].unique())
             for intf in intf_names:
@@ -186,6 +197,23 @@ def plot_all_mn(path: str) -> None:
                 axs[8].plot(df_sub['time'], df_sub['mbps_in'], label=f'{intf} received')
                 axs[8].set_title("Server Interface Goodput? (Mbps)")
                 axs[8].set_ylabel("Interface Goodput? (Mbps)")
+
+            # Client subflow CWNDs
+            subflows = sorted(df_ss_mp_client['subflow'].unique())
+            for subflow in subflows:
+                df_sub = df_ss_mp_client[df_ss_mp_client['subflow'] == subflow]
+                axs[9].plot(df_sub['time'], df_sub['cwnd'], label=f'Subflow #{subflow} CWND')
+                axs[9].set_title("Subflow CWNDs from SS (packets)")
+                axs[9].set_ylabel("Subflow CWNDs")
+
+            # Client subflow RTTs
+            subflows = sorted(df_ss_mp_client['subflow'].unique())
+            for subflow in subflows:
+                df_sub = df_ss_mp_client[df_ss_mp_client['subflow'] == subflow]
+                axs[10].plot(df_sub['time'], df_sub['srtt'], label=f'Subflow #{subflow} RTT')
+                axs[10].set_title("Subflow RTT from SS (ms)")
+                axs[10].set_ylabel("Subflow RTT (ms)")
+
 
             # Goodput 
             axs[0].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')

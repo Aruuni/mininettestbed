@@ -25,7 +25,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Experiment properties
     bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
-    duration = 30
+    duration = 5
 
     # Generate path for plots, and delete old plot if necessary
     path = f"{HOME_DIR}/cctestbed/mininet/results_basic_mp/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
@@ -58,9 +58,11 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     network_config.append(NetworkConf('s2a', 's2b', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss))
     network_config.append(NetworkConf('s2b', 's2c', bw,     None,       qsize_in_bytes, False,    aqm,    None))
 
-    monitors = ['s1a-eth1', 's1a-eth2','s1b-eth1', 's1b-eth2','s1c-eth1', 's1c-eth2',
-                's2a-eth1', 's2a-eth2','s2b-eth1', 's2b-eth2','s2c-eth1', 's2c-eth2',
-                'sysstat']
+    monitors = ['s1a-eth1', 's1a-eth2', 'sysstat']
+
+    # monitors = ['s1a-eth1', 's1a-eth2','s1b-eth1', 's1b-eth2','s1c-eth1', 's1c-eth2',
+    #             's2a-eth1', 's2a-eth2','s2b-eth1', 's2b-eth2','s2c-eth1', 's2c-eth2',
+    #             'sysstat']
 
 
     # Generate traffic configurations
@@ -74,7 +76,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     em.set_monitors(monitors) # monitors switch and router queue sizes
     em.run()
     em.dump_info() # seems to create a .json that plot_all_mn() will use. Necessary if you want to plot. 
-    #CLI(net)
+    # CLI(net)
     net.stop()
     
     change_all_user_permissions(path)

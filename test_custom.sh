@@ -1,12 +1,12 @@
 source common.sh
 bash setup.sh
 
-PROTOCOLS="bbr"
+PROTOCOLS="cubic"
 BANDWIDTHS="100"
-DELAYS="20"
+DELAYS="25"
 RUNS="1"
-QMULTS=".2"
-FLOWS="1"
+QMULTS="1"
+FLOWS="2"
 
 for bw in $BANDWIDTHS
 do

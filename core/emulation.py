@@ -65,7 +65,7 @@ class Emulation:
             intf_name = interfaces[i].name
             node = interfaces[i].node
             if delay and not bw:
-                
+                print("A")
                 cmd = 'sudo tc qdisc %s dev %s root handle 1:0 netem delay %sms limit %s' % (command, intf_name, delay,  100000)
                 #print(cmd)
                 if (loss is not None) and (float(loss) > 0):
@@ -78,6 +78,7 @@ class Emulation:
                     cmd += "&& sudo tc qdisc %s dev %s parent 1: handle 2: sfq perturb 10" % (command, intf_name)
 
             elif bw and not delay:
+                print("B")
                 burst = int(10*bw*(2**20)/250/8)
                 cmd = 'sudo tc qdisc %s dev %s root handle 1:0 tbf rate %smbit burst %s limit %s ' % (command, intf_name, bw, burst, qsize)
                 #print(cmd)
@@ -89,6 +90,7 @@ class Emulation:
                     cmd += "&& sudo tc qdisc %s dev %s parent 1: handle 2: sfq perturb 10" % (command, intf_name)
 
             elif delay and bw:
+                print("C")
                 burst = int(10*bw*(2**20)/250/8)
                 cmd = 'sudo tc qdisc %s dev %s root handle 1:0 netem delay %sms limit %s && sudo tc qdisc %s dev %s parent 1:1 handle 10:0 tbf rate %smbit burst %s limit %s ' % (command, intf_name, delay,    100000, command, intf_name, bw, burst, qsize)
                 #print(cmd)
@@ -446,12 +448,17 @@ class Emulation:
         """
         node = self.network.get(node_name)
 
+        # Monitor MPTCP statistics with ss (Same ss command, different filtering)
+        ss_mptcp_cmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_mptcp.sh'} 0.1 {self.path}/{node.name}_ss_mp.csv &"
+        printBlue(f'Sending command {ss_mptcp_cmd} to host {node.name}')
+        node.cmd(ss_mptcp_cmd)
+
         # Monitor statistics about this connection with ss
         sscmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_iperf3.sh'} 0.1 {self.path}/{node.name}_ss.csv &"
         printBlue(f'Sending command {sscmd} to host {node.name}')
         node.cmd(sscmd)
 
-        # Monitor per-interface statistics with ifstat
+        # Monitor per-interface statistics with ifstat (may be replaced with MPTCP ss)
         if monitor_intf:
             timeout = f"timeout {duration}" # forces the ifstat to stop running after duration seconds
             ifstat = f"ifstat -nbt {monitor_interval}"

@@ -105,6 +105,54 @@ def parse_ifstat_output(file_path, offset=0):
         raise ValueError("No usable lines found in the ifstat output.")
     return df
 
+def parse_ss_mp_output(file_path, offset=0):
+    data = defaultdict(list)
+    intf_names = list()
+    with open(file_path, "r") as f:
+        for l, line in enumerate(f):
+            # Split the line into a list of entries (time/if)
+            parts = line.split()
+            
+            # Skip useless header line
+            if parts[1] == "HH:MM:SS":
+                continue
+
+            # If this is the interface name header - grab the interface names from the first row, and then move on
+            if parts[1] == "Time":
+                for i in range(2, len(parts)): # 2 skips the appended timestamp and the "Time" header
+                    intf_names.append(parts[i])
+                continue
+            
+            # Extract values and append to data list
+            # timestamp = time_to_epoch(parts[0]) # returns float, like ss output # deprecated, remove if its working
+            timestamp = float(parts[0]) # no longer needs to be converted
+            # printGreen(timestamp)
+            for i, intf in enumerate(intf_names):
+                try:
+                    # Extract throughputs and convert to mbps
+                    mbps_in = float(parts[2 + 2*i]) * .001
+                    mbps_out = float(parts[3 + 2*i]) * .001
+                except ValueError:
+                    # Skip the line if float conversion fails (line contains "n/a")
+                    continue
+
+                # Append values to the dictionary
+                data["time"].append(timestamp)
+                data["intf"].append(intf)
+                data["mbps_in"].append(mbps_in)
+                data["mbps_out"].append(mbps_out)
+
+    # Create empty dataframe
+    df = pd.DataFrame(data)
+
+    # Convert the 'time' column to relative time (seconds since the minimum timestamp)
+    min_time = df['time'].min()
+    df['time'] = df['time'] - min_time + offset    
+
+    if df.empty:
+        raise ValueError("No usable lines found in the ifstat output.")
+    return df
+
 # def parse_sar_output(file_path, offset=0):
 #     data = defaultdict(list)
 
@@ -140,6 +188,53 @@ def parse_ifstat_output(file_path, offset=0):
 #     if df.empty:
 #         raise ValueError("No usable lines found in the sar output.")
 #     return df
+
+def parse_ss_mp_output(file_path, offset=0):
+    #df = pd.read_csv(file_path)
+    patterns = {
+        "time": r"^(\d+\.\d+),",  # Timestamp at the beginning
+        "state": r"\sESTAB\s",  # Match exact ESTAB state
+        "cwnd": r"cwnd:(\d+)",
+        "srtt": r"rtt:([\d.]+)/",  # Extract srtt
+        "rttvar": r"rtt:[\d.]+/([\d.]+)",  # Extract rttvar
+        "retr": r"retrans:(\d+)/"   
+    }
+    data = defaultdict(list)  # Initializes a dictionary where values are lists
+    with open(file_path, "r") as f:
+        for line in f:
+            # Filter for exact ESTAB state
+            if not re.search(patterns["state"], line):
+                continue
+
+            # Extract timestamp
+            time_match = re.search(patterns["time"], line)
+            if not time_match:
+                continue
+            timestamp = float(time_match.group(1))
+
+            data["time"].append(timestamp)
+
+            # Extract source ip
+            parts = line.split()
+            data["subflow"].append(parts[4].split('.')[2])
+            printGreen(parts[4].split('.')[2])
+
+            # Extract metrics
+            for key, pattern in patterns.items():
+                if key == "time" or key == "state":
+                    continue
+                match = re.search(pattern, line)
+                value = float(match.group(1)) if match else None
+                data[key].append(value if value is not None else 0)
+    df = pd.DataFrame(data)
+
+    if df.empty:
+        raise ValueError("No ESTAB state entries found in the input file.")
+
+    # Convert the 'time' column to relative time (seconds since the minimum timestamp)
+    min_time = df['time'].min()
+    df['time'] = df['time'] - min_time + offset
+    return df
 
 def parse_ss_output(file_path, offset=0):
     #df = pd.read_csv(file_path)

@@ -139,7 +139,7 @@ class MinimalMP(Topo):
         self.addLink('x1', 's2c')
 
     def __str__(self):
-        return "MultiTopo(n=%d)" % self.n
+        return "MinimalMP(n=%d)" % self.n
 
 
 # basic topology with multiple independent paths from client to server
@@ -199,16 +199,16 @@ class MultiCompetitionTopo(Topo):
                 elif sw < pathLen:
                     # MIDDLE SWITCH
                     curr_switch = self.addSwitch('s' + str(path) + "." + str(sw), cls=OVSKernelSwitch)
-                    self.addLink(curr_switch, last_switch)
+                    self.addLink(last_switch, curr_switch)
                 else:
                     # END SWITCH
                     curr_switch = self.addSwitch('s' + str(path) + "." + str(sw), cls=OVSKernelSwitch)
-                    self.addLink(x1, curr_switch)
-                    self.addLink(curr_switch, last_switch)
+                    self.addLink(curr_switch, x1)
+                    self.addLink(last_switch, curr_switch)
                     if path == 1: 
-                        self.addLink(x2, curr_switch) 
+                        self.addLink(curr_switch, x2) 
                 last_switch = curr_switch
     def __str__(self):
-        return "MultiTopo(n=%d)" % self.n
+        return "MultiCompetitionTopo(n=%d)" % self.n
 
 topos = { 'dumbell': DumbellTopo, 'double_dumbell': DoubleDumbbellTopo, 'parking_lot': ParkingLot, 'multi_topo': MultiTopo, "multi_competition_topo" : MultiCompetitionTopo, "minimal_mp" : MinimalMP  }
