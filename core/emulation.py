@@ -448,7 +448,7 @@ class Emulation:
         """
         node = self.network.get(node_name)
 
-        # Monitor MPTCP statistics with ss (Same ss command, different filtering)
+        # Monitor per-subflow statistics with ss
         ss_mptcp_cmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_mptcp.sh'} 0.1 {self.path}/{node.name}_ss_mp.csv &"
         printBlue(f'Sending command {ss_mptcp_cmd} to host {node.name}')
         node.cmd(ss_mptcp_cmd)

@@ -216,8 +216,11 @@ def parse_ss_mp_output(file_path, offset=0):
 
             # Extract source ip
             parts = line.split()
-            data["subflow"].append(parts[4].split('.')[2])
-            printGreen(parts[4].split('.')[2])
+            #data["subflow"].append(parts[4].split('.')[2])
+            data["src"].append(parts[4])
+
+            # Extract token
+            data["token"].append(parts[len(parts) - 5])
 
             # Extract metrics
             for key, pattern in patterns.items():

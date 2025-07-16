@@ -211,4 +211,46 @@ class MultiCompetitionTopo(Topo):
     def __str__(self):
         return "MultiCompetitionTopo(n=%d)" % self.n
 
-topos = { 'dumbell': DumbellTopo, 'double_dumbell': DoubleDumbbellTopo, 'parking_lot': ParkingLot, 'multi_topo': MultiTopo, "multi_competition_topo" : MultiCompetitionTopo, "minimal_mp" : MinimalMP  }
+# A basic MPTCP ndiffports fairness test
+# Creates a shared bottleneck router with ECMP, which will independently route subflows across both paths if configured correctly
+# An optional competing client/server pair shares a bottleneck with the main connection at router r2a
+class NdiffportsTest(Topo):
+    def build(self, n=3):
+        self.n = n
+
+        # Main MPTCP Connection
+        c1 = self.addHost('c1', cls=Host)
+        x1 = self.addHost('x1', cls=Host)
+
+        # Optional Competing Connection
+        c2 = self.addHost('c2', cls=Host)
+        x2 = self.addHost('x2', cls=Host)
+
+        # Bottleneck router with ECMP
+        r1 = self.addHost('r1', cls=LinuxRouter) # This may be incorrect. Does this have ECMP?
+    
+        # Router pair (alternate paths)
+        r2a = self.addHost('r2a', cls=LinuxRouter)
+        r2b = self.addHost('r2b', cls=LinuxRouter)
+
+        # Server connection switch
+        r3 = self.addHost('r3', cls=LinuxRouter)
+
+        # Switch connections
+        self.addLink(r1, r2a)
+        self.addLink(r1, r2b)
+        self.addLink(r2a, r3)
+        self.addLink(r2b, r3)
+
+        # Main connection links
+        self.addLink(c1, r1)
+        self.addLink(r3, x1)
+
+        # Competing Flow Links
+        self.addLink(c2, r1)
+        self.addLink(r3, x2)
+
+    def __str__(self):
+        return "NdiffportsTest(n=%d)" % self.n
+
+topos = { 'dumbell': DumbellTopo, 'double_dumbell': DoubleDumbbellTopo, 'parking_lot': ParkingLot, 'multi_topo': MultiTopo, "multi_competition_topo" : MultiCompetitionTopo, "minimal_mp" : MinimalMP, "ndiffports_test" : NdiffportsTest  }

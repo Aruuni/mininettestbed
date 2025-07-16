@@ -198,21 +198,29 @@ def plot_all_mn(path: str) -> None:
                 axs[8].set_title("Server Interface Goodput? (Mbps)")
                 axs[8].set_ylabel("Interface Goodput? (Mbps)")
 
+            
+            # Subflow Statistics
+            subflows = sorted(df_ss_mp_client['src'].unique())
+            init_token = str(df_ss_mp_client['token'][0].split('/')[1])
+            subflow_threshold = 5 # How many times a source ip/port needs to occur to be considered a subflow
+
             # Client subflow CWNDs
-            subflows = sorted(df_ss_mp_client['subflow'].unique())
             for subflow in subflows:
-                df_sub = df_ss_mp_client[df_ss_mp_client['subflow'] == subflow]
-                axs[9].plot(df_sub['time'], df_sub['cwnd'], label=f'Subflow #{subflow} CWND')
-                axs[9].set_title("Subflow CWNDs from SS (packets)")
-                axs[9].set_ylabel("Subflow CWNDs")
+                df_sub = df_ss_mp_client[df_ss_mp_client['src'] == subflow]
+                df_sub = df_sub[~df_sub['token'].str.contains(init_token, regex=False)]
+                if len(df_sub) > subflow_threshold:
+                    axs[9].plot(df_sub['time'], df_sub['cwnd'], label=f'{flow_client} sf_{subflow} CWND')
+                    axs[9].set_title("Subflow CWNDs from SS (packets)")
+                    axs[9].set_ylabel("Subflow CWNDs")
 
             # Client subflow RTTs
-            subflows = sorted(df_ss_mp_client['subflow'].unique())
             for subflow in subflows:
-                df_sub = df_ss_mp_client[df_ss_mp_client['subflow'] == subflow]
-                axs[10].plot(df_sub['time'], df_sub['srtt'], label=f'Subflow #{subflow} RTT')
-                axs[10].set_title("Subflow RTT from SS (ms)")
-                axs[10].set_ylabel("Subflow RTT (ms)")
+                df_sub = df_ss_mp_client[df_ss_mp_client['src'] == subflow]
+                df_sub = df_sub[~df_sub['token'].str.contains(init_token, regex=False)]
+                if len(df_sub) > subflow_threshold:
+                    axs[10].plot(df_sub['time'], df_sub['srtt'], label=f'{flow_client} sf_{subflow} RTT')
+                    axs[10].set_title("Subflow RTT from SS (ms)")
+                    axs[10].set_ylabel("Subflow RTT (ms)")
 
 
             # Goodput 

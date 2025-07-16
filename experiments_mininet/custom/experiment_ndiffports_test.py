@@ -14,8 +14,8 @@ from mininet.link import TCLink
 
 def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
     # This experiment is intended to be run only on the MultiCompetitionTopo
-    if topology == "MinimalMP":
-        topo = MinimalMP(**params)
+    if topology == "NdiffportsTest":
+        topo = NdiffportsTest(**params)
     else:
         print("ERROR: topology \'%s\' not recognised" % topology)
 
@@ -25,10 +25,11 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Experiment properties
     bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
-    duration = 60
+    duration = 10
+    subflows = 6
 
     # Generate path for plots, and delete old plot if necessary
-    path = f"{HOME_DIR}/cctestbed/mininet/results_basic_mp/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
+    path = f"{HOME_DIR}/cctestbed/mininet/results_ndiffports_test/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
     printRed(path)
     rmdirp(path)
     mkdirp(path)
@@ -42,8 +43,13 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     if (protocol == "vivace"):
         protocol = "pcc"
     
-    # Start the mininet, and change some settings for experiment accuracy
-    tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult)
+    
+    tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult) # idk, buffers setup
+    assign_ips(net) # Assign unique IPs in their appropriate per-link subnets
+    assign_ECMP_routing_tables(net) # Automatically configure routing tables and default gateways
+    net.configure_ndiffports_endpoints(subflows)
+
+    CLI(net)
     net.start()
     disable_offload(net)
 
@@ -53,22 +59,18 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     network_config=[]   # list of network conditions, such as bandwidth, delay, and loss on each link
     traffic_config=[]   # list of connections open/close during the experiment
 
-    network_config.append(NetworkConf('s1a', 's1b', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss))
-    network_config.append(NetworkConf('s1b', 's1c', bw,     None,       qsize_in_bytes, False,    aqm,    None))
-    network_config.append(NetworkConf('s2a', 's2b', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss))
-    network_config.append(NetworkConf('s2b', 's2c', bw,     None,       qsize_in_bytes, False,    aqm,    None))
+    network_config.append(NetworkConf('c1', 'r1', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss))
+    network_config.append(NetworkConf('r2a', 'r3', bw,     None,       qsize_in_bytes, False,    aqm,    None))
+    network_config.append(NetworkConf('r2b', 'r3', bw,     None,       qsize_in_bytes, False,    aqm,    None))
 
-    monitors = ['s1a-eth1', 's1a-eth2', 'sysstat']
-
-    # monitors = ['s1a-eth1', 's1a-eth2','s1b-eth1', 's1b-eth2','s1c-eth1', 's1c-eth2',
-    #             's2a-eth1', 's2a-eth2','s2b-eth1', 's2b-eth2','s2c-eth1', 's2c-eth2',
-    #             'sysstat']
-
+    # Track queues (these may be the wrong interfaces?)
+    monitors = ['r2a-eth1', 'r2b-eth1', 'sysstat'] # might be the wrong interfaces, worry about it later
 
     # Generate traffic configurations
     traffic_config.append(TrafficConf('c1', 'x1', 0, duration, protocol)) # Start main flow (c1->x1) for entire experiment
+    # traffic_config.append(TrafficConf('c2', 'x2'), duration/2, duration/2, 'cubic') # Start optional competing flow halfway through experiment
     # -------------------------------------------------------------------------------------------------------------------------------------------
-
+    
     # note to self: ss is run from the iperf functions
     em = Emulation(net, network_config, traffic_config, path, .1)
     em.configure_network()
@@ -76,17 +78,16 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     em.set_monitors(monitors) # monitors switch and router queue sizes
     em.run()
     em.dump_info() # seems to create a .json that plot_all_mn() will use. Necessary if you want to plot. 
-    # CLI(net)
+    #CLI(net)
     net.stop()
     
     change_all_user_permissions(path)
     process_raw_outputs(path) # Properly formats output files to prepare for plotting. I probably should move my formatting here? Oh well
     change_all_user_permissions(path)
     plot_all_mn(path)
-    
 
 if __name__ == '__main__':
-    topology = 'MinimalMP'
+    topology = 'NdiffportsTest'
     delay = int(sys.argv[1])
     bw = int(sys.argv[2])
     qmult = float(sys.argv[3])
