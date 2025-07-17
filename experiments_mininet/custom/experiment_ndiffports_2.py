@@ -14,8 +14,8 @@ from mininet.link import TCLink
 
 def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
     # This experiment is intended to be run only on the MultiCompetitionTopo
-    if topology == "NdiffportsTest":
-        topo = NdiffportsTest(**params)
+    if topology == "Ndiffports2":
+        topo = Ndiffports2(**params)
     else:
         print("ERROR: topology \'%s\' not recognised" % topology)
 
@@ -25,11 +25,11 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Experiment properties
     bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
-    duration = 30
+    duration = 60
     subflows = 2
 
     # Generate path for plots, and delete old plot if necessary
-    path = f"{HOME_DIR}/cctestbed/mininet/results_ndiffports_test/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
+    path = f"{HOME_DIR}/cctestbed/mininet/results_ndiffports_2/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
     printRed(path)
     rmdirp(path)
     mkdirp(path)
@@ -46,18 +46,33 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult) # idk, buffers setup
     assign_ips(net) # Assign unique IPs in their appropriate per-link subnets
-    assign_ECMP_routing_tables(net) # Automatically configure routing tables and default gateways
+    assign_ECMP_routing_tables(net) # Automatically configure routing tables and default gateways, may not be perfect
     net.configure_ndiffports_endpoints(subflows)
 
+    c1_ip = net.get('c1').IP()
+    x1_ip = net.get('x1').IP()
     c2_ip = net.get('c2').IP()
     x2_ip = net.get('x2').IP()
-    # Manual competing flow routing
-    # Forward
-    net.get('r4').cmd(f'ip route add {x2_ip} via 10.8.4.2')
-    net.get('r2a').cmd(f'ip route add {x2_ip} via 10.5.7.0')
-    # Backward
-    net.get('r5').cmd(f'ip route add {c2_ip} via 10.5.4.3')
-    net.get('r2a').cmd(f'ip route add {c2_ip} via 10.8.3.1')
+
+    # Fix some routes misconfigured by assign_ECMP_routing_tables()
+    net.add_route('r2b', ['r1a'], c1_ip)
+    net.add_route('r2c', ['r1d'], x1_ip)
+
+    # Add routes from c2 to x2
+    net.add_route('r2a', ['r2b'], x2_ip)
+    net.add_route('r2b', ['r2c'], x2_ip)
+    net.add_route('r2c', ['r2d'], x2_ip)
+
+    # Add routes from x2 to c2
+    net.add_route('r2d', ['r2c'], c2_ip)
+    net.add_route('r2c', ['r2b'], c2_ip)
+    net.add_route('r2b', ['r2a'], c2_ip)
+
+    # Disable MPTCP on the competing connection
+    net.get('c2').cmdPrint('ip mptcp limits set subflows 0')
+    net.get('x2').cmdPrint('ip mptcp limits set subflows 0')
+    net.get('c2').cmdPrint('ip mptcp limits set add_addr_accepted 0')
+    net.get('x2').cmdPrint('ip mptcp limits set add_addr_accepted 0')
 
     CLI(net)
     net.start()
@@ -69,21 +84,20 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     network_config=[]   # list of network conditions, such as bandwidth, delay, and loss on each link
     traffic_config=[]   # list of connections open/close during the experiment
 
-    # Main network config
-    network_config.append(NetworkConf('c1', 'r1', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss))
-    network_config.append(NetworkConf('r2a', 'r3', bw,     None,       qsize_in_bytes, False,    aqm,    None))
-    network_config.append(NetworkConf('r2b', 'r3', bw,     None,       qsize_in_bytes, False,    aqm,    None))
+    # Path 1 network config
+    network_config.append(NetworkConf('c1', 'r1a', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss))
+    network_config.append(NetworkConf('r1b', 'r1c', bw,     None,       qsize_in_bytes, False,    aqm,    None)) # Queue is stored in router r?b, b for bandwidth teehee
 
-    # Competing flow network config (do I need to disable this when not doing competing flows?)
-    network_config.append(NetworkConf('c2', 'r4', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss)) # competing flow delay (should be fine, completely isolated, just like c1)
-    network_config.append(NetworkConf('r2a', 'r5', bw,     None,       qsize_in_bytes, False,    aqm,    None)) # competing flow queue (does this even compete if its a separate queue? Be careful)
+    # Path 2 network config
+    network_config.append(NetworkConf('c2', 'r2a', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss))
+    network_config.append(NetworkConf('r2b', 'r2c', bw,     None,       qsize_in_bytes, False,    aqm,    None)) # Queue is stored in router r?b, b for bandwidth teehee
 
-    # Generate traffic configurations
+    # Traffic Config
     traffic_config.append(TrafficConf('c1', 'x1', 0, duration, protocol)) # Start main flow (c1->x1) for entire experiment
     traffic_config.append(TrafficConf('c2', 'x2', duration/2, duration/2, 'cubic')) # Start optional competing flow halfway through experiment
 
     # Track queues (these may be the wrong interfaces?)
-    monitors = ['r2a-eth1', 'r2b-eth1', 'r2a-eth3', 'sysstat'] # might be the wrong interfaces, worry about it later
+    monitors = ['r1b-eth1', 'r2b-eth1', 'sysstat'] # might be the wrong interfaces, worry about it later
     # -------------------------------------------------------------------------------------------------------------------------------------------
     
     # note to self: ss is run from the iperf functions
@@ -102,7 +116,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     plot_all_mn(path)
 
 if __name__ == '__main__':
-    topology = 'NdiffportsTest'
+    topology = 'Ndiffports2'
     delay = int(sys.argv[1])
     bw = int(sys.argv[2])
     qmult = float(sys.argv[3])

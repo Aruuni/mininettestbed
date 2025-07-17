@@ -197,10 +197,12 @@ def parse_ss_mp_output(file_path, offset=0):
         "cwnd": r"cwnd:(\d+)",
         "srtt": r"rtt:([\d.]+)/",  # Extract srtt
         "rttvar": r"rtt:[\d.]+/([\d.]+)",  # Extract rttvar
-        "retr": r"retrans:(\d+)/"   
+        "retr": r"retrans:(\d+)/",
+        "token": r"token:[^/]+/([^ ]+)"        # Extract value after slash in token field
     }
     data = defaultdict(list)  # Initializes a dictionary where values are lists
     with open(file_path, "r") as f:
+        tokens = []
         for line in f:
             # Filter for exact ESTAB state
             if not re.search(patterns["state"], line):
@@ -210,6 +212,18 @@ def parse_ss_mp_output(file_path, offset=0):
             time_match = re.search(patterns["time"], line)
             if not time_match:
                 continue
+            
+
+            token = str(re.search(patterns["token"], line).group(1))
+            # Maintain a list of unique tokens (connections)
+            if token not in tokens:
+                tokens.append(token)
+                printBlue(f"Found a new token! {token}")
+
+            # Skip this line if it is from initialization
+            if token == tokens[0]:
+                continue
+
             timestamp = float(time_match.group(1))
 
             data["time"].append(timestamp)
@@ -220,11 +234,11 @@ def parse_ss_mp_output(file_path, offset=0):
             data["src"].append(parts[4])
 
             # Extract token
-            data["token"].append(parts[len(parts) - 5])
+            data["token"].append(re.search(patterns["token"], line))
 
             # Extract metrics
             for key, pattern in patterns.items():
-                if key == "time" or key == "state":
+                if key == "time" or key == "state" or key == "token":
                     continue
                 match = re.search(pattern, line)
                 value = float(match.group(1)) if match else None
@@ -235,7 +249,7 @@ def parse_ss_mp_output(file_path, offset=0):
         raise ValueError("No ESTAB state entries found in the input file.")
 
     # Convert the 'time' column to relative time (seconds since the minimum timestamp)
-    min_time = df['time'].min()
+    min_time = df['time'].min()    
     df['time'] = df['time'] - min_time + offset
     return df
 

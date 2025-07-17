@@ -218,13 +218,10 @@ class NdiffportsTest(Topo):
     def build(self, n=3):
         self.n = n
 
+        # MAIN --------------------------------------------------------
         # Main MPTCP Connection
         c1 = self.addHost('c1', cls=Host)
         x1 = self.addHost('x1', cls=Host)
-
-        # Optional Competing Connection
-        c2 = self.addHost('c2', cls=Host)
-        x2 = self.addHost('x2', cls=Host)
 
         # Bottleneck router with ECMP
         r1 = self.addHost('r1', cls=LinuxRouter) # This may be incorrect. Does this have ECMP?
@@ -246,11 +243,53 @@ class NdiffportsTest(Topo):
         self.addLink(c1, r1)
         self.addLink(r3, x1)
 
-        # Competing Flow Links
-        self.addLink(c2, r1)
-        self.addLink(r3, x2)
+        # COMPETING ----------------------------------------------
+        
+        # Hosts
+        c2 = self.addHost('c2', cls=Host)
+        x2 = self.addHost('x2', cls=Host)
+
+        # Buffer routers
+        r4 = self.addHost('r4', cls=LinuxRouter)
+        r5 = self.addHost('r5', cls=LinuxRouter)
+
+        # Competing Flow Links (this links are going to contain some wonky routing tables, but it shouldn't matter as long as c1/x2 and c2/x2 don't try to communicate, which is currently impossible anyway)
+        self.addLink(c2, r4)
+        self.addLink(r4, r2a)
+        self.addLink(r2a, r5)
+        self.addLink(r5, x2)
 
     def __str__(self):
         return "NdiffportsTest(n=%d)" % self.n
 
-topos = { 'dumbell': DumbellTopo, 'double_dumbell': DoubleDumbbellTopo, 'parking_lot': ParkingLot, 'multi_topo': MultiTopo, "multi_competition_topo" : MultiCompetitionTopo, "minimal_mp" : MinimalMP, "ndiffports_test" : NdiffportsTest  }
+
+# Similar to multicompetitionTopo but designed for ndiffports and ECMP
+# Generates n paths interconnected with their direct neighbours
+# The "highest" path (n) will have access to a single path between its client/server pair, all other paths will have 2
+class Ndiffports2(Topo):
+    def build(self, n=2):
+        self.n = n
+
+        # Intra-path nodes and links
+        for path in range(1, n+1):
+            # Path nodes
+            self.addHost(f'c{path}', cls=Host)
+            self.addHost(f'r{path}a', cls=LinuxRouter)
+            self.addHost(f'r{path}b', cls=LinuxRouter)
+            self.addHost(f'r{path}c', cls=LinuxRouter)
+            self.addHost(f'r{path}d', cls=LinuxRouter)
+            self.addHost(f'x{path}', cls=Host)
+
+            # Path links
+            self.addLink(f'c{path}', f'r{path}a')
+            self.addLink(f'r{path}a', f'r{path}b')
+            self.addLink(f'r{path}b', f'r{path}c')
+            self.addLink(f'r{path}c', f'r{path}d')
+            self.addLink(f'r{path}d', f'x{path}')
+
+        # Inter-path links
+        for path in range(1, n):
+            self.addLink(f'r{path}a', f'r{path+1}b')
+            self.addLink(f'r{path+1}c', f'r{path}d')
+
+topos = { 'dumbell': DumbellTopo, 'double_dumbell': DoubleDumbbellTopo, 'parking_lot': ParkingLot, 'multi_topo': MultiTopo, "multi_competition_topo" : MultiCompetitionTopo, "minimal_mp" : MinimalMP, "ndiffports_test" : NdiffportsTest, "ndiffports2" : Ndiffports2 }

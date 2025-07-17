@@ -65,7 +65,6 @@ class Emulation:
             intf_name = interfaces[i].name
             node = interfaces[i].node
             if delay and not bw:
-                print("A")
                 cmd = 'sudo tc qdisc %s dev %s root handle 1:0 netem delay %sms limit %s' % (command, intf_name, delay,  100000)
                 #print(cmd)
                 if (loss is not None) and (float(loss) > 0):
@@ -78,7 +77,6 @@ class Emulation:
                     cmd += "&& sudo tc qdisc %s dev %s parent 1: handle 2: sfq perturb 10" % (command, intf_name)
 
             elif bw and not delay:
-                print("B")
                 burst = int(10*bw*(2**20)/250/8)
                 cmd = 'sudo tc qdisc %s dev %s root handle 1:0 tbf rate %smbit burst %s limit %s ' % (command, intf_name, bw, burst, qsize)
                 #print(cmd)
@@ -90,7 +88,6 @@ class Emulation:
                     cmd += "&& sudo tc qdisc %s dev %s parent 1: handle 2: sfq perturb 10" % (command, intf_name)
 
             elif delay and bw:
-                print("C")
                 burst = int(10*bw*(2**20)/250/8)
                 cmd = 'sudo tc qdisc %s dev %s root handle 1:0 netem delay %sms limit %s && sudo tc qdisc %s dev %s parent 1:1 handle 10:0 tbf rate %smbit burst %s limit %s ' % (command, intf_name, delay,    100000, command, intf_name, bw, burst, qsize)
                 #print(cmd)

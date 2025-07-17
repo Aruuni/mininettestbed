@@ -87,7 +87,7 @@ def process_raw_outputs(path):
             df = parse_iperf_json(path+"/%s_output.txt" % receiver, start_time) 
             df.to_csv("%s/%s.csv" %  (csv_path, receiver), index=False)
 
-            # Convert receiver ifstat into csv
+            # Convert receiver ifstat into csv # offset start time something james
             df = parse_ifstat_output(path+"/%s_ifstat.txt" % receiver, 0) # server starts tracking as soon as the experiment begins, even for late flows
             df.to_csv("%s/%s_ifstat.csv" % (csv_path,receiver), index=False)
         else:
@@ -207,7 +207,7 @@ def plot_all_mn(path: str) -> None:
             # Client subflow CWNDs
             for subflow in subflows:
                 df_sub = df_ss_mp_client[df_ss_mp_client['src'] == subflow]
-                df_sub = df_sub[~df_sub['token'].str.contains(init_token, regex=False)]
+                #df_sub = df_sub[~df_sub['token'].str.contains(init_token, regex=False)]
                 if len(df_sub) > subflow_threshold:
                     axs[9].plot(df_sub['time'], df_sub['cwnd'], label=f'{flow_client} sf_{subflow} CWND')
                     axs[9].set_title("Subflow CWNDs from SS (packets)")
@@ -216,7 +216,7 @@ def plot_all_mn(path: str) -> None:
             # Client subflow RTTs
             for subflow in subflows:
                 df_sub = df_ss_mp_client[df_ss_mp_client['src'] == subflow]
-                df_sub = df_sub[~df_sub['token'].str.contains(init_token, regex=False)]
+                #df_sub = df_sub[~df_sub['token'].str.contains(init_token, regex=False)]
                 if len(df_sub) > subflow_threshold:
                     axs[10].plot(df_sub['time'], df_sub['srtt'], label=f'{flow_client} sf_{subflow} RTT')
                     axs[10].set_title("Subflow RTT from SS (ms)")

@@ -2,7 +2,7 @@ source common.sh
 bash setup.sh
 
 PROTOCOLS="cubic"
-BANDWIDTHS="100"
+BANDWIDTHS="50"
 DELAYS="20"
 RUNS="1"
 QMULTS=".2"
@@ -20,7 +20,7 @@ do
                 do
                     for run in $RUNS
                     do
-                        run experiments_mininet/custom/experiment_ndiffports_test.py $del $bw $qmult $protocol $run fifo 0 $flow
+                        run experiments_mininet/custom/experiment_ndiffports_2.py $del $bw $qmult $protocol $run fifo 0 $flow
                     done
                 done
             done

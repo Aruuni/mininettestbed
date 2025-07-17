@@ -3,6 +3,7 @@ import subprocess
 from mininet.net import Mininet
 from collections import namedtuple
 from core.config import USERNAME
+from mininet.node import OVSKernelSwitch, Host, Node, Link, Intf
 NetworkConf = namedtuple("NetworkConf", ['node1', 'node2', 'bw', 'delay', 'qsize', 'bidir', 'aqm', 'loss'])
 TrafficConf = namedtuple("TrafficConf", ['source', 'dest', 'start', 'duration', 'protocol', 'params'])
 
@@ -71,13 +72,13 @@ def tcp_buffers_setup(target_bdp_bytes, multiplier=3):
 def disable_offload(net):
     for node_name, node in net.items():
         for intf_name in node.intfNames():
-            if 'c' in  intf_name or 'x' in intf_name:
+            if intf_name.startswith('c') or intf_name.startswith('x'):
                 node.cmd('sudo ethtool -K %s tso off' % intf_name)
                 node.cmd('sudo ethtool -K %s gro off' % intf_name)
                 node.cmd('sudo ethtool -K %s gso off' % intf_name)
                 node.cmd('sudo ethtool -K %s lro off' % intf_name)
                 node.cmd('sudo ethtool -K %s ufo off' % intf_name)
-            if 's' in intf_name:
+            if intf_name.startswith('s'):
                 os.system('sudo ethtool -K %s tso off' % intf_name)
                 os.system('sudo ethtool -K %s gro off' % intf_name)
                 os.system('sudo ethtool -K %s gso off' % intf_name)
@@ -165,18 +166,18 @@ class MPMininetWrapper(Mininet):
                     # Configure endpoints for each interface (may only be necessary for the upstream kernel)
                     host.cmd(f'ip mptcp endpoint add {ip} dev {intf_name} id {endpoint_id} subflow signal')
 
-                    # Debug prints
-                    print('-------------------')
-                    print("host: " + str(host))
-                    print("h: "  + str(h))
-                    print("i: " + str(i))
-                    print("host_id: " + str(host_id))
-                    print("intf_name " + str(intf_name))
-                    print("ip: " + str(ip))
-                    print("gateway: " + str(gateway))
-                    print("mac: " + str(mac))
-                    print("endpoint_id: " + str(endpoint_id))
-                    print('-------------------')
+                    # # Debug prints
+                    # print('-------------------')
+                    # print("host: " + str(host))
+                    # print("h: "  + str(h))
+                    # print("i: " + str(i))
+                    # print("host_id: " + str(host_id))
+                    # print("intf_name " + str(intf_name))
+                    # print("ip: " + str(ip))
+                    # print("gateway: " + str(gateway))
+                    # print("mac: " + str(mac))
+                    # print("endpoint_id: " + str(endpoint_id))
+                    # print('-------------------')
             host.cmd("echo " + str(host) + " initialized by MPMininetWrapper!")
         print("MPMininetWrapper MPTCP setup completed!")
 
@@ -192,7 +193,7 @@ class MPMininetWrapper(Mininet):
     # Configures MPTCP endpoints using the ndiffports technique (multiple subflows per interface with unique source ports, hashed to different paths via ECMP)
     def configure_ndiffports_endpoints(self, subflows=2):
         for host in self.hosts:
-            if 'c' not in str(host) and 'x' not in str(host):
+            if not (str(host).startswith('c') or str(host).startswith('x')):
                 continue
 
             host.cmd('sudo sysctl -w net.mptcp.path_manager=kernel') # Mininet hosts need kernel path manager
@@ -207,15 +208,65 @@ class MPMininetWrapper(Mininet):
             for intf in host.intfList(): 
                 host.cmd(f'sudo sysctl -w net.ipv4.conf.{intf}.rp_filter=0') # Make the rp_filter less strict
                 for i in range(0, subflows - 1):
-                    if 'c' in str(host):
+                    if str(host).startswith('c'):
                         endpoint_cmd = f'ip mptcp endpoint add {intf.IP()} dev {intf} subflow' # id can be specfied with id {num} between dev and port
-                    elif 'x' in str(host):
+                    elif str(host).startswith('x'):
                         endpoint_cmd = f'ip mptcp endpoint add {intf.IP()} dev {intf} id {subflow_id} port {9000 + i} signal' # id can be specfied with id {num} between dev and port 
                     
-                    printBlue(f'{host} end point cmd: {endpoint_cmd}')
+                    printBlue(f'{host} endpoint cmd: {endpoint_cmd}')
                     host.cmd(endpoint_cmd)
                     subflow_id += 1
 
+    # Adds a routing table entry to the given router, towards the dst_ip, through the nodes listed in next_hop_names
+    # This should be much more deterministic and reliable than assign_ECMP_routing_tables(). Use this to patch any mistakes it makes.
+    def add_route(self, router_name: str, next_hop_names: list[str], dst_ip: str):
+        router: Node = self.get(router_name)
+        next_hop_intfs = [] # List of interfaces to route through
+
+        # Find the correct target interface on each next_hop node
+        for hop_name in next_hop_names:
+            target_node: Node = self.get(hop_name)
+            intf: Intf
+
+            connecting_intf = router.connectionsTo(target_node)[0][1]
+            printGreen(f'Target node: {target_node}')
+            printGreen(connecting_intf)
+            if connecting_intf in target_node.intfList():
+                next_hop_intfs.append(connecting_intf)
+            else:
+                printRed(f"ERROR! {router_name} cannot route through {hop_name} because it is not directly linked.")
+                return
+
+            # for intf in router.intfList():
+            #     if intf.link.intf1.node is target_node:
+            #         next_hop_intfs.append(intf.link.intf1)
+            #         target_found = True
+            #     elif intf.link.intf2.node is target_node:
+            #         next_hop_intfs.append(intf.link.intf2)
+            #         target_found = True
+            #     else:
+            #         print("Wrong link! Checking the next one...")
+            #         target_found = False
+            # if not target_found:
+            #     printRed(f"ERROR! {router_name} cannot route through {hop_name} because it is not linked.")
+            #     return
+        
+        # Build the command based on the given target interfaces
+        if len(next_hop_intfs) == 1:
+            cmd = f'ip route replace {dst_ip} via {next_hop_intfs[0].IP()}'
+        elif len(next_hop_intfs) > 1:
+            cmd = f'ip route replace {dst_ip}'
+            weight = 1
+            for intf in next_hop_intfs:
+                cmd = cmd + ' ' + (f'nexthop via {intf.IP()} weight {1}')
+                weight += 1
+        else:
+            printRed("ERROR: Routing tabled incorrectly configured")
+        
+        # Send the command to the node
+        printDebug(f'Running the following command in {router_name}\'s terminal: {cmd}')
+        router.cmd(cmd)
+        
 
 # Assigns unique IPs within the same subnet to each link's interface pair
 def assign_ips(net: Mininet):
@@ -225,8 +276,8 @@ def assign_ips(net: Mininet):
     
     # IP assignment Loop
     for link_num, link in enumerate(net.links):
-        printRed('---------------------')
-        print(link)
+        # printRed('---------------------')
+        # print(link)
 
         interfaces = [link.intf1, link.intf2]
         # Assign IPs within the same subnet to the interface pair
@@ -239,35 +290,35 @@ def assign_ips(net: Mininet):
                 nodes_visited += 1
             ip = f'10.{link_num}.{node_ids[node]}.{intf_id}/16'
             node.setIP(ip, intf=str(intf))
-            print(intf)
-            printGreen(ip)
+            # print(intf)
+            # printGreen(ip)
 
-# Assigns routing tables and default gateways to every host. Assumes all links are forward-facing from c1 to x1.
-def assign_routing_tables(net: Mininet):
-    # Routing table assignment loop
-    for link_num, link in enumerate(net.links):
-        printGreen('---------------------')
-        print(link)
+# # Assigns routing tables and default gateways to every host. Assumes all links are forward-facing from c1 to x1.
+# def assign_routing_tables(net: Mininet):
+#     # Routing table assignment loop
+#     for link_num, link in enumerate(net.links):
+#         printGreen('---------------------')
+#         print(link)
 
-        interfaces = [link.intf1, link.intf2]
-        node_a = interfaces[0].node
-        node_b = interfaces[1].node
-        printPink(interfaces[0].ip)
-        printPink(interfaces[1].ip)
+#         interfaces = [link.intf1, link.intf2]
+#         node_a = interfaces[0].node
+#         node_b = interfaces[1].node
+#         printPink(interfaces[0].ip)
+#         printPink(interfaces[1].ip)
 
-        if 'c' in str(node_a):
-            printBlue("found c1")
-            c1cmd = f'ip route add default via {interfaces[1].IP()}'
-            printPurple(f"C1CMD: {c1cmd}")
-            node_a.cmd(c1cmd)
-        elif 'x' in str(node_b):
-            printBlue("found x1")
-            node_b.cmd(f'ip route add default via {interfaces[0].IP()}')
-        else:
-            c1_ip = net.get('c1').IP(intf='c1-eth0')
-            x1_ip = net.get('x1').IP(intf='x1-eth0')
-            node_a.cmd(f'ip route add {x1_ip} via {interfaces[1].IP()}') # Forward
-            node_b.cmd(f'ip route add {c1_ip} via {interfaces[0].IP()}') # Backward
+#         if 'c' in str(node_a):
+#             printBlue("found c1")
+#             c1cmd = f'ip route add default via {interfaces[1].IP()}'
+#             printPurple(f"C1CMD: {c1cmd}")
+#             node_a.cmd(c1cmd)
+#         elif 'x' in str(node_b):
+#             printBlue("found x1")
+#             node_b.cmd(f'ip route add default via {interfaces[0].IP()}')
+#         else:
+#             c1_ip = net.get('c1').IP(intf='c1-eth0')
+#             x1_ip = net.get('x1').IP(intf='x1-eth0')
+#             node_a.cmd(f'ip route add {x1_ip} via {interfaces[1].IP()}') # Forward
+#             node_b.cmd(f'ip route add {c1_ip} via {interfaces[0].IP()}') # Backward
 
 # Assigns routing tables and default gateways to every host. Assumes all links are forward-facing from c1 to x1.
 # Adds a special case for routers with multiple paths
@@ -278,23 +329,23 @@ def assign_ECMP_routing_tables(net: Mininet):
 
     # Routing table assignment loop
     for link_num, link in enumerate(net.links):
-        printGreen('---------------------')
-        print(link)
+        # printGreen('---------------------')
+        # print(link)
 
         interfaces = [link.intf1, link.intf2]
         node_a = interfaces[0].node
         node_b = interfaces[1].node
-        printPink(interfaces[0].ip)
-        printPink(interfaces[1].ip)
+        # printPink(interfaces[0].ip)
+        # printPink(interfaces[1].ip)
         
         # Add default gateways if the links contains a client/server, otherwise add IPs to routing table lists
-        if 'c' in str(node_a):
+        if str(node_a).startswith('c'):
             c1cmd = f'ip route add default via {interfaces[1].IP()}'
-            printPurple(f"Sending command to c1: {c1cmd}")
+            # printPurple(f"Sending command to c1: {c1cmd}")
             node_a.cmd(c1cmd)
-        elif 'x' in str(node_b):
+        elif str(node_b).startswith('x'):
             x1cmd = f'ip route add default via {interfaces[0].IP()}'
-            printPurple(f"Sending command to x1: {c1cmd}")
+            # printPurple(f"Sending command to x1: {c1cmd}")
             node_b.cmd(x1cmd)
         else:
             if node_a not in forward_hops: 
@@ -307,13 +358,14 @@ def assign_ECMP_routing_tables(net: Mininet):
     c1_ip = net.get('c1').IP(intf='c1-eth0')
     x1_ip = net.get('x1').IP(intf='x1-eth0')   
 
-    print("FORWARD HOPS: ")
-    print(forward_hops)
-    print("BACKWARD HOPS: ")
-    print(backward_hops)
+    # print("FORWARD HOPS: ")
+    # print(forward_hops)
+    # print("BACKWARD HOPS: ")
+    # print(backward_hops)
 
     # Create routing table entries toward x1 for each router
     for router in forward_hops:
+        router.cmd('sysctl net.ipv4.fib_multipath_hash_policy=1') # Enable layer 4 ECMP hashing (based on src ip, src port, dst ip, dst port, protocol)
         routes = len(forward_hops[router])
         if routes == 1:
             cmd = f'ip route add {x1_ip} via {forward_hops[router][0]}'
@@ -325,11 +377,12 @@ def assign_ECMP_routing_tables(net: Mininet):
                 weight += 1
         else:
             printRed("ERROR: Routing tabled incorrectly configured")
-        printGreen(f'{router}: {cmd}')
+        # printGreen(f'{router}: {cmd}')
         router.cmd(cmd)
     
     # Create routing table entries toward c1 for each router
     for router in backward_hops:
+        router.cmd('sysctl net.ipv4.fib_multipath_hash_policy=1') # Enable layer 4 ECMP hashing (based on src ip, src port, dst ip, dst port, protocol)
         routes = len(backward_hops[router])
         if routes == 1:
             cmd = f'ip route add {c1_ip} via {backward_hops[router][0]}'
@@ -339,7 +392,7 @@ def assign_ECMP_routing_tables(net: Mininet):
                 cmd = cmd + ' ' + (f'nexthop via {ip} weight 1')
         else:
             printRed("ERROR: Routing tabled incorrectly configured")
-        printGreen(f'{router}: {cmd}')
+        # printGreen(f'{router}: {cmd}')
         router.cmd(cmd)
 
 RESET = "\033[0m"
