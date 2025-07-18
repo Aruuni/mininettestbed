@@ -79,7 +79,7 @@ def process_raw_outputs(path):
 
 
 
-def plot_all_mn(path: str) -> None:
+def plot_all_mn(path: str, aqm='fifo') -> None:
     def remove_outliers(df, column, threshold):
         """Remove outliers from a DataFrame column based on a threshold."""
         return df[df[column] < threshold]
@@ -236,7 +236,7 @@ def plot_all_mn(path: str) -> None:
         axs[6].plot(df_queue['time'], df_queue['interval_drops'], linestyle='--', label=f'{queue_file} - root_drp')
         axs[6].set_title("Queue drops (packets)")
 
-
+    x_max = 0
     for i, ax in enumerate(axs):
         ax.set_xlabel('Time (s)')
         ax.legend(loc='upper left')
@@ -257,12 +257,12 @@ def plot_all_mn(path: str) -> None:
 
         # Adjust time ticks dynamically
         time_max = x_max
-        time_interval = max(1, int(time_max / 20))  # Adjust ticks to ~20 intervals
+        time_interval = max(10, int(x_max / 20))  # Adjust ticks to ~20 intervals
         ax.xaxis.set_major_locator(plt.MultipleLocator(time_interval))
 
     # Adjust layout and save the figure
     plt.tight_layout(rect=[0, 0, 1, 1], pad=1.0)
-    output_file = os.path.join(path, (path.split('/fifo/')[1]).split('/run')[0] + '.pdf')
+    output_file = os.path.join(path, (path.split(f'/{aqm}/')[1]).split('/run')[0] + '.pdf')
 
     plt.savefig(output_file)
     printGreen(f"Plot saved to {output_file}")
