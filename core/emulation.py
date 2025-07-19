@@ -65,15 +65,9 @@ class Emulation:
             intf_name = interfaces[i].name
             node = interfaces[i].node
             if delay and not bw:
-                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 netem delay {delay}ms limit {100000}"
+                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 3:0 netem delay {delay}ms limit {100000}"
                 if (loss is not None) and (float(loss) > 0):
                     cmd += " loss %s%%" % (loss)
-                if aqm == 'fq_codel':
-                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq_codel limit 17476 target 5ms interval 100ms flows 100"
-                elif aqm == 'codel':
-                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: codel limit 17476 target 5ms interval 100ms"
-                elif aqm == 'sfq':
-                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: sfq perturb 10"
 
             elif bw and not delay:
                 burst = int(10*bw*(2**20)/250/8)
@@ -88,16 +82,12 @@ class Emulation:
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: cake"
                 elif aqm == 'fq':
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq limit {int(qsize/1500)}"
+                elif aqm == 'fq_pie':
+                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq_pie limit {int(qsize/1500)}"
 
             elif delay and bw:
                 burst = int(10*bw*(2**20)/250/8)
                 cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 netem delay {delay}ms limit {100000} && sudo tc qdisc {command} dev {intf_name} parent 1:1 handle 10:0 tbf rate {bw}mbit burst {burst} limit {qsize}"
-                if aqm == 'fq_codel':
-                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 10: handle 20: fq_codel limit {int(qsize/1500)} target 5ms interval 100ms flows 100"
-                elif aqm == 'codel':
-                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 10: handle 20: codel limit {int(qsize/1500)} target 5ms interval 100ms"
-                elif aqm == 'sfq':
-                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 10: handle 20: sfq perturb 10"
 
             else:
                 print("ERROR: either the delay or bandiwdth must be specified")
