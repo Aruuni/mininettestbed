@@ -84,6 +84,8 @@ class Emulation:
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq limit {int(qsize/1500)}"
                 elif aqm == 'fq_pie':
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq_pie limit {int(qsize/1500)}"
+                elif aqm == 'sfb':
+                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: sfb limit {int(qsize/1500)}"
 
             elif delay and bw:
                 burst = int(10*bw*(2**20)/250/8)
