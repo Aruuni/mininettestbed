@@ -71,7 +71,7 @@ class Emulation:
 
             elif bw and not delay:
                 burst = int(10*bw*(2**20)/250/8)
-                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 tbf rate {bw}mbit burst {burst} limit {qsize * 22 if aqm != 'fifo' else qsize}"
+                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 tbf rate {bw}mbit burst {burst} limit {qsize * 22 if aqm != 'fifo' else qsize} "
                 if aqm == 'fq_codel':
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq_codel limit {int(qsize/1500)} target 5ms interval 100ms flows 100"
                 elif aqm == 'codel':
@@ -79,13 +79,14 @@ class Emulation:
                 elif aqm == 'sfq':
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: sfq perturb 10"
                 elif aqm == 'cake':
-                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: cake"
+                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: cake no-split-gso bandwidth {bw}mbit rtt 50.0ms"
                 elif aqm == 'fq':
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq limit {int(qsize/1500)}"
                 elif aqm == 'fq_pie':
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq_pie limit {int(qsize/1500)}"
                 elif aqm == 'sfb':
-                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: sfb limit {int(qsize/1500)}"
+                    blue_burst = min(max(int(int(qsize/1500) * 0.05), 5), 20)
+                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: sfb penalty_burst {blue_burst}"
 
             elif delay and bw:
                 burst = int(10*bw*(2**20)/250/8)

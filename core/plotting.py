@@ -23,7 +23,7 @@ PATHS_INFO = {
     "Starlink_NY_LDN_15_ISL_path":  {"queue": 696, "label": "NY to LDN (ISL)"},
     "Starlink_SD_Shanghai_15_ISL_path": {"queue": 740, "label": "SD to SHA (ISL)"}
 }
-
+AQM_FRIENDLY_NAME = {'fifo':'FIFO', 'fq_codel': 'FQ_CoDel', 'fq_pie':'FQ_PIE', 'cake':'CAKE'}
 # PROTOCOLS_EXTENSION = ['cubic', 'sage', 'orca', 'astraea', 'bbr3', 'vivace', 'vivace-uspace', 'bbr1']
 # PROTOCOLS_MARKERS_EXTENSION = {'cubic': 'x', 'orca': '+', 'bbr3': '^', 'sage': '*', 'vivace': '_', 'astraea': '2', 'vivace-uspace': '4', 'bbr1': '1', }
 # COLORS_EXTENSION = {'cubic': '#0C5DA5', 'orca': '#00B945', 'bbr3': '#FF9500', 'sage': '#FF2C01', 'vivace': '#845B97', 'astraea': '#686868', 'vivace-uspace': '#ADD8E6', 'bbr1': '#964B00'}

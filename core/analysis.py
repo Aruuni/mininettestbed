@@ -262,7 +262,7 @@ def plot_all_mn(path: str, aqm='fifo') -> None:
 
     # Adjust layout and save the figure
     plt.tight_layout(rect=[0, 0, 1, 1], pad=1.0)
-    output_file = os.path.join(path, (path.split(f'/{aqm}/')[1]).split('/run')[0] + '.pdf')
+    output_file = os.path.join(path, "plot" + '.pdf')
 
     plt.savefig(output_file)
     printGreen(f"Plot saved to {output_file}")
