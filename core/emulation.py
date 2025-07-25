@@ -65,38 +65,32 @@ class Emulation:
             intf_name = interfaces[i].name
             node = interfaces[i].node
             if delay and not bw:
-                cmd = 'sudo tc qdisc %s dev %s root handle 1:0 netem delay %sms limit %s' % (command, intf_name, delay,  100000)
-                #print(cmd)
+                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 3:0 netem delay {delay}ms limit {100000}"
                 if (loss is not None) and (float(loss) > 0):
                     cmd += " loss %s%%" % (loss)
-                if aqm == 'fq_codel':
-                    cmd += "&& sudo tc qdisc %s dev %s parent 1: handle 2: fq_codel limit 17476 target 5ms interval 100ms flows 100" % (command, intf_name)
-                elif aqm == 'codel':
-                    cmd += "&& sudo tc qdisc %s dev %s parent 1: handle 2: codel limit 17476 target 5ms interval 100ms" % (command, intf_name)
-                elif aqm == 'fq':
-                    cmd += "&& sudo tc qdisc %s dev %s parent 1: handle 2: sfq perturb 10" % (command, intf_name)
 
             elif bw and not delay:
                 burst = int(10*bw*(2**20)/250/8)
-                cmd = 'sudo tc qdisc %s dev %s root handle 1:0 tbf rate %smbit burst %s limit %s ' % (command, intf_name, bw, burst, qsize)
-                #print(cmd)
+                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 tbf rate {bw}mbit burst {burst} limit {qsize * 22 if aqm != 'fifo' else qsize} "
                 if aqm == 'fq_codel':
-                    cmd += "&& sudo tc qdisc %s dev %s parent 1: handle 2: fq_codel limit %s target 5ms interval 100ms flows 100" % (command, intf_name,     int(qsize/1500))
+                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq_codel limit {int(qsize/1500)} target 5ms interval 100ms flows 100"
                 elif aqm == 'codel':
-                    cmd += "&& sudo tc qdisc %s dev %s parent 1: handle 2: codel limit %s target 5ms interval 100ms" % (command, intf_name,   int(qsize/1500))
+                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: codel limit {int(qsize/1500)} target 5ms interval 100ms"
+                elif aqm == 'sfq':
+                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: sfq perturb 10"
+                elif aqm == 'cake':
+                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: cake no-split-gso bandwidth {bw}mbit rtt 50.0ms"
                 elif aqm == 'fq':
-                    cmd += "&& sudo tc qdisc %s dev %s parent 1: handle 2: sfq perturb 10" % (command, intf_name)
+                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq limit {int(qsize/1500)}"
+                elif aqm == 'fq_pie':
+                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq_pie limit {int(qsize/1500)}"
+                elif aqm == 'sfb':
+                    blue_burst = min(max(int(int(qsize/1500) * 0.05), 5), 20)
+                    cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: sfb penalty_burst {blue_burst}"
 
             elif delay and bw:
                 burst = int(10*bw*(2**20)/250/8)
-                cmd = 'sudo tc qdisc %s dev %s root handle 1:0 netem delay %sms limit %s && sudo tc qdisc %s dev %s parent 1:1 handle 10:0 tbf rate %smbit burst %s limit %s ' % (command, intf_name, delay,    100000, command, intf_name, bw, burst, qsize)
-                #print(cmd)
-                if aqm == 'fq_codel':
-                    cmd += "&& sudo tc qdisc %s dev %s parent 10: handle 20: fq_codel limit %s target 5ms interval 100ms flows 100" % (command, intf_name,     int(qsize/1500))
-                elif aqm == 'codel':
-                    cmd += "&& sudo tc qdisc %s dev %s parent 10: handle 20: codel limit %s target 5ms interval 100ms" % (command, intf_name,    int(qsize/1500))
-                elif aqm == 'fq':
-                    cmd += "&& sudo tc qdisc %s dev %s parent 10: handle 20: sfq perturb 10" % (command, intf_name)
+                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 netem delay {delay}ms limit {100000} && sudo tc qdisc {command} dev {intf_name} parent 1:1 handle 10:0 tbf rate {bw}mbit burst {burst} limit {qsize}"
 
             else:
                 print("ERROR: either the delay or bandiwdth must be specified")
