@@ -105,54 +105,6 @@ def parse_ifstat_output(file_path, offset=0):
         raise ValueError("No usable lines found in the ifstat output.")
     return df
 
-def parse_ss_mp_output(file_path, offset=0):
-    data = defaultdict(list)
-    intf_names = list()
-    with open(file_path, "r") as f:
-        for l, line in enumerate(f):
-            # Split the line into a list of entries (time/if)
-            parts = line.split()
-            
-            # Skip useless header line
-            if parts[1] == "HH:MM:SS":
-                continue
-
-            # If this is the interface name header - grab the interface names from the first row, and then move on
-            if parts[1] == "Time":
-                for i in range(2, len(parts)): # 2 skips the appended timestamp and the "Time" header
-                    intf_names.append(parts[i])
-                continue
-            
-            # Extract values and append to data list
-            # timestamp = time_to_epoch(parts[0]) # returns float, like ss output # deprecated, remove if its working
-            timestamp = float(parts[0]) # no longer needs to be converted
-            # printGreen(timestamp)
-            for i, intf in enumerate(intf_names):
-                try:
-                    # Extract throughputs and convert to mbps
-                    mbps_in = float(parts[2 + 2*i]) * .001
-                    mbps_out = float(parts[3 + 2*i]) * .001
-                except ValueError:
-                    # Skip the line if float conversion fails (line contains "n/a")
-                    continue
-
-                # Append values to the dictionary
-                data["time"].append(timestamp)
-                data["intf"].append(intf)
-                data["mbps_in"].append(mbps_in)
-                data["mbps_out"].append(mbps_out)
-
-    # Create empty dataframe
-    df = pd.DataFrame(data)
-
-    # Convert the 'time' column to relative time (seconds since the minimum timestamp)
-    min_time = df['time'].min()
-    df['time'] = df['time'] - min_time + offset    
-
-    if df.empty:
-        raise ValueError("No usable lines found in the ifstat output.")
-    return df
-
 # def parse_sar_output(file_path, offset=0):
 #     data = defaultdict(list)
 
@@ -189,7 +141,8 @@ def parse_ss_mp_output(file_path, offset=0):
 #         raise ValueError("No usable lines found in the sar output.")
 #     return df
 
-def parse_ss_mp_output(file_path, offset=0):
+# Grabs useful data from ss_mp and puts it into a csv. Ghost flows are leftover subflows from the initial iperf establishing connection that report useless data.
+def parse_ss_mp_output(file_path, offset=0, emulation_start_time=None, suppress_ghost_flows=True):
     #df = pd.read_csv(file_path)
     patterns = {
         "time": r"^(\d+\.\d+),",  # Timestamp at the beginning
@@ -198,12 +151,26 @@ def parse_ss_mp_output(file_path, offset=0):
         "srtt": r"rtt:([\d.]+)/",  # Extract srtt
         "rttvar": r"rtt:[\d.]+/([\d.]+)",  # Extract rttvar
         "retr": r"retrans:(\d+)/",
-        "token": r"token:[^/]+/([^ ]+)"        # Extract value after slash in token field
+        "token": r"token:[^/]+/([^ ]+)",       # Extract value after slash in token field
+        "delivery_rate": r"delivery_rate (\d+)bps"
     }
     data = defaultdict(list)  # Initializes a dictionary where values are lists
     with open(file_path, "r") as f:
         tokens = []
         for line in f:
+            #printRed(line)
+
+            token = str(re.search(patterns["token"], line).group(1))
+            # Maintain a list of unique connection tokens
+            if token not in tokens:
+                tokens.append(token)
+                printBlue(f"Found a new token! {token}")
+
+            # Skip this line if it is from the init connection
+            
+            if suppress_ghost_flows and token == tokens[0]:
+               continue
+
             # Filter for exact ESTAB state
             if not re.search(patterns["state"], line):
                 continue
@@ -213,15 +180,9 @@ def parse_ss_mp_output(file_path, offset=0):
             if not time_match:
                 continue
             
-
-            token = str(re.search(patterns["token"], line).group(1))
-            # Maintain a list of unique tokens (connections)
-            if token not in tokens:
-                tokens.append(token)
-                printBlue(f"Found a new token! {token}")
-
-            # Skip this line if it is from initialization
-            if token == tokens[0]:
+            # Extract throughput
+            delivery_rate_match = re.search(patterns["delivery_rate"], line)
+            if not delivery_rate_match:
                 continue
 
             timestamp = float(time_match.group(1))
@@ -236,9 +197,11 @@ def parse_ss_mp_output(file_path, offset=0):
             # Extract token
             data["token"].append(re.search(patterns["token"], line))
 
+            data["delivery_rate"].append(float(delivery_rate_match.group(1)) / 1000000.0)
+            
             # Extract metrics
             for key, pattern in patterns.items():
-                if key == "time" or key == "state" or key == "token":
+                if key == "time" or key == "state" or key == "token" or key == "delivery_rate":
                     continue
                 match = re.search(pattern, line)
                 value = float(match.group(1)) if match else None
@@ -248,12 +211,14 @@ def parse_ss_mp_output(file_path, offset=0):
     if df.empty:
         raise ValueError("No ESTAB state entries found in the input file.")
 
-    # Convert the 'time' column to relative time (seconds since the minimum timestamp)
-    min_time = df['time'].min()    
+    # Convert the 'time' column to relative time (seconds since the absolute start time, or minimum timestamp)
+    min_time = emulation_start_time if emulation_start_time else df['time'].min()    
+    printRed(emulation_start_time)
+    min_time = df['time'].min()
     df['time'] = df['time'] - min_time + offset
     return df
 
-def parse_ss_output(file_path, offset=0):
+def parse_ss_output(file_path, offset=0, emulation_start_time=None):
     #df = pd.read_csv(file_path)
     patterns = {
         "time": r"^(\d+\.\d+),",  # Timestamp at the beginning
@@ -289,8 +254,9 @@ def parse_ss_output(file_path, offset=0):
     if df.empty:
         raise ValueError("No ESTAB state entries found in the input file.")
 
-    # Convert the 'time' column to relative time (seconds since the minimum timestamp)
-    min_time = df['time'].min()
+    # Convert the 'time' column to relative time (seconds since the absolute start time, or minimum timestamp)
+    min_time = emulation_start_time if emulation_start_time else df['time'].min()    
+    printRed(emulation_start_time)
     df['time'] = df['time'] - min_time + offset
     return df
 

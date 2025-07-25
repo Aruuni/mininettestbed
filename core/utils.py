@@ -4,6 +4,7 @@ from mininet.net import Mininet
 from collections import namedtuple
 from core.config import USERNAME
 from mininet.node import OVSKernelSwitch, Host, Node, Link, Intf
+import ipaddress
 NetworkConf = namedtuple("NetworkConf", ['node1', 'node2', 'bw', 'delay', 'qsize', 'bidir', 'aqm', 'loss'])
 TrafficConf = namedtuple("TrafficConf", ['source', 'dest', 'start', 'duration', 'protocol', 'params'])
 
@@ -181,94 +182,136 @@ class MPMininetWrapper(Mininet):
             host.cmd("echo " + str(host) + " initialized by MPMininetWrapper!")
         print("MPMininetWrapper MPTCP setup completed!")
 
-    # Maybe? useless function for setting up out-of-tree kernel MPTCP
-    def configure_out_of_tree_endpoints():
-        pass
+# Maybe? useless function for setting up out-of-tree kernel MPTCP
+def configure_out_of_tree_endpoints():
+    pass
 
-    # Configures MPTCP endpoints the standard way (one subflow per interface)
-    def configure_endpoints():
-        pass
-    
-    # This really needs refactoring
-    # Configures MPTCP endpoints using the ndiffports technique (multiple subflows per interface with unique source ports, hashed to different paths via ECMP)
-    def configure_ndiffports_endpoints(self, subflows=2):
-        for host in self.hosts:
-            if not (str(host).startswith('c') or str(host).startswith('x')):
-                continue
+# Configures MPTCP endpoints the standard way (one subflow per interface)
+def configure_endpoints():
+    pass
 
-            host.cmd('sudo sysctl -w net.mptcp.path_manager=kernel') # Mininet hosts need kernel path manager
-            host.cmd('sudo sysctl -w net.mptcp.pm_type=0') # Mininet hosts need pm=0
-            host.cmd(f'ip mptcp limits set subflows {8}') # Max number of accepted subflows (upstream kernel, client and server)
-            host.cmd(f'ip mptcp limits set add_addr_accepted {8}') # Max number of accepted ADD_ADDR requests (upstream kernel, client) 
-            host.cmd('sudo sysctl -w net.mptcp.allow_join_initial_address_port=0') # needed for ndiffports
-            host.cmd('sysctl net.mptcp.syn_retrans_before_tcp_fallback=50') # avoid TCP fallback for consistent experiments
-            
-            subflow_id = 1
-            # Configures endpoints for each interface (there should only be one in ndiffports)
-            for intf in host.intfList(): 
-                host.cmd(f'sudo sysctl -w net.ipv4.conf.{intf}.rp_filter=0') # Make the rp_filter less strict
-                for i in range(0, subflows - 1):
-                    if str(host).startswith('c'):
-                        endpoint_cmd = f'ip mptcp endpoint add {intf.IP()} dev {intf} subflow' # id can be specfied with id {num} between dev and port
-                    elif str(host).startswith('x'):
-                        endpoint_cmd = f'ip mptcp endpoint add {intf.IP()} dev {intf} id {subflow_id} port {9000 + i} signal' # id can be specfied with id {num} between dev and port 
-                    
-                    printBlue(f'{host} endpoint cmd: {endpoint_cmd}')
-                    host.cmd(endpoint_cmd)
-                    subflow_id += 1
+# This really needs refactoring
+# Configures MPTCP endpoints using the ndiffports technique (multiple subflows per interface with unique source ports, hashed to different paths via ECMP)
+def configure_ndiffports_endpoints(net, subflows=2):
+    for host in net.hosts:
+        if not (str(host).startswith('c') or str(host).startswith('x')):
+            continue
 
-    # Adds a routing table entry to the given router, towards the dst_ip, through the nodes listed in next_hop_names
-    # This should be much more deterministic and reliable than assign_ECMP_routing_tables(). Use this to patch any mistakes it makes.
-    def add_route(self, router_name: str, next_hop_names: list[str], dst_ip: str):
-        router: Node = self.get(router_name)
-        next_hop_intfs = [] # List of interfaces to route through
-
-        # Find the correct target interface on each next_hop node
-        for hop_name in next_hop_names:
-            target_node: Node = self.get(hop_name)
-            intf: Intf
-
-            connecting_intf = router.connectionsTo(target_node)[0][1]
-            printGreen(f'Target node: {target_node}')
-            printGreen(connecting_intf)
-            if connecting_intf in target_node.intfList():
-                next_hop_intfs.append(connecting_intf)
-            else:
-                printRed(f"ERROR! {router_name} cannot route through {hop_name} because it is not directly linked.")
-                return
-
-            # for intf in router.intfList():
-            #     if intf.link.intf1.node is target_node:
-            #         next_hop_intfs.append(intf.link.intf1)
-            #         target_found = True
-            #     elif intf.link.intf2.node is target_node:
-            #         next_hop_intfs.append(intf.link.intf2)
-            #         target_found = True
-            #     else:
-            #         print("Wrong link! Checking the next one...")
-            #         target_found = False
-            # if not target_found:
-            #     printRed(f"ERROR! {router_name} cannot route through {hop_name} because it is not linked.")
-            #     return
+        host.cmd('sudo sysctl -w net.mptcp.path_manager=kernel') # Mininet hosts need kernel path manager
+        host.cmd('sudo sysctl -w net.mptcp.pm_type=0') # Mininet hosts need pm=0
+        host.cmd(f'ip mptcp limits set subflows {8}') # Max number of accepted subflows (upstream kernel, client and server)
+        host.cmd(f'ip mptcp limits set add_addr_accepted {8}') # Max number of accepted ADD_ADDR requests (upstream kernel, client) 
+        host.cmd('sudo sysctl -w net.mptcp.allow_join_initial_address_port=0') # needed for ndiffports
+        host.cmd('sysctl net.mptcp.syn_retrans_before_tcp_fallback=50') # avoid TCP fallback for consistent experiments
         
-        # Build the command based on the given target interfaces
-        if len(next_hop_intfs) == 1:
-            cmd = f'ip route replace {dst_ip} via {next_hop_intfs[0].IP()}'
-        elif len(next_hop_intfs) > 1:
-            cmd = f'ip route replace {dst_ip}'
-            weight = 1
-            for intf in next_hop_intfs:
-                cmd = cmd + ' ' + (f'nexthop via {intf.IP()} weight {1}')
-                weight += 1
+        subflow_id = 1
+        # Configures endpoints for each interface (there should only be one in ndiffports)
+        for intf in host.intfList(): 
+            host.cmd(f'sudo sysctl -w net.ipv4.conf.{intf}.rp_filter=0') # Make the rp_filter less strict
+            for i in range(0, subflows - 1):
+                if str(host).startswith('c'):
+                    endpoint_cmd = f'ip mptcp endpoint add {intf.IP()} dev {intf} subflow' # id can be specfied with id {num} between dev and port
+                elif str(host).startswith('x'):
+                    endpoint_cmd = f'ip mptcp endpoint add {intf.IP()} dev {intf} id {subflow_id} port {9000 + i} signal' # id can be specfied with id {num} between dev and port 
+                
+                printBlue(f'{host} endpoint cmd: {endpoint_cmd}')
+                host.cmd(endpoint_cmd)
+                subflow_id += 1
+
+# An alternative to node.connectionsTo() that respects link direction (useful for topologies that require bidirectional traffic policing)
+def get_links(src_node: Node, target_node: Node):
+        "Return [ intf1, intf2... ] for all intfs that connect self to node."
+        # We could optimize this if it is important
+        
+        connections = []
+        for intf in src_node.intfList():
+            link = intf.link
+            if link:
+                node1, node2 = link.intf1.node, link.intf2.node
+                if node1 == src_node and node2 == target_node:
+                    connections += [ ( intf, link.intf2 ) ]
+                elif node1 == target_node and node2 == src_node:
+                    connections += [ ( link.intf1, intf ) ]
+        printGreen(f'OLD {src_node.name} to {target_node.name} links: {src_node.connectionsTo(target_node)}')
+        printPurple(f'{src_node.name} to {target_node.name} links: {connections}')
+        return connections
+
+# Adds a routing table entry to the given router, towards the dst_ip, through the nodes listed in next_hop_names
+# This should be much more deterministic and reliable than assign_ECMP_routing_tables(). Use this to patch any mistakes it makes.
+def add_route(net, router_name: str, next_hop_names: list[str], dst_ip: str, directional=False, ECMP=True, debug=True):
+    router: Node = net.get(router_name)
+    next_hop_intfs = [] # List of interfaces to route through
+    if ECMP:
+        router.cmd('sysctl net.ipv4.fib_multipath_hash_policy=1') # Enable layer 4 ECMP hashing (based on src ip, src port, dst ip, dst port, protocol)
+    else:
+        router.cmd('sysctl net.ipv4.fib_multipath_hash_policy=0') # Disable layer 4 ECMP hashing (based on src ip, src port, dst ip, dst port, protocol)
+    # Find the correct target interface on each next_hop node
+    for hop_name in next_hop_names:
+        target_node: Node = net.get(hop_name)
+        intf: Intf
+
+        connecting_intf = None
+        if directional:
+            for link_intfs in get_links(router, target_node):
+                if link_intfs[0].node.name == router_name: # Only recognizes the connecting interface if the link direction matches the routing direction (router -> nexthop)
+                    connecting_intf = link_intfs[1]
         else:
-            printRed("ERROR: Routing tabled incorrectly configured")
+            connecting_intf = router.connectionsTo(target_node)[0][1] # Recognizes the connecting interface regardless of link direction
         
-        # Send the command to the node
-        printDebug(f'Running the following command in {router_name}\'s terminal: {cmd}')
-        router.cmd(cmd)
+        if connecting_intf:
+            next_hop_intfs.append(connecting_intf)
+        else:
+            printRed(f"ERROR! {router_name} cannot route through {hop_name} because it is not directly linked.")
+            return
+
+    # Build the command based on the given target interfaces
+    if len(next_hop_intfs) == 1:
+        cmd = f'ip route replace {dst_ip} via {next_hop_intfs[0].IP()}'
+    elif len(next_hop_intfs) > 1:
+        cmd = f'ip route replace {dst_ip}'
+        weight = 1
+        for intf in next_hop_intfs:
+            cmd = cmd + ' ' + (f'nexthop via {intf.IP()} weight {1}')
+            weight += 1
+    else:
+        printRed("ERROR: Routing tabled incorrectly configured")
+    
+    # Send the command to the node
+    if debug:
+        printTC(f'Running the following command in {router_name}\'s terminal: {cmd}')
+    router.cmdPrint(cmd)
         
+# Adds a routing table entry to the given router, towards the dst_ip, through the nodes listed in next_hop_names
+# This should be much more deterministic and reliable than assign_ECMP_routing_tables(). Use this to patch any mistakes it makes.
+def add_default_gateway(net, router_name: str, next_hop_names: list[str], debug=True):
+    router: Node = net.get(router_name)
+    next_hop_intfs = [] # List of interfaces to route through
+
+    # Find the correct target interface on each next_hop node
+    for hop_name in next_hop_names:
+        target_node: Node = net.get(hop_name)
+        intf: Intf
+
+        connecting_intf = router.connectionsTo(target_node)[0][1]
+        if connecting_intf in target_node.intfList():
+            next_hop_intfs.append(connecting_intf)
+        else:
+            printRed(f"ERROR! {router_name} cannot route through {hop_name} because it is not directly linked.")
+            return
+
+    # Build the command based on the given target interfaces
+    if len(next_hop_intfs) == 1:
+        cmd = f'ip route add default via {next_hop_intfs[0].IP()}'
+    else:
+        printRed("ERROR: Could not add default gateway")
+    
+    # Send the command to the node
+    if debug:
+        printPink(f'Running the following command in {router_name}\'s terminal: {cmd}')
+    router.cmd(cmd)
 
 # Assigns unique IPs within the same subnet to each link's interface pair
+# limit of 256 links, or 256 nodes, or 256 nodes on a single interface
 def assign_ips(net: Mininet):
     # List of unique IDs for each node, used for IP/subnet assignment
     node_ids = {}
@@ -288,10 +331,45 @@ def assign_ips(net: Mininet):
             if node not in node_ids:
                 node_ids[node] = nodes_visited
                 nodes_visited += 1
-            ip = f'10.{link_num}.{node_ids[node]}.{intf_id}/16'
+            ip = f'10.{link_num}.{node_ids[node]}.{nodes_visited%255}/16'
             node.setIP(ip, intf=str(intf))
             # print(intf)
             # printGreen(ip)
+
+# Assigns IPs to maximize the number of links while maintaining correct link subnets
+# Probably the best default, as long as you aren't attempting any sort of hierarchical routing
+def assign_ips_by_link(net: Mininet):
+    # List of unique IDs for each node, used for IP/subnet assignment
+    
+    # IP assignment Loop
+    for link_num, link in enumerate(net.links):
+        interfaces = [link.intf1, link.intf2]
+        # Assign IPs within the same subnet to the interface pair
+        for i, intf in enumerate(interfaces): 
+            a = int(link_num/256%256)
+            b = int(link_num%256)
+            ip = f'10.{a}.{b}.{i}/24' # 10.link.link.intf - link num spans two bytes, intf is per link (0 or 1)
+            intf.node.setIP(ip, intf=str(intf))
+            # print(intf)
+            # printGreen(ip)
+
+
+# Assigns interface IPs sequentially, maximizing the amount of possible IPs
+# Ensure unique IPs for each interface, but may break default gateways and make routing/debugging tricky
+def assign_sequential_ips(net: Mininet):
+    # List of unique IDs for each node, used for IP/subnet assignment
+    intf_visited = 4278190080 # skip the 0.0.0.0/8 subnet
+    
+    # IP assignment Loop
+    for link in net.links:
+        interfaces = [link.intf1, link.intf2]
+        for intf in interfaces: 
+            ip = f'{ipaddress.IPv4Address(intf_visited)}/16' # Assign IP sequentially
+            intf.node.setIP(ip, intf=str(intf))
+            intf_visited += 1
+
+            print(intf)
+            printGreen(ip)
 
 # # Assigns routing tables and default gateways to every host. Assumes all links are forward-facing from c1 to x1.
 # def assign_routing_tables(net: Mininet):
@@ -322,6 +400,10 @@ def assign_ips(net: Mininet):
 
 # Assigns routing tables and default gateways to every host. Assumes all links are forward-facing from c1 to x1.
 # Adds a special case for routers with multiple paths
+def enable_ECMP_all_routers(net: Mininet):
+    for router in net.hosts:
+        router.cmd('sysctl net.ipv4.fib_multipath_hash_policy=1') # Enable layer 4 ECMP hashing (based on src ip, src port, dst ip, dst port, protocol)
+
 def assign_ECMP_routing_tables(net: Mininet):
     # Contains a list of hops for each router toward either c1 or x1
     forward_hops = {} # r1 : [ip_1, ip_2, ...]
@@ -395,16 +477,25 @@ def assign_ECMP_routing_tables(net: Mininet):
         # printGreen(f'{router}: {cmd}')
         router.cmd(cmd)
 
+def get_intf(net, ip):
+    for h in net.hosts:
+        for intf in h.intfList():
+            if intf.IP() == ip:
+                return intf.name
+
 RESET = "\033[0m"
 
 def printDebug(string):
     COLOR="\033[95m"
+    print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 def printDebug2(string):
     COLOR="\033[103m"
+    print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 def printDebug3(string):
     COLOR="\033[42m"
+    print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 
 
@@ -412,40 +503,50 @@ def printDebug3(string):
 
 def printBlue(string):
     COLOR = "\033[94m"
+    print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 
 def printBlueFill(string):
     COLOR = "\033[104m"
+    print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 
 def printGreen(string):
     COLOR = "\033[32m"
+    print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 
 def printGreenFill(string):
     COLOR = "\033[102m"
+    print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 
 def printPurple(string):
     COLOR = "\033[93m" 
+    print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 
 def printRed(string):
     COLOR = "\033[31m"
+    print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 
 def printSS(string):
     COLOR = "\033[33m"
+    print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 
 def printTC(string):
     COLOR = "\033[90m"
+    print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 
 def printPink(string):
-    COLOR = "\033[95m" 
+    COLOR = "\033[95m"
+    print("\r\033[K", end='', flush=True) 
     print(f"{COLOR}{string}{RESET}")
 
 def printPinkFill(string):
     COLOR = "\033[105m"
+    print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")

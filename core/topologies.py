@@ -1,6 +1,7 @@
 from mininet.topo import Topo
 from mininet.node import OVSKernelSwitch, Host, Node
 from mininet.net import Mininet
+import random
 
 class DumbellTopo(Topo):
     "Single bottleneck topology with n pairs of client/servers interconnected by two switches."
@@ -274,6 +275,7 @@ class Ndiffports2(Topo):
         for path in range(1, n+1):
             # Path nodes
             self.addHost(f'c{path}', cls=Host)
+            self.addHost(f'r{path}q', cls=LinuxRouter)
             self.addHost(f'r{path}a', cls=LinuxRouter)
             self.addHost(f'r{path}b', cls=LinuxRouter)
             self.addHost(f'r{path}c', cls=LinuxRouter)
@@ -281,7 +283,8 @@ class Ndiffports2(Topo):
             self.addHost(f'x{path}', cls=Host)
 
             # Path links
-            self.addLink(f'c{path}', f'r{path}a')
+            self.addLink(f'c{path}', f'r{path}q')
+            self.addLink(f'r{path}q', f'r{path}a')
             self.addLink(f'r{path}a', f'r{path}b')
             self.addLink(f'r{path}b', f'r{path}c')
             self.addLink(f'r{path}c', f'r{path}d')
@@ -292,4 +295,70 @@ class Ndiffports2(Topo):
             self.addLink(f'r{path}a', f'r{path+1}b')
             self.addLink(f'r{path+1}c', f'r{path}d')
 
-topos = { 'dumbell': DumbellTopo, 'double_dumbell': DoubleDumbbellTopo, 'parking_lot': ParkingLot, 'multi_topo': MultiTopo, "multi_competition_topo" : MultiCompetitionTopo, "minimal_mp" : MinimalMP, "ndiffports_test" : NdiffportsTest, "ndiffports2" : Ndiffports2 }
+# A perfect grid of routers interconnected with their adjacent neighbours. Intended to (roughly) mimic an LEO satellite network mesh
+# A router name alone should be enough to describe its relative position in the topology
+# Routing has to be done manually!
+class ManhattanTopo(Topo):
+
+    host_coords = []
+
+    def build(self, n=2, mesh_size=10):
+        self.n = n # Number of random host-pairs (client c and server x)
+        self.mesh_size = mesh_size # Number of rows/columns (square)
+
+        satellites = []
+        # Routers
+        for y in range(1, mesh_size+1):
+            for x in range(1, mesh_size+1):
+                r = self.addHost(f'r{x}_{y}', cls=LinuxRouter)
+                satellites.append(r)
+        
+        # client-server pairs. User terminals are connected to satellites via their eth-0's
+        for h in range(1, n+1):
+            for name in ['c', 'x']:
+                x, y = self.get_unique_position()
+
+                host = self.addHost(f'{name}{h}', cls=Host) # Client or server
+                sw = self.addHost(f'r_{host}', cls=LinuxRouter)  # "Home" switch, used to police delay
+                ut = self.addHost(f'UT_{host}', cls=LinuxRouter) # User terminal router, connects to the mesh
+
+                self.addLink(host, sw) # Host to switch
+                self.addLink(sw, ut) # Switch to user terminal
+                for router in satellites:   
+                    self.addLink(ut, router) # UT to all satellites. Default gateway should change based on experiment parameters.
+
+        # Router Links ^>
+        for y in range(1, mesh_size+1):
+            for x in range(1, mesh_size+1):
+                if x != mesh_size:
+                    self.addLink(f'r{x}_{y}', f'r{x+1}_{y}') # East
+                if y != mesh_size:
+                    self.addLink(f'r{x}_{y}', f'r{x}_{y+1}') # North
+                    #self.addLink(f'r{x}_{y}', f'r{x}_{y+1}', intfName1=f'r{x}_{y}-isl_n', intfName2=f'r{x+1}_{y}-isl_s') # Above
+        
+        
+
+    def get_unique_position(self):
+        random.seed(24601) # Will this seed make each integer the same?
+        while True:
+            pos = (random.randint(1, self.mesh_size), random.randint(1, self.mesh_size))
+            if pos not in self.host_coords:
+                self.host_coords.append(pos)
+                break
+        return pos
+
+
+
+
+
+
+topos = { 'dumbell': DumbellTopo,
+          'double_dumbell': DoubleDumbbellTopo,
+          'parking_lot': ParkingLot,
+          'multi_topo': MultiTopo,
+          "multi_competition_topo" : MultiCompetitionTopo,
+          "minimal_mp" : MinimalMP,
+          "ndiffports_test" : NdiffportsTest,
+          "ndiffports2" : Ndiffports2,
+          "manhattan" : ManhattanTopo
+        }

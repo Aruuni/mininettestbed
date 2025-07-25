@@ -291,7 +291,7 @@ class Emulation:
                 params = (destination, self.interval,)
                 command = self.start_iperf_server
                 self.call_first.append(Command(command, params, None, destination))
-
+                
                 # Create client start up call
                 params = (source_node, destination, duration, protocol, self.interval)
                 command = self.start_iperf_client
@@ -330,8 +330,8 @@ class Emulation:
             This thread is used to wait for the output of the given node.
             """
             host = self.network.get(node_name)
-            #printRed(host.waitOutput(verbose = True))
             output = host.waitOutput(verbose = True)
+            printRed(f"{host.name} finishing")
             mkdirp(self.path)
             with open( f"{self.path}/{node_name}_output.txt", 'w') as fout:
                 fout.write(output)
@@ -443,15 +443,17 @@ class Emulation:
         Additioanlly, the SS script is started on the client node with a default interval of 0.01 seconds (lowest possible). 
         Later versions of iperf3 will have the rtt and cwnd in its json output.
         """
-        node = self.network.get(node_name)
 
+        node = self.network.get(node_name)
+        
         # Monitor per-subflow statistics with ss
-        ss_mptcp_cmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_mptcp.sh'} 0.1 {self.path}/{node.name}_ss_mp.csv &"
+        # duration + 10 just as a test. I want to manually set min and max at some point
+        ss_mptcp_cmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_mptcp.sh'} {monitor_interval} {self.path}/{node.name}_ss_mp.csv {duration+.6} &"
         printBlue(f'Sending command {ss_mptcp_cmd} to host {node.name}')
         node.cmd(ss_mptcp_cmd)
 
         # Monitor statistics about this connection with ss
-        sscmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_iperf3.sh'} 0.1 {self.path}/{node.name}_ss.csv &"
+        sscmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_iperf3.sh'} {monitor_interval} {self.path}/{node.name}_ss.csv {duration+.6} &"
         printBlue(f'Sending command {sscmd} to host {node.name}')
         node.cmd(sscmd)
 
@@ -471,7 +473,13 @@ class Emulation:
             + f"iperf3 -p {port} "
             + ("" if self.ubuntu16 else "--cport=11111 ")
             + f"-i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}"
-        ).replace("  ", " ").strip()       
+        ).replace("  ", " ").strip()
+        
+        # Log the official first-flow start time for accurate plots
+        if self.start_time == 0:
+            self.start_time = time.time()
+            printGreenFill(f'First flow {node_name} beginning at {self.start_time}')
+
         printBlueFill(f'Sending command {iperfCmd} to host {node.name}')
         node.sendCmd(iperfCmd)
 

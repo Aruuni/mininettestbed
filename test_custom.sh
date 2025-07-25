@@ -2,12 +2,16 @@ source common.sh
 bash setup.sh
 
 PROTOCOLS="cubic"
-BANDWIDTHS="50"
-DELAYS="20"
-RUNS="1"
+BANDWIDTHS="100"
+DELAYS="50"
+RUNS="3"
 QMULTS=".2"
-FLOWS="2"
+FLOWS="6"
 
+SUBFLOWS="4"
+MESH_SIZES="5"
+
+# MANHATTAN RANDOM POSITIONS
 for bw in $BANDWIDTHS
 do
     for del in $DELAYS
@@ -16,17 +20,51 @@ do
         do
             for flow in $FLOWS
             do
-                for protocol in $PROTOCOLS
+                for subflow in $SUBFLOWS
                 do
-                    for run in $RUNS
+                    for mesh_size in $MESH_SIZES
                     do
-                        run experiments_mininet/custom/experiment_ndiffports_2.py $del $bw $qmult $protocol $run fifo 0 $flow
+                        for protocol in $PROTOCOLS
+                        do
+                            for run in $RUNS
+                            do
+                                run experiments_mininet/custom/experiment_manhattan_varied.py $del $bw $qmult $protocol $run fifo 0 $flow $subflow $mesh_size
+                            done
+                        done
                     done
                 done
             done
         done
     done
 done
+
+
+# PROTOCOLS="cubic"
+# BANDWIDTHS="103"
+# DELAYS="5"
+# RUNS="1"
+# QMULTS=".2"
+# FLOWS="5"
+
+# for bw in $BANDWIDTHS
+# do
+#     for del in $DELAYS
+#     do
+#         for qmult in $QMULTS
+#         do
+#             for flow in $FLOWS
+#             do
+#                 for protocol in $PROTOCOLS
+#                 do
+#                     for run in $RUNS
+#                     do
+#                         run experiments_mininet/custom/experiment_manhattan_anim.py $del $bw $qmult $protocol $run fifo 0 $flow
+#                     done
+#                 done
+#             done
+#         done
+#     done
+# done
 
 # STEPS="10 20 30 40 50 60 70 80 90 100"
 # QMULTS="0.2 1 4"
