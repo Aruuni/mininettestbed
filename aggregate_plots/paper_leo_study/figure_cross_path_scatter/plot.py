@@ -46,9 +46,7 @@ def calculate_jains_index(bandwidths):
     sum_bw_sq = sum(bw**2 for bw in bandwidths)
     return (sum_bw**2) / (n * sum_bw_sq) if sum_bw_sq != 0 else 0
 
-def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols,
-                  flows, runs):
-
+def data_to_dd_df(root_path, aqm, bws, delays, qmults, protocols, flows, runs):
     results = []
     for mult in qmults:
         for bw in bws:

@@ -60,12 +60,12 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Experiment properties
     bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
-    duration = 120
+    duration = 10
     subflows = n_subflows
     host_positions = varied_positions
 
     # Generate path for plots, and delete old plot if necessary
-    path = f"{HOME_DIR}/cctestbed/mininet/results_manhattan_anim/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{n_subflows}subflows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
+    path = f"{HOME_DIR}/cctestbed/mininet/results_manhattan_varied/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{n_subflows}subflows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
     printRed(path)
     rmdirp(path)
     mkdirp(path)
@@ -92,7 +92,6 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         # Client down
         client_ip = net.get(f'c{i}').IP()
         add_route(net, f'UT_c{i}', [f'r_c{i}'], client_ip)
-        #add_route(net, f'r_c{i}', [f'c{i}'], client_ip) # probably unnecessary
 
         # Server up
         add_default_gateway(net, f'x{i}', [f'r_x{i}'])
@@ -101,7 +100,6 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         # Server down
         server_ip = net.get(f'x{i}').IP()
         add_route(net, f'UT_x{i}', [f'r_x{i}'], server_ip)
-        #add_route(net, f'r_x{i}', [f'x{i}'], server_ip) # probably unnecessary
 
         # Client and server delay
         network_config.append(NetworkConf(f'r_c{i}', f'UT_c{i}', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss))
@@ -120,8 +118,8 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
 
     for f in range(1, n_flows + 1):
-        offset = (f-1) * 10 # Start each flow 10 seconds apart (Make sure your duration is long enough!)
-        traffic_config.append(TrafficConf(f'c{f}', f'x{f}', offset, duration-offset, protocol)) # Start main flow (c1->x1) for entire experiment
+        traffic_config.append(TrafficConf(f'c{f}', f'x{f}', 0, duration, protocol)) # Start main flow (c1->x1) for entire experiment
+    
 
     monitors = []
     # Track queues (these may be the wrong interfaces?)
@@ -133,6 +131,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
                 if int(intf.name.split('eth')[1]) >= n_flows * 2:
                     printPink(f'Monitoring intf {intf.name}')
                     monitors.append(intf.name)
+    #monitors.append('r5_2-eth14')
     monitors.append('sysstat')
     print(monitors)
     # -------------------------------------------------------------------------------------------------------------------------------------------
@@ -140,8 +139,8 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     
 
     anim = ManhattanTopoAnimator(net=net, topo=topo, host_positions=host_positions, direction=(-.05, 0), relative=True)
-    #CLI(net)
-    em = Emulation(net, network_config, traffic_config, path, 1)
+    CLI(net)
+    em = Emulation(net, network_config, traffic_config, path, .1)
     em.configure_network()
     em.configure_traffic()
     em.set_monitors(monitors) # monitors switch and router queue sizes
@@ -162,7 +161,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     change_all_user_permissions(path)
     process_raw_outputs(path, emulation_start_time=em.start_time) # parsers.py does its thing
     change_all_user_permissions(path)
-    plot_all_mn(path,multipath=True)
+    plot_all_mn(path,aqm='fq_codel', multipath=True)
 
 
 if __name__ == '__main__':

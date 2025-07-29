@@ -15,27 +15,12 @@ from core.network_animation import *
 import threading
 
 # Host positions (relative)
-cross_corners = {  'c1' : (0, 0, 0.0),
-                    'x1' : (1.0, 1.0, 0.0),
-                    'c2' : (0.0, 1.0, 0.0),
-                    'x2' : (1.0, 0.0, 0.0),
-                    }
+isolated = {  'c1' : (0, 0, 0.0),
+                'x1' : (1, 0, 0.0),
+                'c2' : (1.0, 1.0, 0.0),
+                'x2' : (0.0, 1.0, 0.0),
+                }
 
-perfect_opposite = {  'c1' : (0.0, 0.0, 0.0),
-                    'x1' : (1.0, 0.0, 0.0),
-                    'c2' : (1.0, 0.0, 0.0),
-                    'x2' : (0.0, 0.0, 0.0),
-                    }
-
-shared_diagonal = {  'c1' : (.1, 0, 0.0),
-                    'x1' : (1, .9, 0.0),
-                    'c2' : (0, .1, 0.0),
-                    'x2' : (.9, 1, 0.0),
-                    }
-
-random_positions = {
-
-                    }
 
 # This experiment runs a custom animated version of the Manhattan topology, intended to loosely simulate the behaviour of LEO satellite networks
 def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2, n_subflows=2):
@@ -50,25 +35,17 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Experiment properties
     bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
-    duration = 60
+    duration = 10
     subflows = n_subflows
-    host_positions = random_positions
+    host_positions = isolated
+    n_flows = 2 # only 2 works for this experiment
 
     # Generate path for plots, and delete old plot if necessary
-    path = f"{HOME_DIR}/cctestbed/mininet/results_manhattan_random/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{n_subflows}subflows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
+    path = f"{HOME_DIR}/cctestbed/mininet/results_manhattan_varied/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{n_subflows}subflows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
     printRed(path)
     rmdirp(path)
     mkdirp(path)
     printGreen(f"delay is {delay}, bw is {bw}, qmult is {qmult}, qsize is {qsize_in_bytes}, bdp is {bdp_in_bytes}, loss is {loss}")
-    
-    # Convert names? I doubt I need this, but I'll keep it for now
-    if protocol == "bbr1":
-        protocol = "bbr"
-    if (protocol == "bbr3"):
-        protocol = "bbr"
-    if (protocol == "vivace"):
-        protocol = "pcc"
-    
     
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult) # idk, buffers setup
     assign_ips_by_link(net) # Assign interface IPs sequentially
@@ -91,7 +68,6 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         # Client down
         client_ip = net.get(f'c{i}').IP()
         add_route(net, f'UT_c{i}', [f'r_c{i}'], client_ip)
-        #add_route(net, f'r_c{i}', [f'c{i}'], client_ip) # probably unnecessary
 
         # Server up
         add_default_gateway(net, f'x{i}', [f'r_x{i}'])
@@ -100,7 +76,6 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         # Server down
         server_ip = net.get(f'x{i}').IP()
         add_route(net, f'UT_x{i}', [f'r_x{i}'], server_ip)
-        #add_route(net, f'r_x{i}', [f'x{i}'], server_ip) # probably unnecessary
 
         # Client and server delay
         network_config.append(NetworkConf(f'r_c{i}', f'UT_c{i}', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss))
@@ -113,23 +88,14 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     for x in range (1, mesh_size+1):
         for y in range (1, mesh_size+1):
             if x != mesh_size:
-                network_config.append(NetworkConf(f'r{x}_{y}', f'r{x+1}_{y}', bw,     None,       qsize_in_bytes, True,    aqm,    None)) # Right
+                network_config.append(NetworkConf(f'r{x}_{y}', f'r{x+1}_{y}', bw,     None,       qsize_in_bytes, False,    aqm,    None)) # Right
             if y != mesh_size:
-                network_config.append(NetworkConf(f'r{x}_{y}', f'r{x}_{y+1}', bw,     None,       qsize_in_bytes, True,    aqm,    None)) # Above
+                network_config.append(NetworkConf(f'r{x}_{y}', f'r{x}_{y+1}', bw,     None,       qsize_in_bytes, False,    aqm,    None)) # Above
 
-    for f in range(1, n_flows + 1):
-        # Host positions
-        x = random.random()
-        y = random.random()
-        random_positions[f'c{f}'] = (x, y, 0)
-        x = random.random()
-        y = random.random()
-        random_positions[f'x{f}'] = (x, y, 0)
 
-        # Traffic Config
-        rand_duration = min(duration/2, duration * random.random()) # random duration from duration/2 to duration
-        rand_start = random.random() * (duration - rand_duration) # random start (with enough time left to finish the flow)
-        traffic_config.append(TrafficConf(f'c{f}', f'x{f}', rand_start, rand_duration, protocol)) # Start main flow (c1->x1) for entire experiment
+    
+    traffic_config.append(TrafficConf(f'c1', f'x1', 0, duration, protocol)) # Start main flow (c1->x1) for entire experiment
+    traffic_config.append(TrafficConf(f'c2', f'x2', duration/2, duration/2, protocol)) # Start secondary flow halfway through experiment
 
     monitors = []
     # Track queues (these may be the wrong interfaces?)
@@ -149,7 +115,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     
 
     anim = ManhattanTopoAnimator(net=net, topo=topo, host_positions=host_positions, direction=(-.05, 0), relative=True)
-    #CLI(net)
+    CLI(net)
     em = Emulation(net, network_config, traffic_config, path, .1)
     em.configure_network()
     em.configure_traffic()
@@ -171,7 +137,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     change_all_user_permissions(path)
     process_raw_outputs(path, emulation_start_time=em.start_time) # parsers.py does its thing
     change_all_user_permissions(path)
-    plot_all_mn(path,multipath=True)
+    plot_all_mn(path,aqm='fq_codel', multipath=True)
 
 
 if __name__ == '__main__':

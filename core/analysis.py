@@ -100,7 +100,12 @@ def plot_all_mn(path: str, aqm='fifo', multipath=False) -> None:
     def remove_outliers(df, column, threshold):
         """Remove outliers from a DataFrame column based on a threshold."""
         return df[df[column] < threshold]
-    plot_count = 9 if multipath else 7 # 3 extra plots for subflow statistics, and 1 plot removed (normal CWND only sees primary subflow)
+    
+    #TODO: Find a way of customizing which plots im interested in per-experiment
+    plot_count = 8
+    if multipath:
+        plot_count += 2
+
     fig, axs = plt.subplots(plot_count, 1, figsize=(16, 36))
     with open(os.path.join(path, 'emulation_info.json'), 'r') as f: # {"topology": "MultiTopo(n=3)", "flows": [["c1", "x1", "10.0.0.1", "10.0.0.3", 0, 10, "wvegas", null], ["c2", "x2", "10.0.0.2", "10.0.0.4", 5.0, 5.0, "wvegas", null]]}
         emulation_info = json.load(f)
@@ -218,6 +223,9 @@ def plot_all_mn(path: str, aqm='fifo', multipath=False) -> None:
             #     axs[8].set_ylabel("Interface Goodput? (Mbps)")
 
             
+            
+
+
             # Goodput 
             axs[p].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
             axs[p].set_title("Goodput (Mbps)")
@@ -323,6 +331,40 @@ def plot_all_mn(path: str, aqm='fifo', multipath=False) -> None:
         #     axs[5].plot(df_ss_client['time'], df_ss_client['rttvar'], label=f'{flow_client} Rttvar')
         #     axs[5].set_title("Rttvar from SS (ms)")
 
+
+    # Jain's Fairness Index -------------------------------------------------------------------------------------
+    fairness_interval = 1 # Seconds between each fairness measurement
+    average_throughputs =  defaultdict(list)
+    jains = defaultdict(list)
+    minimums = defaultdict(list)
+    
+    # Calculate running throughput averages for each flow
+    for flow_num, flow in enumerate(flows):
+        flow_client = flow[0]  # Client flow name like 'c1', 'c2', etc.
+        flow_server = flow[1]  # Server flow name like 'x1', 'x2', etc.
+        df_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}.csv'))
+        df_client['interval'] = (df_client['time'] // fairness_interval) * fairness_interval # Round time to the nearest interval
+        df_client_averages = df_client.groupby('interval').mean()
+        for interval in df_client_averages.index:
+            average_throughputs[interval].append(df_client_averages.loc[interval]['bandwidth'])
+    for interval in average_throughputs:
+        jains[interval] = calculate_jains_index(average_throughputs[interval])
+        minimums[interval] = 1.0/len(average_throughputs[interval])
+    
+    x_vals, y_vals = zip(*sorted(jains.items()))
+    min_x_vals, min_y_vals = zip(*sorted(minimums.items()))
+
+    axs[plot_count-3].plot(x_vals, y_vals, label="Fairness Index")
+    axs[plot_count-3].step(min_x_vals, min_y_vals, color='red', linestyle='--', label='Minimum Fairness') # Plot minimum possible fairness based on number of flows
+    axs[plot_count-3].set_ylim(bottom=1.0/float(len(flows)), top=1.1) # Set min possible for Jain's index, and max just above 1 so you can see the top of the line
+    axs[plot_count-3].set_title("Jain's Fairness Index (Snapshots)")
+    axs[plot_count-3].set_ylabel("Fairness Index")
+    # End of Jain's Fairness Index ------------------------------------------------------------------------------
+
+
+
+
+    # Queue Plots -----------------------------------------------------------------------------------------------
     queue_dir = os.path.join(path, 'queues')  # Specify the folder containing the queue files
     queue_files = [f for f in os.listdir(queue_dir) if f.endswith('.txt')]
     match = re.search(r"_(\d+)pkts_", queue_dir)
@@ -354,6 +396,7 @@ def plot_all_mn(path: str, aqm='fifo', multipath=False) -> None:
         axs[plot_count-2].set_title("Queue size (packets)")
         axs[plot_count-1].plot(df_queue['time'], df_queue['interval_drops'], linestyle='--', label=f'{queue_file} - root_drp')
         axs[plot_count-1].set_title("Queue drops (packets)")
+    # End of Queue Plots -----------------------------------------------------------------------------------------------
 
     x_max = 0
     for i, ax in enumerate(axs):
@@ -671,5 +714,9 @@ def plot_all_ns3_responsiveness_extra(path: str) -> None:
     printBlue(f"NS3 experiment plots saved to '{output_file}'.")
     plt.close()
 
-
-    
+def calculate_jains_index(bandwidths):
+    """Calculate Jain's Fairness Index for a given set of bandwidth values."""
+    n = len(bandwidths)
+    sum_bw = sum(bandwidths)
+    sum_bw_sq = sum(bw ** 2 for bw in bandwidths)
+    return (sum_bw ** 2) / (n * sum_bw_sq) if sum_bw_sq != 0 else 0

@@ -20,7 +20,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         print("ERROR: topology \'%s\' not recognised" % topology)
 
     # Create Mininet (with MPTCP wrapper class)
-    net = MPMininetWrapper(topo=topo, link=TCLink)
+    net = Mininet(topo=topo, link=TCLink)
 
     # Experiment properties
     bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
@@ -47,7 +47,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult) # idk, buffers setup
     assign_ips(net) # Assign unique IPs in their appropriate per-link subnets
     assign_ECMP_routing_tables(net) # Automatically configure routing tables and default gateways, may not be perfect
-    net.configure_ndiffports_endpoints(subflows)
+    configure_ndiffports_endpoints(net, subflows)
 
     c1_ip = net.get('c1').IP()
     x1_ip = net.get('x1').IP()
@@ -55,18 +55,18 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     x2_ip = net.get('x2').IP()
 
     # Fix some routes misconfigured by assign_ECMP_routing_tables()
-    net.add_route('r2b', ['r1a'], c1_ip)
-    net.add_route('r2c', ['r1d'], x1_ip)
+    add_route(net, 'r2b', ['r1a'], c1_ip)
+    add_route(net, 'r2c', ['r1d'], x1_ip)
 
     # Add routes from c2 to x2
-    net.add_route('r2a', ['r2b'], x2_ip)
-    net.add_route('r2b', ['r2c'], x2_ip)
-    net.add_route('r2c', ['r2d'], x2_ip)
+    add_route(net, 'r2a', ['r2b'], x2_ip)
+    add_route(net, 'r2b', ['r2c'], x2_ip)
+    add_route(net, 'r2c', ['r2d'], x2_ip)
 
     # Add routes from x2 to c2
-    net.add_route('r2d', ['r2c'], c2_ip)
-    net.add_route('r2c', ['r2b'], c2_ip)
-    net.add_route('r2b', ['r2a'], c2_ip)
+    add_route(net, 'r2d', ['r2c'], c2_ip)
+    add_route(net, 'r2c', ['r2b'], c2_ip)
+    add_route(net, 'r2b', ['r2a'], c2_ip)
 
     # Disable MPTCP on the competing connection
     net.get('c2').cmdPrint('ip mptcp limits set subflows 0')

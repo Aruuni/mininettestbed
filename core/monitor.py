@@ -54,7 +54,8 @@ def monitor_qlen_on_router(iface, mininode, interval_sec = 0.1, path = default_d
         matches_dropped = pat_dropped.findall(output)
         if len(matches_queued) != len(matches_dropped):
             print("WARNING: Two matches have different lengths!")
-            print(output)
+            printGreen(iface)
+            printRed(output)
         if matches_queued and matches_dropped:
             tmp += '%f,%s,%s' % (time(), matches_queued[0],matches_dropped[0])
             if len(matches_queued) > 1 and len(matches_dropped)> 1: 
@@ -63,7 +64,7 @@ def monitor_qlen_on_router(iface, mininode, interval_sec = 0.1, path = default_d
                 tmp += ',,\n'
         f = open(fname, 'a')
         f.write(tmp)
-        f.close
+        f.close()
         sleep(interval_sec)
     return
 
