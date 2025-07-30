@@ -76,7 +76,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
             monitors.append('s' + str(p) + '.3' + '-eth2')
         monitors.append('sysstat')
         #traffic_config = [TrafficConf('c1', 'x1', 0, duration, 'cubic'),
-         #               TrafficConf('c1', 'x1', 30, duration-30, protocol)]
+        #               TrafficConf('c1', 'x1', 30, duration-30, protocol)]
         traffic_config = [TrafficConf('c1', 'x1', 0, duration, protocol)] # Start traffic from c1 to x1 using the given protocol for the entire duration of the experiment (start at t=0)
 
     em = Emulation(net, network_config, traffic_config, path, 0.1)

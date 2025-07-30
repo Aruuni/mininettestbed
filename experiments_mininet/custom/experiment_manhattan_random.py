@@ -127,7 +127,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         random_positions[f'x{f}'] = (x, y, 0)
 
         # Traffic Config
-        rand_duration = min(duration/2, duration * random.random()) # random duration from duration/2 to duration
+        rand_duration = max(duration/2, duration * random.random()) # random duration from duration/2 to duration
         rand_start = random.random() * (duration - rand_duration) # random start (with enough time left to finish the flow)
         traffic_config.append(TrafficConf(f'c{f}', f'x{f}', rand_start, rand_duration, protocol)) # Start main flow (c1->x1) for entire experiment
 

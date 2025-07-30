@@ -5,12 +5,12 @@ PROTOCOLS="cubic"
 BANDWIDTHS="100"
 DELAYS="50"
 RUNS="3"
-QMULTS="1"
+QMULTS="2"
 FLOWS="6"
 LOSS="0"
 
 AQM="fifo"
-SUBFLOWS="1"
+SUBFLOWS="8"
 MESH_SIZES="5"
 
 # MANHATTAN RANDOM POSITIONS
@@ -32,7 +32,7 @@ do
                             do
                                 for run in $RUNS
                                 do
-                                    run experiments_mininet/custom/experiment_manhattan_random.py $del $bw $qmult $protocol $run $AQM $loss $flow $subflow $mesh_size
+                                    run experiments_mininet/custom/experiment_manhattan_varied.py $del $bw $qmult $protocol $run $AQM $loss $flow $subflow $mesh_size
                                 done
                             done
                         done

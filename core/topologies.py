@@ -339,7 +339,7 @@ class ManhattanTopo(Topo):
         
 
     def get_unique_position(self):
-        random.seed(24601) # Will this seed make each integer the same?
+        #random.seed(24601) # Will this seed make each integer the same?
         while True:
             pos = (random.randint(1, self.mesh_size), random.randint(1, self.mesh_size))
             if pos not in self.host_coords:

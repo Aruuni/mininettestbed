@@ -84,10 +84,12 @@ def parse_ifstat_output(file_path, offset=0):
                     # Extract throughputs and convert to mbps
                     mbps_in = float(parts[2 + 2*i]) * .001
                     mbps_out = float(parts[3 + 2*i]) * .001
+
+                    if float(parts[2 + 2*i]) == 0.0 or float(parts[3 + 2*i]) == 0.0:
+                        continue
                 except ValueError:
                     # Skip the line if float conversion fails (line contains "n/a")
                     continue
-
                 # Append values to the dictionary
                 data["time"].append(timestamp)
                 data["intf"].append(intf)
@@ -152,7 +154,8 @@ def parse_ss_mp_output(file_path, offset=0, emulation_start_time=None, suppress_
         "rttvar": r"rtt:[\d.]+/([\d.]+)",  # Extract rttvar
         "retr": r"retrans:(\d+)/",
         "token": r"token:[^/]+/([^ ]+)",       # Extract value after slash in token field
-        "delivery_rate": r"delivery_rate (\d+)bps"
+        "delivery_rate": r"delivery_rate (\d+)bps",
+        "send": r"send (\d+)bps",
     }
     data = defaultdict(list)  # Initializes a dictionary where values are lists
     with open(file_path, "r") as f:
@@ -167,7 +170,6 @@ def parse_ss_mp_output(file_path, offset=0, emulation_start_time=None, suppress_
                 printBlue(f"Found a new token! {token}")
 
             # Skip this line if it is from the init connection
-            
             if suppress_ghost_flows and token == tokens[0]:
                continue
 
@@ -180,9 +182,14 @@ def parse_ss_mp_output(file_path, offset=0, emulation_start_time=None, suppress_
             if not time_match:
                 continue
             
-            # Extract throughput
+            # Extract "goodput"
             delivery_rate_match = re.search(patterns["delivery_rate"], line)
             if not delivery_rate_match:
+                continue
+            
+            # Extract "throughput"
+            send_match = re.search(patterns["send"], line)
+            if not send_match:
                 continue
 
             timestamp = float(time_match.group(1))
@@ -198,10 +205,10 @@ def parse_ss_mp_output(file_path, offset=0, emulation_start_time=None, suppress_
             data["token"].append(re.search(patterns["token"], line))
 
             data["delivery_rate"].append(float(delivery_rate_match.group(1)) / 1000000.0)
-            
+            data["send"].append(float(send_match.group(1)) / 1000000.0)
             # Extract metrics
             for key, pattern in patterns.items():
-                if key == "time" or key == "state" or key == "token" or key == "delivery_rate":
+                if key == "time" or key == "state" or key == "token" or key == "delivery_rate" or key == "send":
                     continue
                 match = re.search(pattern, line)
                 value = float(match.group(1)) if match else None
