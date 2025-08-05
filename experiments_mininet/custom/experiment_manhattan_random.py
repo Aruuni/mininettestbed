@@ -50,7 +50,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Experiment properties
     bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
-    duration = 60
+    duration = 120
     subflows = n_subflows
     host_positions = random_positions
 
@@ -134,14 +134,13 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     monitors = []
     # Track queues (these may be the wrong interfaces?)
 
-    # node: Node
-    # for node in net.hosts:
-    #     if node.name.startswith('r') and not node.name.startswith('r_'):
-    #         for intf in node.intfList():
-    #             if int(intf.name.split('eth')[1]) >= n_flows * 2:
-    #                 printPink(f'Monitoring intf {intf.name}')
-    #                 monitors.append(intf.name)
-    monitors.append('r5_2-eth14')
+    node: Node
+    for node in net.hosts:
+        if node.name.startswith('r') and not node.name.startswith('r_'):
+            for intf in node.intfList():
+                if int(intf.name.split('eth')[1]) >= n_flows * 2:
+                    printPink(f'Monitoring intf {intf.name}')
+                    monitors.append(intf.name)
     monitors.append('sysstat')
     print(monitors)
     # -------------------------------------------------------------------------------------------------------------------------------------------

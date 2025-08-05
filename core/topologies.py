@@ -347,10 +347,40 @@ class ManhattanTopo(Topo):
                 break
         return pos
 
+# A simple two-path topology with OVSKernelSwitches. Alternate paths to be switched between with custom controller code
+# Remember - loops will make the default learning switch fail. You will need a custom controller for this to topology to function.
+class OpenFlowTest(Topo):
+    # Returns a unique DPID. Intended to override the default dpid generation based on name (s1a = 1, and s1b = 1. Collisions are bad.)
+    def get_dpid(self):
+        self.curr_dpid += 1
+        return "%016x" % self.curr_dpid  # Return zero-padded hex string for DPID
+    
+    def build(self, n=3):
+        self.n = n
+        self.curr_dpid = 0
 
+        # Hosts/switches
+        c1 = self.addHost('c1', cls=Host)
+        s_c1 = self.addSwitch('s_c1', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
+        s1a = self.addSwitch('s1a', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
+        s1b = self.addSwitch('s1b', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
+        s2b = self.addSwitch('s2b', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid()) # alternate path
+        s1c = self.addSwitch('s1c', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
+        s_x1 = self.addSwitch('s_x1', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
+        x1 = self.addHost('x1', cls=Host)
 
+        # Links
+        self.addLink('c1', 's_c1')
+        self.addLink('s_c1', 's1a')
+        self.addLink('s1a', 's1b')
+        self.addLink('s1a', 's2b')
+        self.addLink('s1b', 's1c')
+        self.addLink('s2b', 's1c')
+        self.addLink('s1c', 's_x1')
+        self.addLink('s_x1', 'x1')
 
-
+    def __str__(self):
+        return "OpenFlowTest(n=%d)" % self.n
 
 topos = { 'dumbell': DumbellTopo,
           'double_dumbell': DoubleDumbbellTopo,
@@ -360,5 +390,6 @@ topos = { 'dumbell': DumbellTopo,
           "minimal_mp" : MinimalMP,
           "ndiffports_test" : NdiffportsTest,
           "ndiffports2" : Ndiffports2,
-          "manhattan" : ManhattanTopo
+          "manhattan" : ManhattanTopo,
+          'openflowtest' : OpenFlowTest,
         }

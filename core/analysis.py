@@ -6,7 +6,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import itertools
 import matplotlib.gridspec as gridspec
-
+import numpy as np
+import math
 
 def process_raw_outputs(path, emulation_start_time=None):
     with open(path + '/emulation_info.json', 'r') as fin:
@@ -102,12 +103,12 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
         """Remove outliers from a DataFrame column based on a threshold."""
         return df[df[column] < threshold]
     
-    #TODO: Find a way of customizing which plots im interested in per-experiment
-    plot_count = 15
+    #TODO: Find a way to calculate this dynamically or only commit to a figure size at the end
+    plot_count = 9
     if multipath:
-        plot_count += 2
-    fig, axs = plt.subplots(plot_count, 1, figsize=(16, 36))
-
+        plot_count = 12
+    fig, axs = plt.subplots(plot_count, 1, figsize=(16, 48))
+    
     # Open and read files ---------------------------------------------------------------------------------------------------------------------------------------------------------
     with open(os.path.join(path, 'emulation_info.json'), 'r') as f: 
         emulation_info = json.load(f)
@@ -120,6 +121,7 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
             if flow[6] == None:
                 flows.append([flow[0], flow[1]])  # Changing conditions?
     #try:
+    subplots = []
     for flow_num, flow in enumerate(flows):
         flow_client = flow[0]  # Client flow name like 'c1', 'c2', etc.
         flow_server = flow[1]  # Server flow name like 'x1', 'x2', etc.
@@ -206,16 +208,23 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                             ["#bcbd22"],
                             ["#17becf"],
                         ]
+        subflow_plot_bg_color = (.95, .95, .95) # Make subflows plots slightly dark, more identifiable at a glance
         p = 0 # Current plot
         for metric in metrics:
             if metric == 'goodput':
-                printPink("Plotting goodput")
-                axs[p].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
-                axs[p].set_title("Goodput (Mbps)")
-                axs[p].set_ylabel("Goodput (Mbps)")
-                p+=1
-
                 if multipath:
+                    # Goodput (summed from subflows)
+                    subflow_interval = .1 # how often to sum the sending rates of each subflow
+                    df_ss_mp_client_sum = df_ss_mp_client.copy()
+                    df_ss_mp_client_sum['interval'] = (df_ss_mp_client_sum['time'] // subflow_interval) * subflow_interval # Round time to the nearest interval
+                    goodput_sums = df_ss_mp_client_sum.groupby('interval')['delivery_rate'].sum()
+                    x_vals, y_vals = zip(*sorted(goodput_sums.items()))
+                    axs[p].plot(x_vals, y_vals, label=f'{flow_client} goodput')
+                    axs[p].set_title("Goodput (sum)")
+                    axs[p].set_ylabel("Goodput (mbps)")
+                    
+                    p+=1
+
                     # Client subflow goodputs
                     for s, subflow in enumerate(subflows):
                         df_sub = df_ss_mp_client[df_ss_mp_client['src'] == subflow]
@@ -223,95 +232,107 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                         if len(df_sub) > subflow_threshold:
                             axs[p].plot(df_sub['time'], df_sub['delivery_rate'], label=f'{flow_client} subflows' if s == 0 else '_nolegend_', color=subflow_colors[flow_num][0] ,alpha = .75)
                             # axs[p].plot(df_sub['time'], df_sub['delivery_rate'], label=f'{flow_client} sf_{subflow} RTT')
-                            axs[p].set_title("Subflow Goodput from SS (mbps)")
-                            axs[p].set_ylabel("Subflow Goodput (mbps))")
+                            axs[p].set_title("Goodput (subflows)")
+                            axs[p].set_ylabel("Goodput (mbps)")
+                            axs[p].set_facecolor(subflow_plot_bg_color)
+                    p+=1
+                else:                
+                    printPink("Plotting goodput")
+                    axs[p].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
+                    axs[p].set_title("Goodput (Mbps)")
+                    axs[p].set_ylabel("Goodput (Mbps)")
                     p+=1
             elif metric == 'throughput':
-                printPink("Plotting throughput")
-                axs[p].plot(df_client['time'], df_client['bandwidth'], label=f'{flow_client} CWND')
-                axs[p].set_title("Throughput (Mbps)")
-                axs[p].set_ylabel("Throughput (Mbps)")
-
-                p += 1
-
+                throughput_ax = p
                 if multipath:
-                    # Client subflow throughputs
-                    for s, subflow in enumerate(subflows):
-                        df_sub = df_ss_mp_client[df_ss_mp_client['src'] == subflow]
-                        #df_sub = df_sub[~df_sub['token'].str.contains(init_token, regex=False)]
-                        if len(df_sub) > subflow_threshold:
-                            axs[p].plot(df_sub['time'], df_sub['send'], label=f'{flow_client} subflows' if s == 0 else '_nolegend_', color=subflow_colors[flow_num][0] ,alpha = .75)
-                            # axs[p].plot(df_sub['time'], df_sub['delivery_rate'], label=f'{flow_client} sf_{subflow} RTT')
-                            axs[p].set_title("Subflow Throughput from SS (mbps)")
-                            axs[p].set_ylabel("Subflow Throughput (mbps))")
-                    p+=1
-
-                    # Client subflow SUMMED throughputs (more resistant to iperf control-socket noise)
+                    # Throughput (summed from subflows)
                     subflow_interval = .1 # how often to sum the sending rates of each subflow
                     df_ss_mp_client_sum = df_ss_mp_client.copy()
                     df_ss_mp_client_sum['interval'] = (df_ss_mp_client_sum['time'] // subflow_interval) * subflow_interval # Round time to the nearest interval
-                    
                     send_sums = df_ss_mp_client_sum.groupby('interval')['send'].sum()
                     x_vals, y_vals = zip(*sorted(send_sums.items()))
-                    
                     axs[p].plot(x_vals, y_vals, label=f'{flow_client} throughput')
-                    # axs[p].plot(df_sub['time'], df_sub['delivery_rate'], label=f'{flow_client} sf_{subflow} RTT')
-                    axs[p].set_title("Throughput (summed from SS)")
-                    axs[p].set_ylabel("Throughput (summed from SS)")
+                    axs[p].set_title("Throughput (sum)")
+                    axs[p].set_ylabel("Throughput (mbps)")
+                    
                     p+=1
 
+                    # Individual subflow throughputs
                     for s, subflow in enumerate(subflows):
                         df_sub = df_ss_mp_client[df_ss_mp_client['src'] == subflow]
                         #df_sub = df_sub[~df_sub['token'].str.contains(init_token, regex=False)]
                         if len(df_sub) > subflow_threshold:
                             axs[p].plot(df_sub['time'], df_sub['send'], label=f'{flow_client} subflows' if s == 0 else '_nolegend_', color=subflow_colors[flow_num][0] ,alpha = .75)
                             # axs[p].plot(df_sub['time'], df_sub['delivery_rate'], label=f'{flow_client} sf_{subflow} RTT')
-                            axs[p].set_title("Subflow Throughput from SS (mbps)")
-                            axs[p].set_ylabel("Subflow Throughput (mbps))")
+                            axs[p].set_title("Throughput (subflows)")
+                            axs[p].set_ylabel("Throughput (mbps)")
+                            axs[p].set_facecolor(subflow_plot_bg_color)
                     p+=1
+                else:
+                    printPink("Plotting throughput")
+                    axs[p].plot(df_client['time'], df_client['bandwidth'], label=f'{flow_client} CWND')
+                    axs[p].set_title("Throughput (Mbps)")
+                    axs[p].set_ylabel("Throughput (Mbps)")
 
-                    # Intf throughput
-                    # Client interface throughputs
-                    intf_names = sorted(df_ifstat_client['intf'].unique())
-                    for intf in intf_names:
-                        df_sub = df_ifstat_client[df_ifstat_client['intf'] == intf]
-                        axs[p].plot(df_sub['time'], df_sub['mbps_out'], label=f'{intf} Throughput')
-                        axs[p].set_title("Client Interface Throughput (Mbps)")
-                        axs[p].set_ylabel("Interface Throughput (Mbps)")
                     p += 1
             elif metric == 'rtt':
-                printPink("Plotting RTT")
-                if 'srtt' in df_client.columns:
-                    axs[p].plot(df_client['time'], df_client['srtt'], label=f'{flow_client} RTT')
-                    axs[p].set_title("RTT from Iperf (ms)")
-                else:
-                    axs[p].plot(df_ss_client['time'], df_ss_client['srtt'], label=f'{flow_client} RTT')
-                    axs[p].set_title("RTT from SS (ms)")
-                axs[p].set_ylabel("RTT (ms)")
-                p += 1
-
                 if multipath:
+                    # RTT (average from subflows)
+                    # Throughput (summed from subflows)
+                    subflow_interval = .1 # how often to sum the sending rates of each subflow
+                    df_ss_mp_client_sum = df_ss_mp_client.copy()
+                    df_ss_mp_client_sum['interval'] = (df_ss_mp_client_sum['time'] // subflow_interval) * subflow_interval # Round time to the nearest interval
+                    rtt_means = df_ss_mp_client_sum.groupby('interval')['srtt'].mean()
+                    x_vals, y_vals = zip(*sorted(rtt_means.items()))
+                    axs[p].plot(x_vals, y_vals, label=f'{flow_client} RTT')
+                    axs[p].set_title("RTT (mean)")
+                    axs[p].set_ylabel("RTT (ms)")
+                    p+=1
+
                     # Client subflow RTTs
                     for s, subflow in enumerate(subflows):
                         df_sub = df_ss_mp_client[df_ss_mp_client['src'] == subflow]
                         #df_sub = df_sub[~df_sub['token'].str.contains(init_token, regex=False)]
                         if len(df_sub) > subflow_threshold:
                             axs[p].plot(df_sub['time'], df_sub['srtt'], label=f'{flow_client} subflows' if s == 0 else '_nolegend_', color=subflow_colors[flow_num][0] ,alpha = .75)
-                            axs[p].set_title("Subflow RTT from SS (ms)")
-                            axs[p].set_ylabel("Subflow RTT (ms)")
+                            axs[p].set_title("RTT (subflows)")
+                            axs[p].set_ylabel("RTT (ms)")
+                            axs[p].set_facecolor(subflow_plot_bg_color)
                     p+=1
+                else: 
+                    printPink("Plotting RTT")
+                    if 'srtt' in df_client.columns:
+                        axs[p].plot(df_client['time'], df_client['srtt'], label=f'{flow_client} RTT')
+                        axs[p].set_title("RTT from Iperf (ms)")
+                    else:
+                        axs[p].plot(df_ss_client['time'], df_ss_client['srtt'], label=f'{flow_client} RTT')
+                        axs[p].set_title("RTT from SS (ms)")
+                    axs[p].set_ylabel("RTT (ms)")
+                    p += 1
             elif metric == 'cwnd':
                 printPink("Plotting CWND")
                 if multipath:
+                    # CWND (summed from subflows)
+                    # Throughput (summed from subflows)
+                    subflow_interval = .1 # how often to sum the sending rates of each subflow
+                    df_ss_mp_client_sum = df_ss_mp_client.copy()
+                    df_ss_mp_client_sum['interval'] = (df_ss_mp_client_sum['time'] // subflow_interval) * subflow_interval # Round time to the nearest interval
+                    cwnd_sums = df_ss_mp_client_sum.groupby('interval')['cwnd'].sum()
+                    x_vals, y_vals = zip(*sorted(cwnd_sums.items()))
+                    axs[p].plot(x_vals, y_vals, label=f'{flow_client} cwnd total')
+                    axs[p].set_title("CWND (sum)")
+                    axs[p].set_ylabel("CWND (pkts)")
+                    p+=1
+
                     # Client subflow CWNDs
                     for s, subflow in enumerate(subflows):
                         df_sub = df_ss_mp_client[df_ss_mp_client['src'] == subflow]
                         #df_sub = df_sub[~df_sub['token'].str.contains(init_token, regex=False)]
                         if len(df_sub) > subflow_threshold:
                             axs[p].plot(df_sub['time'], df_sub['cwnd'], label=f'{flow_client} subflows' if s == 0 else '_nolegend_', color=subflow_colors[flow_num][0] ,alpha = .75)
-                            axs[p].set_title("Subflow CWNDs from SS (packets)")
-                            axs[p].set_ylabel("Subflow CWNDs")
-                    
+                            axs[p].set_title("CWND (subflows)")
+                            axs[p].set_ylabel("CWND (pkts)")
+                            axs[p].set_facecolor(subflow_plot_bg_color)
                     p+=1
                 else:
                     # CWND (single-path ONLY - only sees first subflow)
@@ -326,7 +347,6 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                             label=f'{flow_client} CWND'
                         )
                         axs[p].set_title("Cwnd from Iperf (packets)")
-
                     p += 1
             elif metric == 'retransmits':
                 printPink("Plotting retransmits")
@@ -336,74 +356,88 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                 else:
                     axs[p].plot(df_ss_client['time'], df_ss_client['retr'], label=f'{flow_client} Retransmits')
                     axs[p].set_title("Retransmits from SS (packets)")
-                
                 p += 1
-            elif metric == 'queues': 
-                if flow_num == 0: # only plot queues once, not per flow (clean this up later)
-                    printPink("Plotting queues")
-                    queue_dir = os.path.join(path, 'queues')  # Specify the folder containing the queue files
-                    queue_files = [f for f in os.listdir(queue_dir) if f.endswith('.txt')]
-                    match = re.search(r"_(\d+)pkts_", queue_dir)
-                    queue_limit = int(match.group(1))
-                    axs[p].axhline(queue_limit, color='red', linestyle='--', label='Queue Limit')
-                    for queue_file in queue_files:
-                        queue_path = os.path.join(queue_dir, queue_file)
 
-                        df_queue = pd.read_csv(queue_path)
-                        df_queue['time'] = pd.to_numeric(df_queue['time'], errors='coerce')
-                        df_queue['time'] = df_queue['time'] - df_queue['time'].min()
+    # Experiment-wide statistics ----------------------------------------------------------------------------------------------------------------------------------------------
+    if 'fairness' in metrics:
+        fairness_interval = .1
+        duration = axs[throughput_ax].get_xlim()[1]
+        query_times = np.arange(0.0, duration, fairness_interval)
+        interpolated_values = []
 
-                        # Convert units to numeric values
-                        df_queue['root_pkts'] = (
-                            df_queue['root_pkts']
-                            .str.replace('b', '')
-                            .str.replace('K', '000')
-                            .str.replace('M', '000000')
-                            .str.replace('G', '000000000')
-                            .astype(float)
-                        )
-                        df_queue['root_drp'] = df_queue['root_drp'].fillna(0).astype(float)
+        for line in axs[throughput_ax].get_lines():
+            xdata = line.get_xdata()
+            ydata = line.get_ydata()
+            y_interp = np.interp(query_times, xdata, ydata)
+            x_min, x_max = np.min(xdata), np.max(xdata) 
+            for i in range(0, len(query_times)):
+                if query_times[i] < x_min or query_times[i] > x_max:
+                    y_interp[i] = None
+            interpolated_values.append(y_interp)
+        
+        interpolated_values = [list(row) for row in zip(*interpolated_values)]
+        interpolated_values = [[value for value in row if not math.isnan(value)] for row in interpolated_values]
+        fairness = [calculate_jains_index(row) for row in interpolated_values]
+        min_fairness_list = [1.0/len(r) if len(r) != 0 else None for r in interpolated_values]
 
-                        df_queue['root_pkts'] = df_queue['root_pkts'] / 1500
-                        df_queue['interval_drops'] = df_queue['root_drp'].diff().fillna(0)
+        axs[p].plot(query_times, fairness, label="Fairness Index")
+        axs[p].step(query_times, min_fairness_list, color='red', linestyle='--', label='Minimum Fairness') # Plot minimum possible fairness based on number of flows
+        #axs[p].set_ylim(bottom=1.0/float(len(flows)), top=1.1) # Set min possible for Jain's index, and max just above 1 so you can see the top of the line
+        axs[p].set_title("Jain's Fairness Index")
+        axs[p].set_ylabel("Fairness Index")
+        p += 1
 
-                        
-                        axs[p].plot(df_queue['time'], df_queue['root_pkts'], label=f'{queue_file} - root_pkts')
-                        axs[p].set_title("Queue size (packets)")
-                        axs[p+1].plot(df_queue['time'], df_queue['interval_drops'], linestyle='--', label=f'{queue_file} - root_drp')
-                        axs[p+1].set_title("Queue drops (packets)")
-                p += 2
-            elif metric == 'fairness':
-                if flow_num == 0: # only plot fairness once, not per flow (clean this up later)
-                    printPink("Plotting fairness")
-                    fairness_interval = 1 # Seconds between each fairness measurement
-                    average_throughputs =  defaultdict(list)
-                    jains = defaultdict(list)
-                    minimums = defaultdict(list)
-                    
-                    # Calculate running throughput averages for each flow
-                    for flow_num, flow in enumerate(flows):
-                        flow_client = flow[0]  # Client flow name like 'c1', 'c2', etc.
-                        flow_server = flow[1]  # Server flow name like 'x1', 'x2', etc.
-                        df_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}.csv'))
-                        df_client['interval'] = (df_client['time'] // fairness_interval) * fairness_interval # Round time to the nearest interval
-                        df_client_averages = df_client.groupby('interval').mean()
-                        for interval in df_client_averages.index:
-                            average_throughputs[interval].append(df_client_averages.loc[interval]['bandwidth'])
-                    for interval in average_throughputs:
-                        jains[interval] = calculate_jains_index(average_throughputs[interval])
-                        minimums[interval] = 1.0/len(average_throughputs[interval])
-                    
-                    x_vals, y_vals = zip(*sorted(jains.items()))
-                    min_x_vals, min_y_vals = zip(*sorted(minimums.items()))
+    if 'queues' in metrics:
+        printPink("Plotting queues")
+        queue_dir = os.path.join(path, 'queues')  # Specify the folder containing the queue files
+        queue_files = [f for f in os.listdir(queue_dir) if f.endswith('.txt')]
+        match = re.search(r"_(\d+)pkts_", queue_dir)
+        queue_limit = int(match.group(1))
+        axs[p].axhline(queue_limit, color='red', linestyle='--', label='Queue Limit')
+        for queue_file in queue_files:
+            queue_path = os.path.join(queue_dir, queue_file)
 
-                    axs[p].plot(x_vals, y_vals, label="Fairness Index")
-                    axs[p].step(min_x_vals, min_y_vals, color='red', linestyle='--', label='Minimum Fairness') # Plot minimum possible fairness based on number of flows
-                    axs[p].set_ylim(bottom=1.0/float(len(flows)), top=1.1) # Set min possible for Jain's index, and max just above 1 so you can see the top of the line
-                    axs[p].set_title("Jain's Fairness Index (Snapshots)")
-                    axs[p].set_ylabel("Fairness Index")
-                p += 1
-            
+            df_queue = pd.read_csv(queue_path)
+            df_queue['time'] = pd.to_numeric(df_queue['time'], errors='coerce')
+            df_queue['time'] = df_queue['time'] - df_queue['time'].min()
+
+            # Convert units to numeric values
+            df_queue['root_pkts'] = (
+                df_queue['root_pkts']
+                .str.replace('b', '')
+                .str.replace('K', '000')
+                .str.replace('M', '000000')
+                .str.replace('G', '000000000')
+                .astype(float)
+            )
+            df_queue['root_drp'] = df_queue['root_drp'].fillna(0).astype(float)
+
+            df_queue['root_pkts'] = df_queue['root_pkts'] / 1500
+            df_queue['interval_drops'] = df_queue['root_drp'].diff().fillna(0)
+
+            # Remove the legend if there are a large number of queues to track. Large numbers break the plots.
+            if len(queue_files) > 10:
+                qlabel = '_nolegend_'
+            else:
+                qlabel = f'{queue_file}'
+
+            axs[p].plot(df_queue['time'], df_queue['root_pkts'], label=f'{qlabel} - root_pkts')
+            axs[p].set_title("Queue size (packets)")
+
+
+            axs[p+1].plot(df_queue['time'], df_queue['interval_drops'], linestyle='--', label=f'{qlabel} - root_drp')
+            axs[p+1].set_title("Queue drops (packets)")
+        p += 2
+    # End of experiment-wide statistics ------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+        # fairness_values = 
         # # Client interface throughputs
         # intf_names = sorted(df_ifstat_client['intf'].unique())
         # for intf in intf_names:
@@ -419,30 +453,12 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
         #     axs[8].plot(df_sub['time'], df_sub['mbps_in'], label=f'{intf} received')
         #     axs[8].set_title("Server Interface Goodput? (Mbps)")
         #     axs[8].set_ylabel("Interface Goodput? (Mbps)")
-
         
-
-
-
-        
-
-
-        
-
         # # Bytes/Transferred ????
         # if 'transferred' in df_client.columns:
         #     axs[3].plot(df_client['time'], df_client['transferred'], label=f'{flow_client} Bytes')
         # else:
         #     axs[3].plot(df_client['time'], df_client['bytes'], label=f'{flow_client} Bytes')
-
-        
-        
-        
-
-        
-
-        
-
         
     # except:
     #     printRed("Error in plotting data for flows")
@@ -452,11 +468,6 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
     #     # else:
     #     #     axs[5].plot(df_ss_client['time'], df_ss_client['rttvar'], label=f'{flow_client} Rttvar')
     #     #     axs[5].set_title("Rttvar from SS (ms)")
-
-
-    # Jain's Fairness Index -------------------------------------------------------------------------------------
-    
-    # End of Jain's Fairness Index ------------------------------------------------------------------------------
 
     x_max = 0
     for i, ax in enumerate(axs):
@@ -471,7 +482,12 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
         if all_x_values:
             x_min = 0  # Start from 0
             x_max = max(all_x_values)  # Maximum value in the data
-            ax.set_xlim(x_min, x_max)
+            if multipath:
+                # iperf control connection subflows aren't filtered out properly, leading to some long plot tails with useless info
+                # The throughput plot accounts for this, so just use that.
+                ax.set_xlim(0, axs[throughput_ax].get_xlim()[1])
+            else:
+                ax.set_xlim(x_min, x_max)
 
         # Dynamically set y limits
         y_min, y_max = 0, ax.get_ylim()[1]  # Start from 0 to current max of y-axis
@@ -777,7 +793,12 @@ def plot_all_ns3_responsiveness_extra(path: str) -> None:
 
 def calculate_jains_index(bandwidths):
     """Calculate Jain's Fairness Index for a given set of bandwidth values."""
+    # printGreen(f'{bandwidths}: ')
+    if len(bandwidths) == 0:
+        return None
     n = len(bandwidths)
     sum_bw = sum(bandwidths)
     sum_bw_sq = sum(bw ** 2 for bw in bandwidths)
-    return (sum_bw ** 2) / (n * sum_bw_sq) if sum_bw_sq != 0 else 0
+    jains = (sum_bw ** 2) / (n * sum_bw_sq) if sum_bw_sq != 0 else 0
+    # printGreen(jains)
+    return jains

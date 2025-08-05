@@ -48,7 +48,7 @@ class ManhattanTopoAnimator(TopoAnimator):
                 anim_node = AnimationNode(node_name, pos, moving=True)
                 anim_node.SAT_POS = (int(match.group(1)), int(match.group(2))) # constant position within the satellite array
                 self.animated_nodes.append(anim_node) # Assign this node to the animated list for easy access
-                printGreen(anim_node)
+                #printGreen(anim_node)
 
             # Configure client and server virtual positions
             elif node_name.startswith('c') or node_name.startswith('x'):
@@ -58,14 +58,14 @@ class ManhattanTopoAnimator(TopoAnimator):
                     pos = np.asarray(host_positions.get(node_name))
                     if relative:
                         pos *= self.topo.mesh_size
-                        print(f'{node_name} pos: {pos}')
+                        #print(f'{node_name} pos: {pos}')
                     host = AnimationNode(node_name, pos, moving=False)
                     host.overhead = ''
                     sw = AnimationNode(f'r_{node_name}', pos, moving=False)
                     user_terminal = AnimationNode(f'UT_{node_name}', pos, moving=False)
-                    printGreen(host)
-                    printGreen(sw)
-                    printGreen(user_terminal)
+                    # printGreen(host)
+                    # printGreen(sw)
+                    # printGreen(user_terminal)
                     self.hosts.append(host)
                     self.user_terminals.append(user_terminal)
 

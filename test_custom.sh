@@ -9,9 +9,12 @@ QMULTS="2"
 FLOWS="6"
 LOSS="0"
 
+CONTROLLERS="k_shortest_paths"
 AQM="fifo"
 SUBFLOWS="8"
 MESH_SIZES="5"
+
+sudo mn -c
 
 # MANHATTAN RANDOM POSITIONS
 for bw in $BANDWIDTHS
@@ -30,9 +33,12 @@ do
                         do
                             for protocol in $PROTOCOLS
                             do
-                                for run in $RUNS
+                                for controller in $CONTROLLERS
                                 do
-                                    run experiments_mininet/custom/experiment_manhattan_varied.py $del $bw $qmult $protocol $run $AQM $loss $flow $subflow $mesh_size
+                                    for run in $RUNS
+                                    do  
+                                        run experiments_mininet/custom/experiment_openflow_test.py $del $bw $qmult $protocol $run $AQM $loss $flow $subflow $mesh_size $controller
+                                    done
                                 done
                             done
                         done

@@ -442,12 +442,12 @@ class Emulation:
         
         # Monitor per-subflow statistics with ss
         # duration + 10 just as a test. I want to manually set min and max at some point
-        ss_mptcp_cmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_mptcp.sh'} {monitor_interval} {self.path}/{node.name}_ss_mp.csv {duration+.6} &"
+        ss_mptcp_cmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_mptcp.sh'} {monitor_interval} {self.path}/{node.name}_ss_mp.csv {duration+1} &"
         printBlue(f'Sending command {ss_mptcp_cmd} to host {node.name}')
         node.cmd(ss_mptcp_cmd)
 
         # Monitor statistics about this connection with ss
-        sscmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_iperf3.sh'} {monitor_interval} {self.path}/{node.name}_ss.csv {duration+.6} &"
+        sscmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_iperf3.sh'} {monitor_interval} {self.path}/{node.name}_ss.csv {duration+1} &"
         printBlue(f'Sending command {sscmd} to host {node.name}')
         node.cmd(sscmd)
 

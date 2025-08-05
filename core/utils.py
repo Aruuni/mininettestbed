@@ -497,10 +497,6 @@ def printDebug3(string):
     COLOR="\033[42m"
     print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
-
-
-
-
 def printBlue(string):
     COLOR = "\033[94m"
     print("\r\033[K", end='', flush=True)
@@ -521,8 +517,13 @@ def printGreenFill(string):
     print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 
-def printPurple(string):
-    COLOR = "\033[93m" 
+def printYellow(string):
+    COLOR = "\033[33m" 
+    print("\r\033[K", end='', flush=True)
+    print(f"{COLOR}{string}{RESET}")
+
+def printYellowFill(string):
+    COLOR = "\033[103m" 
     print("\r\033[K", end='', flush=True)
     print(f"{COLOR}{string}{RESET}")
 

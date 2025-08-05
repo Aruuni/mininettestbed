@@ -13,4 +13,15 @@ def better_ip():
     for nodes_visited in range(0, 9999999999):
         print(ipaddress.IPv4Address(nodes_visited))
 
-better_ip()
+def calculate_jains_index(bandwidths):
+    """Calculate Jain's Fairness Index for a given set of bandwidth values."""
+    print(f'{bandwidths}: ')
+    n = len(bandwidths)
+    sum_bw = sum(bandwidths)
+    sum_bw_sq = sum(bw ** 2 for bw in bandwidths)
+    jains = (sum_bw ** 2) / (n * sum_bw_sq) if sum_bw_sq != 0 else 0
+    print(jains)
+    return jains
+
+
+calculate_jains_index([20, 40, 43, 80, 80, 100])

@@ -167,7 +167,6 @@ def parse_ss_mp_output(file_path, offset=0, emulation_start_time=None, suppress_
             # Maintain a list of unique connection tokens
             if token not in tokens:
                 tokens.append(token)
-                printBlue(f"Found a new token! {token}")
 
             # Skip this line if it is from the init connection
             if suppress_ghost_flows and token == tokens[0]:
@@ -219,8 +218,7 @@ def parse_ss_mp_output(file_path, offset=0, emulation_start_time=None, suppress_
         raise ValueError("No ESTAB state entries found in the input file.")
 
     # Convert the 'time' column to relative time (seconds since the absolute start time, or minimum timestamp)
-    min_time = emulation_start_time if emulation_start_time else df['time'].min()    
-    printRed(emulation_start_time)
+    min_time = emulation_start_time if emulation_start_time else df['time'].min()  
     min_time = df['time'].min()
     df['time'] = df['time'] - min_time + offset
     return df
@@ -263,7 +261,6 @@ def parse_ss_output(file_path, offset=0, emulation_start_time=None):
 
     # Convert the 'time' column to relative time (seconds since the absolute start time, or minimum timestamp)
     min_time = emulation_start_time if emulation_start_time else df['time'].min()    
-    printRed(emulation_start_time)
     df['time'] = df['time'] - min_time + offset
     return df
 
