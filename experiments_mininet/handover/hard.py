@@ -24,7 +24,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     duration = 100
     
     net = Mininet(topo=topo)
-    path = f"{HOME_DIR}/cctestbed/mininet/results_handover_hard/{aqm}/{topology}_{bw}mbit_{delay}ms_{interrupt}ms_interrupt_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
+    path = f"{HOME_DIR}/cctestbed/mininet/results_handover_hard_eth1/{aqm}/{topology}_{bw}mbit_{delay}ms_{interrupt}ms_interrupt_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
     printRed(path)
 
     rmdirp(path)
@@ -51,10 +51,10 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     em.configure_network()
     em.configure_traffic()
     
-    monitors = ['s1-eth1', 's2-eth2', 'sysstat']
+    monitors = ['s1-eth1', 's2-eth2','s2-eth1', 'sysstat']
         
     em.set_monitors(monitors)
-    Timer(0, em.cut_link, args=("s1", "eth1", interrupt, duration, 5)).start()
+    Timer(0, em.cut_link, args=("s2", "eth1", interrupt, duration, 5)).start()
     em.run()
 
 

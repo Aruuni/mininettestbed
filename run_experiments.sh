@@ -2,22 +2,14 @@
 source common.sh
 bash setup.sh
 
-# PROTOCOLS="sage"
-# PROTOCOLS="cubic astraea bbr3 vivace-uspace"
-# PROTOCOLS="satcp"
-PROTOCOLS="bbr3 cubic vivace-uspace astraea orca"
+PROTOCOLS="sage"
 PROTOCOLS="bbr3 cubic vivace-uspace astraea"
 
-
 STEPS="10 20 30 40 50 60 70 80 90 100"
-resumeSTEPS="40 50 60 70 80 90 100"
-halfSTEPS="5 10 15 20 25 30 35 40 45 50"
-bwSTEPS="150 200 250 300 350 400 450 500"
-FLOWS_STEPS="3 5 7 9 11 13 15 17 19 21"
 QMULTS="0.2 1 4"
-QMULTS="1"
 RUNS="1 2 3 4 5"
 HOPS="3 5 6"
+AQMS='cake fq_codel fifo fq_pie'
 
 # FAIRNESS INTRA RTT
 for del in $STEPS
@@ -34,7 +26,6 @@ do
     done
 done
 
-
 # FAIRNESS INTER RTT
 for del in $resumeSTEPS
 do
@@ -50,205 +41,71 @@ do
    done
 done
 
-# # FAIRNESS BANDWIDTH
-# for bw in $bwSTEPS
-# do
-#     for qmult in $QMULTS
-#     do
-#         for protocol in $PROTOCOLS
-#         do
-#             for run in $RUNS
-#             do
-#                 run experiments_mininet/fairness/experiment_intra_bw_fairness.py "20" $bw $qmult $protocol $run fifo 0 "2"
-#             done
-#         done
-#     done
-# done
+# RESPONSIVENESS BANDWIDTH/RTT
+for protocol in $PROTOCOLS
+do
+    for run in {1..50}
+    do
+        run experiments_mininet/responsiveness/experiment_responsiveness_bw_rtt_leo.py "50" "50" "1" $protocol $run fifo 0 "1"
+    done
+done
 
-# # CUBIC COEXISTANCE/BACKWARDS COMPATIBILITY WITH FLOWS
-# for flows in $FLOWS_STEPS
-# do
-#     for qmult in $QMULTS
-#     do
-#         for protocol in $PROTOCOLS
-#         do
-#             for run in $RUNS
-#             do
-#               run experiments_mininet/friendly/experiment_cubic_flow_friendliness.py "15" "100" $qmult $protocol $run fifo 0 $flows
-#             done
-#         done
-#     done
-# done
+# RESPONSIVENESS BANDWIDTH/RTT/LOSS
+for protocol in $PROTOCOLS
+do
+    for run in {1..50}
+    do
+         run experiments_mininet/responsiveness/experiment_responsiveness_bw_rtt_loss_leo.py "50" "50" "1" $protocol $run fifo 0 "1"
+    done
+done
 
-# # CUBIC COEXISTANCE/BACKWARDS COMPATIBILITY
-# for del in $STEPS
-# do
-#    for qmult in $QMULTS
-#    do
-#        for protocol in $PROTOCOLS
-#        do
-#            for run in $RUNS
-#            do
-#               run experiments_mininet/friendly/experiment_cubic_rtt_friendliness.py $del "100" $qmult $protocol $run fifo 0 "2"
-#            done
-#        done
-#    done
-# done
+# PARKING LOT TOPOLOGY INTRA RTT
+for del in $STEPS
+do
+    for protocol in $PROTOCOLS
+    do
+        for run in $RUNS
+        do
+            run experiments_mininet/fairness/experiment_parking_lot_intra_rtt_fairness.py $del "100" "1" $protocol $run "sfq" 0 "4"
+        done
+    done
+done
 
+# PARKING LOT TOPOLOGY INTRA RTT
+for del in $STEPS
+do
+    for hop in $HOPS
+    do
+        for protocol in $PROTOCOLS
+        do
+            for run in $RUNS
+            do
+                run experiments_mininet/fairness/experiment_parking_lot_hops_intra_rtt_fairness.py $del "100" "1" $protocol $run "fifo" 0 $hop
+            done
+        done
+    done
+done
 
-# # CUBIC COEXISTANCE/BACKWARDS COMPATIBILITY [INVERSE]
-# DELAYPOINT="50"
-# for qmult in $QMULTS
-# do
-#    for protocol in $PROTOCOLS
-#    do
-#        for run in $RUNS
-#        do
-#            run experiments_mininet/friendly/experiment_cubic_rtt_friendliness_inverse.py $DELAYPOINT "100" $qmult $protocol $run fifo 0 "2"
-#        done
-#    done
-# done
-
-
-# # RESPONSIVENESS BANDWIDTH/RTT FOR LEO PAPER
-# for protocol in $PROTOCOLS
-# do
-#     for run in {1..50}
-#     do
-#         run experiments_mininet/responsiveness/experiment_responsiveness_bw_rtt_leo.py "50" "50" "1" $protocol $run fifo 0 "1"
-#     done
-# done
-
-
-#  # RESPONSIVENESS BANDWIDTH/RTT/LOSS FOR LEO PAPER
-# for protocol in $PROTOCOLS
-# do
-#     for run in {1..50}
-#     do
-#          run experiments_mininet/responsiveness/experiment_responsiveness_bw_rtt_loss_leo.py "50" "50" "1" $protocol $run fifo 0 "1"
-#     done
-# done
-
-
-# # RESPONSIVENESS BW RTT
-# for protocol in $PROTOCOLS
-# do
-#     for run in {1..50}
-#     do
-#         run experiments_mininet/responsiveness/experiment_responsiveness_bw_rtt.py "50" "50" "1" $protocol $run fifo 0 "1"
-#     done
-# done
-
-
-# # RESPONSIVENESS LOSS
-# for protocol in $PROTOCOLS
-# do
-#     for run in {1..50}
-#     do
-#         run experiments_mininet/responsiveness/experiment_responsiveness_bw_loss.py "50" "50" "1" $protocol $run fifo 0 "1"
-#     done
-# done
-
-
-# # EFFICIENCY/CONVERGENCE
-# DELAY="10 100"
-# DELAY="50"
-# AQMS='fifo'
-
-# for del in $DELAY
-# do
-#     for qmult in $QMULTS
-#     do
-#         for protocol in $PROTOCOLS
-#         do
-#             for aqm in $AQMS
-#             do
-#                 for run in $RUNS
-#                 do
-#                     run experiments_mininet/fairness/experiment_fairness_aqm.py $del "100" $qmult $protocol $run $aqm 0 "4"
-#                 done
-#             done
-#         done
-#     done
-# done
-
+# Fairness Cross path Inter
+for qmult in $QMULTS
+do
+    for protocol in $PROTOCOLS
+    do
+        for run in $RUNS
+        do
+            run experiments_mininet/cross_path/experiment_cross_path_intra.py "10" "100" $qmult $protocol $run fifo 0 "2"
+        done
+    done
+done
 
 # EFFICIENCY/CONVERGENCE
-
-AQMS='cake fq_codel fifo fq_pie'
-AQMS="cake"
-PROTOCOLS="bbr3"
-RUNS="6"
 for protocol in $PROTOCOLS
 do
     for aqm in $AQMS
     do
         for run in $RUNS
         do
-            time run experiments_mininet/efficiency_aqm/experiment_aqm.py "25" "100" "1" $protocol $run $aqm 0 "5"
+            run experiments_mininet/efficiency_aqm/experiment_aqm.py "25" "100" "1" $protocol $run $aqm 0 "5"
         done
     done
 done
-
-
-# # PARKING LOT TOPOLOGY INTRA RTT
-# for del in $STEPS
-# do
-#     for protocol in $PROTOCOLS
-#     do
-#         for run in $RUNS
-#         do
-#             run experiments_mininet/fairness/experiment_parking_lot_intra_rtt_fairness.py $del "100" "1" $protocol $run "sfq" 0 "4"
-#         done
-#     done
-# done
-
-# HOPS="6 3 5"
-# # PARKING LOT TOPOLOGY INTRA RTT
-# for del in $STEPS
-# do
-#     for hop in $HOPS
-#     do
-#         for protocol in $PROTOCOLS
-#         do
-#             for run in $RUNS
-#             do
-#                 run experiments_mininet/fairness/experiment_parking_lot_hops_intra_rtt_fairness.py $del "100" "1" $protocol $run "fifo" 0 $hop
-#             done
-#         done
-#     done
-# done
-
-
-# # Fairness Cross path Inter
-# delaySteps="20"
-# for del in $delaySteps
-# do
-#     for qmult in $QMULTS
-#     do
-#         for protocol in $PROTOCOLS
-#         do
-#             for run in $RUNS
-#             do
-#                 run experiments_mininet/cross_path/experiment_cross_path_intra.py $del "100" $qmult $protocol $run fifo 0 "2"
-#             done
-#         done
-#     done
-# done
-
-
-
-# # Fairness Cross path Inter
-# for del in $halfSTEPS
-# do
-#     for qmult in $QMULTS
-#     do
-#         for protocol in $PROTOCOLS
-#         do
-#             for run in $RUNS
-#             do
-#                 run experiments_mininet/cross_path/experiment_cross_path_fairness_inter_rtt.py $del "100" $qmult $protocol $run fifo 0 "2"
-#             done
-#         done
-#     done
-# done

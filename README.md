@@ -16,7 +16,7 @@ The RL agents of Orca,  Aurora and Astraea run on Python 3.7, sage runs on 3.6.
 
 ## Installation
 
-Run the [install script](./install.sh) to install [Orca](https://github.com/Aruuni/Orca), [Astraea](https://github.com/Aruuni/astraea-open-source), [PCC Vivace](https://github.com/PCCproject/PCC-Kernel/tree/vivace) and [sage](https://github.com/Aruuni/sage) (only available on ubuntu 16.04 using the precompiled 4.19 kernel)
+Run the [install script](./install.sh) to install Orca, Astraea, PCC Vivace and Sage (only available on ubuntu 16.04 using the precompiled 4.19 kernel)
 
 ```bash
 bash install.sh # DO NOT RUN WITH SUDO 
@@ -36,12 +36,4 @@ To run them all, just execute
 
 ```bash
 sudo ./run_rexperiments.sh
-```
-
-
-
-running th pox switch 
-
-```bash 
- ca
 ```
