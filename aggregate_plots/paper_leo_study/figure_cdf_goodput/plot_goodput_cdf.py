@@ -10,7 +10,7 @@ import numpy as np
 from matplotlib.pyplot import figure
 import statistics
 from matplotlib.lines import Line2D
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 script_dir = os.path.dirname( __file__ )
 mymodule_dir = os.path.join( script_dir, '../../..')
 sys.path.append( mymodule_dir )
@@ -63,7 +63,7 @@ loss_data =  get_df(f"{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt
 
 BINS = 50
 
-fig, ax = plt.subplots(figsize=(3, 1.8)) 
+fig, ax = plt.subplots(figsize=(4, 1.8)) 
 fig.subplots_adjust(left=0.15, right=0.98, bottom=0.15, top=0.80)
 
 optimals = bw_rtt_data[bw_rtt_data['protocol'] == 'cubic']['optimal_goodput']
@@ -94,14 +94,14 @@ for protocol in PROTOCOLS_LEO:
     data_loss = loss_data[loss_data['protocol'] == protocol]['average_goodput']
     vals, bins = np.histogram(data_loss, bins=BINS)
     cum = np.cumsum(vals)
-    ax.plot(
+    line, = ax.plot(
         bins[:-1], cum / 50 * 100,
         c=COLORS_LEO[protocol], linestyle='--', linewidth=1.0
     )
 
     protocol_handles.append(line)
     protocol_labels.append(PROTOCOLS_FRIENDLY_NAME_LEO[protocol])
-ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percent of Trials (%)")
+ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percent of Trials")
 # ax.annotate(
 #     'link capacity',
 #     xy=(76, 50), xytext=(32, 20), color='black',
@@ -110,13 +110,18 @@ ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percent of Trials (%)")
 # ax.set_xlim(0, None)
 
 
-all_handles = [optimal_line] + protocol_handles
-all_labels = ['Optimal'] + protocol_labels
+protocol_handles_solid = [
+    Line2D([], [], color=COLORS_LEO[protocol], linestyle='-', linewidth=1.0)
+    for protocol in PROTOCOLS_LEO
+]
+all_handles = [Line2D([], [], color='black', linestyle='-', linewidth=1.0)] + protocol_handles_solid
+all_labels = ['Optimal'] + [PROTOCOLS_FRIENDLY_NAME_LEO[p] for p in PROTOCOLS_LEO]
+
 fig.legend(
     all_handles, all_labels,
-    loc='upper center', bbox_to_anchor=(0.5, 1),
-    ncol=3, frameon=False,
-    fontsize=7, columnspacing=1.0,
+    loc='upper center', bbox_to_anchor=(0.5, 0.94),
+    ncol=6, frameon=False,
+    fontsize=6, columnspacing=1.0,
     handlelength=2.5, handletextpad=0.7
 )
 ax.legend(

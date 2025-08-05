@@ -7,7 +7,7 @@ import os, sys
 from matplotlib.ticker import ScalarFormatter
 import numpy as np
 
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 
 script_dir = os.path.dirname( __file__ )
 mymodule_dir = os.path.join( script_dir, '../../..')
@@ -16,7 +16,6 @@ from core.config import *
 from core.plotting import * 
 
 ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_parking_lot_hop_count/fifo" 
-PROTOCOLS = ['cubic', 'astraea', 'bbr3', 'bbr1', 'sage'] 
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 QMULTS = 1
@@ -34,7 +33,7 @@ def export_legend(legend, bbox=None, filename="legend.png"):
 
 for flow in FLOWS:
     data = []
-    for protocol in PROTOCOLS:
+    for protocol in PROTOCOLS_LEO:
         for bw in BWS:
             for delay in DELAYS:
                 duration = 2*delay
@@ -73,10 +72,9 @@ for flow in FLOWS:
 
                         # Print or return the new DataFrame with time and max_bandwidth
                         total = receiver_spine[['bandwidth']].join(max_bandwidth_between_ribs.set_index('time'), how='inner', lsuffix='1', rsuffix='2')             
-                        # total = total.dropna()
-                        # partial = partial.dropna()
 
-                        goodput_ratios_total.append(total.min(axis=1)/total.max(axis=1))
+                        ratios = total['bandwidth1'] / total['bandwidth2']
+                        goodput_ratios_total.append(ratios)
                     else:
                         avg_goodput = None
                         std_goodput = None
@@ -101,39 +99,39 @@ for flow in FLOWS:
         ax.axhline(y, color=color, linestyle='--', linewidth=0.75)
         ax.text(ax.get_xlim()[1], y + offset, f' {label}', color=color, fontsize=6, va='bottom', ha='right')
 
-        ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio', ylim=[-0.1,1.1])
+        ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio', ylim=[-0.1,None])
 
     ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio')
     for axis in [ax.xaxis, ax.yaxis]:
         axis.set_major_formatter(ScalarFormatter())
     handles, labels = ax.get_legend_handles_labels()
     handles = [h[0] for h in handles]
-    leg1 = fig.legend(
-        handles[:3], labels[:3],
-        ncol=3,
-        loc='upper center',
-        bbox_to_anchor=(0.45, 1.15),
-        frameon=False,
-        fontsize=7,
-        columnspacing=0.8,
-        handlelength=2.5,
-        handletextpad=0.5
-    )
-    fig.add_artist(leg1)
+    # leg1 = fig.legend(
+    #     handles[:3], labels[:3],
+    #     ncol=3,
+    #     loc='upper center',
+    #     bbox_to_anchor=(0.45, 1.15),
+    #     frameon=False,
+    #     fontsize=7,
+    #     columnspacing=0.8,
+    #     handlelength=2.5,
+    #     handletextpad=0.5
+    # )
+    # fig.add_artist(leg1)
 
-    leg2 = fig.legend(
-        handles[3:], labels[3:],
-        ncol=2,
-        loc='upper center',
-        bbox_to_anchor=(0.45, 1.05),
-        frameon=False,
-        fontsize=7,
-        columnspacing=0.8,
-        handlelength=2.5,
-        handletextpad=0.5
-    )
+    # leg2 = fig.legend(
+    #     handles[3:], labels[3:],
+    #     ncol=2,
+    #     loc='upper center',
+    #     bbox_to_anchor=(0.45, 1.05),
+    #     frameon=False,
+    #     fontsize=7,
+    #     columnspacing=0.8,
+    #     handlelength=2.5,
+    #     handletextpad=0.5
+    # )
 
 
-    
+
     plt.savefig(f"goodput_ratio_between_hops_goodput_flows{flow}.pdf", dpi=1080)
 

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import os, sys
 
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 
 # Setup paths
 script_dir = os.path.dirname(__file__)

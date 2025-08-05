@@ -5,7 +5,7 @@ script_dir = os.path.dirname(__file__)
 mymodule_dir = os.path.join(script_dir, '../..')
 sys.path.append(mymodule_dir)
 sys.dont_write_bytecode = True 
-
+plt.rcParams['text.usetex'] = True
 from core.plotting import (
     COLORS_LEO,
     PROTOCOLS_MARKERS_LEO,

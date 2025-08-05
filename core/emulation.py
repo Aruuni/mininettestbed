@@ -71,7 +71,8 @@ class Emulation:
 
             elif bw and not delay:
                 burst = int(10*bw*(2**20)/250/8)
-                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 tbf rate {bw}mbit burst {burst} limit {qsize * 22 if aqm != 'fifo' else qsize} "
+                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 tbf rate {bw}mbit burst 15k limit {qsize * 22 if aqm != 'fifo' else qsize} "
+                printPink(cmd)
                 if aqm == 'fq_codel':
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq_codel limit {int(qsize/1500)} target 5ms interval 100ms flows 100"
                 elif aqm == 'codel':
@@ -364,10 +365,10 @@ class Emulation:
                 # Start tcpdump on all sender and receiver nodes
         if self.pcap:
             for node_name in self.sending_nodes:
-                start_tcpdump(node_name, f"{node_name}-eth0")
+                start_tcpdump(node_name, f"{node_name}-eth0", 11111 )
 
             for node_name in self.receiving_nodes:
-                start_tcpdump(node_name, f"{node_name}-eth0")  
+                start_tcpdump(node_name, f"{node_name}-eth0", 5201)  
 
         for call in self.call_second:
             # start all the receivers at the same time, they will individually wait for the correct time

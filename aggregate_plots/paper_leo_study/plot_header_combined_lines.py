@@ -5,7 +5,7 @@ from matplotlib.legend_handler import HandlerLineCollection
 import os, sys
 import numpy as np
 
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 
 # Setup paths (same as your script)
 script_dir = os.path.dirname(__file__)
@@ -14,12 +14,7 @@ sys.path.append(mymodule_dir)
 sys.dont_write_bytecode = True
 
 # Your style dicts
-from core.plotting import (
-    COLORS_EXTENSION,
-    PROTOCOLS_FRIENDLY_NAME_EXTENSION,
-    PROTOCOLS_EXTENSION
-)
-
+from core.plotting import *
 class HandlerDashedLines(HandlerLineCollection):
     """Custom handler: draws each LineCollection's segments at different vertical offsets"""
     def create_artists(self, legend, orig_handle,
@@ -53,23 +48,23 @@ labels = []
 
 
 # protocols: dashed then solid, thicker lines
-for proto in PROTOCOLS_EXTENSION:
+for proto in PROTOCOLS_LEOEM:
     lc = mcol.LineCollection(
         segments=2 * segment,
         linestyles=['dashed', 'solid'],
-        colors=[COLORS_EXTENSION[proto]] * 2,
+        colors=[COLORS_LEO[proto]] * 2,
         linewidths=[10, 20],   
                   # thicker lines
     )
     handles.append(lc)
-    labels.append(PROTOCOLS_FRIENDLY_NAME_EXTENSION[proto])
+    labels.append(PROTOCOLS_FRIENDLY_NAME_LEO[proto])
 
 # Optimal dashed‐only, thicker
-opt = Line2D([], [], color='magenta',
-             linestyle='dashed',
+opt = Line2D([], [], color='red',
+             linestyle='dotted',
              linewidth=20)
 handles.append(opt)
-labels.append("Optimal")
+labels.append("Base RTT")
 
 # right padding
 

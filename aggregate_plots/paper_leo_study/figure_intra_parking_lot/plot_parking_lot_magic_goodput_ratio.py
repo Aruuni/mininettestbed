@@ -7,7 +7,7 @@ import os, sys
 from matplotlib.ticker import ScalarFormatter
 import numpy as np
 
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 
 script_dir = os.path.dirname( __file__ )
 mymodule_dir = os.path.join( script_dir, '../../..')
@@ -27,7 +27,7 @@ def export_legend(legend, bbox=None, filename="legend.png"):
         bbox = legend.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
     fig.savefig(filename, dpi=1080, bbox_inches=bbox)
 
-for mult, min in  zip(QMULTS, MINS):
+for mult, min in  zip([1], MINS):
     data = []
     for protocol in PROTOCOLS_LEO:
         for bw in BWS:
@@ -70,12 +70,11 @@ for mult, min in  zip(QMULTS, MINS):
                         max_bandwidth_between_ribs.set_index('time')
 
                         total = receiver_spine[['bandwidth']].join(max_bandwidth_between_ribs.set_index('time'), how='inner', lsuffix='1', rsuffix='2')    
-                        if delay == 70 and protocol == 'vivace-uspace' and int(mult * BDP_IN_PKTS) == 4914:
 
-                            ratios = total['bandwidth1'] / total['bandwidth2']
-                            print(f"average ratio: {total}") 
                         # we cast to int and lose precision because FUCKING VIVACE sometimes dips to 0.0001, while the base flow get 15mbps, which majorly FUCKS the ratio. Just one timestep having a 500+ ratio is not really indicative of anything
-                        ratios = total['bandwidth1'] / total['bandwidth2']
+                        total['bandwidth1'] = total['bandwidth1'].clip(lower=1)
+                        total['bandwidth2'] = total['bandwidth2'].clip(lower=1)
+                        ratios = total['bandwidth1'].astype(int) / total['bandwidth2'].astype(int)
                         goodput_ratios_total.append(ratios)
 
                        # goodput_ratios_total.append(total.min(axis=1)/total.max(axis=1))
@@ -88,9 +87,6 @@ for mult, min in  zip(QMULTS, MINS):
 
                 if len(goodput_ratios_total) > 0:
                     goodput_ratios_total = np.concatenate(goodput_ratios_total, axis=0)
-                    if delay == 60 and protocol == 'vivace-uspace' and int(mult * BDP_IN_PKTS) == 4194:
-                            goodput_ratios_total = goodput_ratios_total[goodput_ratios_total != 0]
-                            print(f"average ratio: {goodput_ratios_total}") 
                     if len(goodput_ratios_total) > 0:
                         data_entry = [protocol, bw, delay, delay/10, mult, goodput_ratios_total.mean(), goodput_ratios_total.std()]
                         data.append(data_entry)
@@ -108,7 +104,7 @@ for mult, min in  zip(QMULTS, MINS):
         ax.axhline(y, color=color, linestyle='--', linewidth=0.75)
         ax.text(ax.get_xlim()[1], y + offset, f' {label}', color=color, fontsize=6, va='bottom', ha='right')
 
-    ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio', ylim=[-0.1, min]) # ylim=[-0.1,1.1]
+    ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio', ylim=[-0.1, None]) # ylim=[-0.1,1.1]
 
 
     for axis in [ax.xaxis, ax.yaxis]:
