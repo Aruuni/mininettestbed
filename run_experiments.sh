@@ -3,45 +3,52 @@ source common.sh
 bash setup.sh
 
 # PROTOCOLS="sage"
-PROTOCOLS="astraea cubic bbr3 vivace-uspace"
+# PROTOCOLS="cubic astraea bbr3 vivace-uspace"
+# PROTOCOLS="satcp"
+PROTOCOLS="bbr3 cubic vivace-uspace astraea orca"
+PROTOCOLS="bbr3 cubic vivace-uspace astraea"
+
+
 STEPS="10 20 30 40 50 60 70 80 90 100"
+resumeSTEPS="40 50 60 70 80 90 100"
 halfSTEPS="5 10 15 20 25 30 35 40 45 50"
 bwSTEPS="150 200 250 300 350 400 450 500"
 FLOWS_STEPS="3 5 7 9 11 13 15 17 19 21"
 QMULTS="0.2 1 4"
+QMULTS="1"
 RUNS="1 2 3 4 5"
 HOPS="3 5 6"
 
-# # FAIRNESS INTRA RTT 
-# for del in $STEPS
-# do
-#     for qmult in $QMULTS
-#     do
-#         for protocol in $PROTOCOLS
-#         do
-#             for run in $RUNS
-#             do
-#                 run experiments_mininet/fairness/experiment_intra_rtt_fairness.py $del "100" $qmult $protocol $run fifo 0 "2"
-#             done
-#         done
-#     done
-# done
+# FAIRNESS INTRA RTT
+for del in $STEPS
+do
+    for qmult in $QMULTS
+    do
+        for protocol in $PROTOCOLS
+        do
+            for run in $RUNS
+            do
+                run experiments_mininet/fairness/experiment_intra_rtt_fairness.py $del "100" $qmult $protocol $run fifo 0 "2"
+            done
+        done
+    done
+done
 
 
-# # FAIRNESS INTER RTT
-# for del in $STEPS
-# do
-#    for qmult in $QMULTS
-#    do
-#        for protocol in $PROTOCOLS
-#        do
-#            for run in $RUNS
-#            do
-#                run experiments_mininet/fairness/experiment_inter_rtt_fairness.py $del "100" $qmult $protocol $run fifo 0 "2"
-#            done
-#        done
-#    done
-# done
+# FAIRNESS INTER RTT
+for del in $resumeSTEPS
+do
+   for qmult in $QMULTS
+   do
+       for protocol in $PROTOCOLS
+       do
+           for run in $RUNS
+           do
+               run experiments_mininet/fairness/experiment_inter_rtt_fairness.py $del "100" $qmult $protocol $run fifo 0 "2"
+           done
+       done
+   done
+done
 
 # # FAIRNESS BANDWIDTH
 # for bw in $bwSTEPS
@@ -54,7 +61,7 @@ HOPS="3 5 6"
 #             do
 #                 run experiments_mininet/fairness/experiment_intra_bw_fairness.py "20" $bw $qmult $protocol $run fifo 0 "2"
 #             done
-#         done  
+#         done
 #     done
 # done
 
@@ -103,7 +110,7 @@ HOPS="3 5 6"
 # done
 
 
-# # # RESPONSIVENESS BANDWIDTH/RTT FOR LEO PAPER
+# # RESPONSIVENESS BANDWIDTH/RTT FOR LEO PAPER
 # for protocol in $PROTOCOLS
 # do
 #     for run in {1..50}
@@ -123,7 +130,7 @@ HOPS="3 5 6"
 # done
 
 
-# # RESPONSIVENESS BW RTT 
+# # RESPONSIVENESS BW RTT
 # for protocol in $PROTOCOLS
 # do
 #     for run in {1..50}
@@ -143,7 +150,7 @@ HOPS="3 5 6"
 # done
 
 
-# # EFFICIENCY/CONVERGENCE 
+# # EFFICIENCY/CONVERGENCE
 # DELAY="10 100"
 # DELAY="50"
 # AQMS='fifo'
@@ -166,22 +173,37 @@ HOPS="3 5 6"
 # done
 
 
+# EFFICIENCY/CONVERGENCE
+
+AQMS='cake fq_codel fifo fq_pie'
+AQMS="cake"
+PROTOCOLS="bbr3"
+RUNS="6"
+for protocol in $PROTOCOLS
+do
+    for aqm in $AQMS
+    do
+        for run in $RUNS
+        do
+            time run experiments_mininet/efficiency_aqm/experiment_aqm.py "25" "100" "1" $protocol $run $aqm 0 "5"
+        done
+    done
+done
+
+
 # # PARKING LOT TOPOLOGY INTRA RTT
 # for del in $STEPS
 # do
-#     for qmult in $QMULTS
+#     for protocol in $PROTOCOLS
 #     do
-#         for protocol in $PROTOCOLS
+#         for run in $RUNS
 #         do
-#             for run in $RUNS
-#             do
-#                 run experiments_mininet/fairness/experiment_parking_lot_intra_rtt_fairness.py $del "100" $qmult $protocol $run "fifo" 0 "4"
-#             done
+#             run experiments_mininet/fairness/experiment_parking_lot_intra_rtt_fairness.py $del "100" "1" $protocol $run "sfq" 0 "4"
 #         done
 #     done
 # done
 
-
+# HOPS="6 3 5"
 # # PARKING LOT TOPOLOGY INTRA RTT
 # for del in $STEPS
 # do
@@ -191,7 +213,7 @@ HOPS="3 5 6"
 #         do
 #             for run in $RUNS
 #             do
-#                 run experiments_mininet/fairness_parking_lot_hop_count/experiment_parking__lot_hop_count.py $del "100" "1" $protocol $run "fifo" 0 $hop
+#                 run experiments_mininet/fairness/experiment_parking_lot_hops_intra_rtt_fairness.py $del "100" "1" $protocol $run "fifo" 0 $hop
 #             done
 #         done
 #     done
@@ -215,6 +237,7 @@ HOPS="3 5 6"
 # done
 
 
+
 # # Fairness Cross path Inter
 # for del in $halfSTEPS
 # do
@@ -229,104 +252,3 @@ HOPS="3 5 6"
 #         done
 #     done
 # done
-
-# LeoEM single flow - ping results for bdp calculation
-#       Starlink_SD_NY_15_ISL_path.log          62.727   522 pkts
-#       Starlink_SD_NY_15_BP_path.log           49.043   408 pkts
-#       Starlink_SEA_NY_15_ISL_path.log         46.551   388 pkts
-#       Starlink_SEA_NY_15_BP_path.log          39.141   326 pkts
-#       Starlink_SD_SEA_15_ISL_path.log         69.813   582 pkts
-#       Starlink_SD_SEA_15_BP_path.log          26.270   219 pkts
-#       Starlink_NY_LDN_15_ISL_path.log         83.566   696 pkts
-#       Starlink_SD_Shanghai_15_ISL_path.log    88.811   740 pkts
-#
-# PROTOCOLS="satcp"
-
-PATHS=( "Starlink_SD_NY_15_ISL_path.log" \
-        "Starlink_SD_NY_15_BP_path.log" \
-        "Starlink_SEA_NY_15_ISL_path.log" \
-        "Starlink_SEA_NY_15_BP_path.log" \
-        "Starlink_SD_SEA_15_ISL_path.log" \
-        "Starlink_SD_SEA_15_BP_path.log" 
-        "Starlink_NY_LDN_15_ISL_path.log" \
-        "Starlink_SD_Shanghai_15_ISL_path.log" )
-QUEUE_PKTS=(522 408 388 326 582 219 696 740)
-# TESTING
-# PATHS=( "Starlink_SEA_BsAs_15_ISL_path.log" )
-# QUEUE_PKTS=(9999)
-
-for qmult in $QMULTS; do
-    for protocol in $PROTOCOLS; do
-        for idx in "${!PATHS[@]}"; do
-            path="${PATHS[$idx]}"
-            base_pkts="${QUEUE_PKTS[$idx]}"
-            adj_pkts=$(awk "BEGIN {printf \"%d\", $base_pkts * $qmult}")
-            for run in $RUNS; do
-                run experiments_mininet/LeoEM/emulator.py \
-                    "$path" "[0]" 100 "$adj_pkts" "$protocol" "$run" 300
-            done
-        done
-    done
-done
-
-for qmult in $QMULTS; do
-    for protocol in $PROTOCOLS; do
-        for idx in "${!PATHS[@]}"; do
-            path="${PATHS[$idx]}"
-            base_pkts="${QUEUE_PKTS[$idx]}"
-            adj_pkts=$(awk "BEGIN {printf \"%d\", $base_pkts * $qmult}")
-            for run in $RUNS; do
-                run experiments_mininet/LeoEM/emulator.py \
-                    "$path" "[0, 100]" 100 "$adj_pkts" "$protocol" "$run" 300
-            done
-        done
-    done
-done
-# PROTOCOLS="satcpbbr1"
-# RUNS="6"
-# PATHS=(  "Starlink_SD_SEA_15_ISL_path.log" )
-# #\
-# #         "Starlink_SD_SEA_15_BP_path.log"  ) 219
-# QUEUE_PKTS=( 582 )
-
-# for protocol in $PROTOCOLS; do
-#     for idx in "${!PATHS[@]}"; do
-#         path="${PATHS[$idx]}"
-#         pkts="${QUEUE_PKTS[$idx]}"
-#         for run in $RUNS; do
-#             run experiments_mininet/LeoEM/emulator.py "$path" [0] 100 "$pkts" "$protocol" "$run" 100
-#             sudo killall ss_script_iperf
-#             sudo killall ss_script_sage
-#         done
-#     done
-# done
-
-
-# PROTOCOLS="ping"
-# RUNS="1"
-
-# # PATHS="Starlink_SEA_NY_15_ISL_path.log Starlink_SD_SEA_15_ISL_path.log Starlink_NY_LDN_15_ISL_path.log Starlink_SD_NY_15_BP_path.log Starlink_SD_NY_15_ISL_path.log Starlink_SEA_NY_15_BP_path.log Starlink_SD_Shanghai_15_ISL_path.log Starlink_SD_SEA_15_BP_path.log"
-# PATHS=""
-# for protocol in $PROTOCOLS
-# do
-#         for path in $PATHS
-#         do 
-#                 for run in $RUNS
-#                 do
-#                         run experiments_mininet/LeoEM/emulator.py $path [0] 1000 10000 $protocol $run 300
-#                 done
-#         done
-# done
-
-# # HARD HANDOVER
-# for protocol in $PROTOCOLS
-# do 
-#     for interrupt in $STEPS
-#     do
-#         for run in $RUNS
-#         do
-#             run experiments_mininet/handover/hard.py "25" "100" "1" $protocol $run fifo 0 "1" $(( interrupt * 2 ))
-#         done
-#     done
-# done
-
