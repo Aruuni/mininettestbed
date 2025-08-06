@@ -262,8 +262,8 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                         df_sub = df_ss_mp_client[df_ss_mp_client['src'] == subflow]
                         #df_sub = df_sub[~df_sub['token'].str.contains(init_token, regex=False)]
                         if len(df_sub) > subflow_threshold:
-                            axs[p].plot(df_sub['time'], df_sub['send'], label=f'{flow_client} subflows' if s == 0 else '_nolegend_', color=subflow_colors[flow_num][0] ,alpha = .75)
-                            # axs[p].plot(df_sub['time'], df_sub['delivery_rate'], label=f'{flow_client} sf_{subflow} RTT')
+                            #axs[p].plot(df_sub['time'], df_sub['send'], label=f'{flow_client} subflows' if s == 0 else '_nolegend_', color=subflow_colors[flow_num][0] ,alpha = .75)
+                            axs[p].plot(df_sub['time'], df_sub['send'], label=f'{subflow}', color=subflow_colors[flow_num][0] ,alpha = .75)
                             axs[p].set_title("Throughput (subflows)")
                             axs[p].set_ylabel("Throughput (mbps)")
                             axs[p].set_facecolor(subflow_plot_bg_color)

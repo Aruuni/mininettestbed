@@ -363,8 +363,8 @@ class OpenFlowTest(Topo):
         c1 = self.addHost('c1', cls=Host)
         s_c1 = self.addSwitch('s_c1', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
         s1a = self.addSwitch('s1a', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
-        s1b = self.addSwitch('s1b', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
-        s2b = self.addSwitch('s2b', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid()) # alternate path
+        for i in range(1, n+1):
+            alt_switch = self.addSwitch(f's{i}b', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
         s1c = self.addSwitch('s1c', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
         s_x1 = self.addSwitch('s_x1', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
         x1 = self.addHost('x1', cls=Host)
@@ -372,10 +372,9 @@ class OpenFlowTest(Topo):
         # Links
         self.addLink('c1', 's_c1')
         self.addLink('s_c1', 's1a')
-        self.addLink('s1a', 's1b')
-        self.addLink('s1a', 's2b')
-        self.addLink('s1b', 's1c')
-        self.addLink('s2b', 's1c')
+        for i in range(1, n+1):
+            self.addLink('s1a', f's{i}b')
+            self.addLink(f's{i}b', 's1c')
         self.addLink('s1c', 's_x1')
         self.addLink('s_x1', 'x1')
 

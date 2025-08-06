@@ -64,7 +64,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Experiment properties
     bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
-    duration = 20
+    duration = 120
     subflows = n_subflows
 
     # Generate path for plots, and delete old plot if necessary
@@ -88,16 +88,16 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     # Client and server delay (bidirectional)
     network_config.append(NetworkConf('s_c1', 's1a', None,   2*delay,    3*bdp_in_bytes, True,  aqm,  loss))
-    # Bandwidth policing (different per-path)
-    network_config.append(NetworkConf(f's1a', f's1b', bw,     None,       qsize_in_bytes, False,    aqm,    None)) # Slow (normal)
-    network_config.append(NetworkConf(f's1a', f's2b', bw,     None,       qsize_in_bytes, False,    aqm,    None)) # FAST alternate path
 
     # Traffic config
     traffic_config.append(TrafficConf(f'c1', f'x1', 0, duration, protocol)) # Start main flow (c1->x1) for entire experiment
-   
-    # monitors
-    monitors.append('s1a-eth2')
-    monitors.append('s1a-eth3')
+    
+    for i in range(1, n_flows+1):
+        # Bandwidth policing (different per-path)
+        network_config.append(NetworkConf(f's1a', f's{i}b', bw,     None,       qsize_in_bytes, False,    aqm,    None)) # Slow (normal)
+
+        # monitors
+        monitors.append(f's1a-eth{i+1}')
     monitors.append('sysstat')
     # -------------------------------------------------------------------------------------------------------------------------------------------
     

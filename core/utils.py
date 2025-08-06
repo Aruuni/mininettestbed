@@ -209,11 +209,11 @@ def configure_ndiffports_endpoints(net, subflows=2):
         for intf in host.intfList(): 
             host.cmd(f'sudo sysctl -w net.ipv4.conf.{intf}.rp_filter=0') # Make the rp_filter less strict
             for i in range(0, subflows - 1):
-                if str(host).startswith('c'):
+                if str(host).startswith('c'): 
                     endpoint_cmd = f'ip mptcp endpoint add {intf.IP()} dev {intf} subflow' # id can be specfied with id {num} between dev and port
                 elif str(host).startswith('x'):
-                    endpoint_cmd = f'ip mptcp endpoint add {intf.IP()} dev {intf} id {subflow_id} port {9000 + i} signal' # id can be specfied with id {num} between dev and port 
-                
+                    endpoint_cmd = f'ip mptcp endpoint add {intf.IP()} dev {intf} id {subflow_id} port {9000 + i} signal' # id can be specfied with id {num} between dev and port
+
                 printBlue(f'{host} endpoint cmd: {endpoint_cmd}')
                 host.cmd(endpoint_cmd)
                 subflow_id += 1

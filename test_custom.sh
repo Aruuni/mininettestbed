@@ -2,11 +2,11 @@ source common.sh
 bash setup.sh
 
 PROTOCOLS="cubic"
-BANDWIDTHS="100"
+BANDWIDTHS="10"
 DELAYS="50"
 RUNS="3"
-QMULTS="2"
-FLOWS="6"
+QMULTS="10"
+FLOWS="8"
 LOSS="0"
 
 CONTROLLERS="k_shortest_paths"
