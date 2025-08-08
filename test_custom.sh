@@ -1,22 +1,31 @@
 source common.sh
 bash setup.sh
 
+# Hosts parameters
 PROTOCOLS="cubic"
+SUBFLOWS="8"
+
+# Link parameters
 BANDWIDTHS="10"
 DELAYS="50"
-RUNS="3"
-QMULTS="10"
-FLOWS="8"
 LOSS="0"
-
-CONTROLLERS="k_shortest_paths"
+QMULTS="1"
 AQM="fifo"
-SUBFLOWS="8"
+
+# Controller parameters
+CONTROLLERS="multipath_switch"
+PATH_SELECTORS="k_shortest_pseudo_disjoint_paths" # i am bad at naming things
+PATH_NUM=""
+
+
+# Experiment parameters
 MESH_SIZES="5"
+FLOWS="5"
+RUNS="3"
+SEEDS="14801482"
 
 sudo mn -c
 
-# MANHATTAN RANDOM POSITIONS
 for bw in $BANDWIDTHS
 do
     for del in $DELAYS
@@ -37,7 +46,10 @@ do
                                 do
                                     for run in $RUNS
                                     do  
-                                        run experiments_mininet/custom/experiment_openflow_test.py $del $bw $qmult $protocol $run $AQM $loss $flow $subflow $mesh_size $controller
+                                        for seed in $SEEDS
+                                        do
+                                            run experiments_mininet/custom/experiment_manhattan_openflow.py $del $bw $qmult $protocol $run $AQM $loss $flow $subflow $mesh_size $controller $seed
+                                        done
                                     done
                                 done
                             done

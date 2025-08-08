@@ -1,6 +1,7 @@
 from mininet.topo import Topo
 from mininet.node import OVSKernelSwitch, Host, Node
 from mininet.net import Mininet
+from core.utils import *
 import random
 
 class DumbellTopo(Topo):
@@ -334,10 +335,7 @@ class ManhattanTopo(Topo):
                     self.addLink(f'r{x}_{y}', f'r{x+1}_{y}') # East
                 if y != mesh_size:
                     self.addLink(f'r{x}_{y}', f'r{x}_{y+1}') # North
-                    #self.addLink(f'r{x}_{y}', f'r{x}_{y+1}', intfName1=f'r{x}_{y}-isl_n', intfName2=f'r{x+1}_{y}-isl_s') # Above
         
-        
-
     def get_unique_position(self):
         #random.seed(24601) # Will this seed make each integer the same?
         while True:
@@ -381,6 +379,59 @@ class OpenFlowTest(Topo):
     def __str__(self):
         return "OpenFlowTest(n=%d)" % self.n
 
+# A perfect grid of routers interconnected with their adjacent neighbours. Intended to (roughly) mimic an LEO satellite network mesh
+# Created with switches - routing must be done through a custom openflow controller (one that can handle loops - basic learning switches won't do)
+# Routing has to be done manually!
+class ManhattanOpenflow(Topo):
+    # Returns a unique DPID. Intended to override the default dpid generation based on name (s1a = 1, and s1b = 1. Collisions are bad.)
+    def get_dpid(self):
+        self.curr_dpid += 1
+        return "%016x" % self.curr_dpid  # Return zero-padded hex string for DPID
+
+    def build(self, n=2, mesh_size=10):
+        self.n = n # Number of random host-pairs (client c and server x)
+        self.mesh_size = mesh_size # Number of rows/columns (square)
+        self.curr_dpid = 0
+        self.host_coords = []
+        self.satellites = []
+
+        # Routers
+        for y in range(1, mesh_size+1):
+            for x in range(1, mesh_size+1):
+                s = self.addSwitch(f's{x}_{y}', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
+                self.satellites.append(s)
+        
+        # client-server pairs. User terminals are connected to satellites via their eth-0's
+        for h in range(1, n+1):
+            for name in ['c', 'x']:
+                x, y = self.get_unique_position()
+
+                host = self.addHost(f'{name}{h}', cls=Host) # Client or server
+                sw = self.addSwitch(f's_{host}', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
+                ut = self.addSwitch(f'UT_{host}', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
+
+                self.addLink(host, sw) # Host to switch
+                self.addLink(sw, ut) # Switch to user terminal
+                self.addLink(ut, f's{x}_{y}') # UT to some random satellie. Maybe delete this and create/break UT links via the experiment or animation.
+                printRed(f'{name}{h} -> s{x}_{y}')
+
+        # Switch Links ^>
+        for y in range(1, mesh_size+1):
+            for x in range(1, mesh_size+1):
+                if x != mesh_size:
+                    self.addLink(f's{x}_{y}', f's{x+1}_{y}') # East
+                if y != mesh_size:
+                    self.addLink(f's{x}_{y}', f's{x}_{y+1}') # North
+        
+    def get_unique_position(self):
+        #random.seed(24601) # Will this seed make each integer the same?
+        while True:
+            pos = (random.randint(1, self.mesh_size), random.randint(1, self.mesh_size))
+            if pos not in self.host_coords:
+                self.host_coords.append(pos)
+                break
+        return pos
+
 topos = { 'dumbell': DumbellTopo,
           'double_dumbell': DoubleDumbbellTopo,
           'parking_lot': ParkingLot,
@@ -391,4 +442,5 @@ topos = { 'dumbell': DumbellTopo,
           "ndiffports2" : Ndiffports2,
           "manhattan" : ManhattanTopo,
           'openflowtest' : OpenFlowTest,
+            "manhattan_openflow" : ManhattanOpenflow,
         }

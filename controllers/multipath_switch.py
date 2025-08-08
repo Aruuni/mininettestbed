@@ -21,15 +21,16 @@ from matplotlib.backends.backend_pdf import PdfPages
 import signal
 import os
 import sys
+import controller_utils
 
 script_dir = os.path.dirname( __file__ )
 mymodule_dir = os.path.join( script_dir, '../')
 sys.path.append( mymodule_dir )
 
 """
-Builds a graph representation of the network and uses is to assign multiple shortest paths between hosts
-Compares paths based only on the number of hops
-Assigns subflows unique paths (when available) sequentially based on their source ports
+Builds a graph representation of the network and uses it to assign multiple paths between hosts
+Subflows are assigned unique paths (if available) based on dst ports
+Several path acquisition schemes are available (k-shortest, k-shortest-disjoint, k-shortest-pseduo-disjoint, k-equal-cost)
 """
 class KShortestPaths(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -47,10 +48,14 @@ class KShortestPaths(app_manager.RyuApp):
 
         self.DEFAULT_TABLE = 0
         self.TCP_TABLE = 1
+        self.NUM_PATHS = 8 # How many paths to calculate before stopping. If this is too high, the controller will get VERY slow to respond. Don't go above 8, as MPTCP has a limit of 8 subflows by default.
+        self.PATH_GENERATOR = controller_utils.k_shortest_pseudo_disjoint_paths
+        self.switches = []
+        self.links = []
 
         self.graph: DiGraph = nx.DiGraph() # graph of the entire network, including hosts
         self.switch_graph: DiGraph = nx.DiGraph() # Graph of the network, excluding hosts
-        self.switch_mst: DiGraph = nx.DiGraph() # minimum spanning tree of the switch graph, used for flooding and host discovery
+        #self.switch_mst: DiGraph = nx.DiGraph() # minimum spanning tree of the switch graph, used for flooding and host discovery
         self.ip_to_port: dict[str, dict[str, dict[int]]] = {} # dpids[ips[in_ports]]
         self.paths: dict[str, dict[str, dict[tuple : list[int]]]] = {} # src[dst[path[subflows_on_path]]], for every src-dst pair there exists a dict of path tuples, and for every path tuple there exists a list of subflows (dst_ports) on it
         self.hosts = {}
@@ -128,8 +133,8 @@ class KShortestPaths(app_manager.RyuApp):
             printYellow(f"found host {src_ip}")
             self.hosts[src_ip] = dpid
             self.graph.add_node(src_ip)
-            self.graph.add_edge(src_ip, dpid, src_port=0000, dst_port=in_port)
-            self.graph.add_edge(dpid, src_ip, src_port=in_port, dst_port=0000)
+            self.graph.add_edge(src_ip, dpid, src_port=0000, dst_port=in_port, weight=1)
+            self.graph.add_edge(dpid, src_ip, src_port=in_port, dst_port=0000, weight=1)
             self.output_graph()
 
         # ASSERT: dst exists, but a path has not been generated of this datapath
@@ -207,10 +212,17 @@ class KShortestPaths(app_manager.RyuApp):
         
         # Compute the shortest simple paths list if it doesn't already exist
         if len(paths_dict) == 0:
-            k_shortest_paths:list[tuple] = [tuple(path) for path in nx.shortest_simple_paths(self.graph, src_ip, dst_ip)]
-            for curr_path in k_shortest_paths:
-                self.paths.setdefault(src_ip, {}).setdefault(dst_ip, {}).setdefault(curr_path, []) # apply shortest paths to dict they do not already exist
-            printYellow(f"No existing paths found. Generated k_shortest_paths: {k_shortest_paths}")
+            if self.PATH_GENERATOR == controller_utils.k_shortest_pseudo_disjoint_paths:
+                paths = self.PATH_GENERATOR(self.graph, src_ip, dst_ip, self.NUM_PATHS)
+                for path in paths:
+                    self.paths.setdefault(src_ip, {}).setdefault(dst_ip, {}).setdefault(tuple(path), [])# apply shortest paths to dict they do not already exist
+                    # path_generator = nx.shortest_simple_paths(self.graph, src_ip, dst_ip) # returns a generator that creates shortest paths as requested (sort of like an iterator, does not generate them all at once)
+                    # k_shortest_paths:list[tuple] = []
+                    # for p, path in enumerate(path_generator):
+                    #     self.paths.setdefault(src_ip, {}).setdefault(dst_ip, {}).setdefault(tuple(path), []) # apply shortest paths to dict they do not already exist
+                    #     if p+1 >= self.NUM_PATHS: 
+                    #         break
+            printYellow(f"Generated new paths list: {paths}")
 
         # Apply a high-priority rule along the kth-shortest path for this dst_port (subflow) ideally tokens should be used instead, but OpenFlow doesn't currently support MPTCP statistics. dst_port works better than src_port thanks to iperf control subflows stealing paths
         match:OFPMatch = parser.OFPMatch(eth_type=0x0800, ip_proto=inet.IPPROTO_TCP, ipv4_src=src_ip, ipv4_dst=dst_ip, tcp_dst=dst_port) # match TCP packets with the correct dst_port and dst_ip
@@ -246,10 +258,11 @@ class KShortestPaths(app_manager.RyuApp):
         """
         datapath:Datapath = ev.switch.dp
         dpid:int = datapath.id
-        printYellow(f"{dpid} joined the network")
         self.switch_graph.add_node(dpid)
         self.graph.add_node(dpid)
-        self.switch_mst = nx.minimum_spanning_tree(self.switch_graph.to_undirected())
+        #self.switch_mst = nx.minimum_spanning_tree(self.switch_graph.to_undirected())
+        self.switches.append(dpid)
+        printYellow(f"{dpid} joined the network. Switch total: {len(self.switches)}")
 
 
     @set_ev_cls(event.EventSwitchLeave, [MAIN_DISPATCHER, CONFIG_DISPATCHER, DEAD_DISPATCHER])
@@ -259,10 +272,11 @@ class KShortestPaths(app_manager.RyuApp):
         """
         datapath:Datapath = ev.switch.dp
         dpid:int = datapath.id
-        printYellow(f"{dpid} left the network")
         self.switch_graph.remove_node(dpid)
         self.graph.remove_node(dpid)
-        self.switch_mst = nx.minimum_spanning_tree(self.switch_graph.to_undirected())
+        #self.switch_mst = nx.minimum_spanning_tree(self.switch_graph.to_undirected())
+        self.switches.remove(dpid)
+        printYellow(f"{dpid} left the network. Switch total: {len(self.switches)}")
 
     @set_ev_cls(event.EventLinkAdd)
     def handler_link_add(self, ev:EventLinkAdd):
@@ -275,11 +289,14 @@ class KShortestPaths(app_manager.RyuApp):
         src_port:int = link.src.port_no
         dst_port:int = link.dst.port_no
 
-        printYellow(f"({src_dpid}->{dst_dpid}) joined the network")
-        self.switch_graph.add_edge(src_dpid, dst_dpid, src_port=src_port, dst_port=dst_port)
-        self.graph.add_edge(src_dpid, dst_dpid, src_port=src_port, dst_port=dst_port)
-        self.switch_mst = nx.minimum_spanning_tree(self.switch_graph.to_undirected())
+        
+        self.switch_graph.add_edge(src_dpid, dst_dpid, src_port=src_port, dst_port=dst_port, weight=1)
+        self.graph.add_edge(src_dpid, dst_dpid, src_port=src_port, dst_port=dst_port, weight=1)
+        #self.switch_mst = nx.minimum_spanning_tree(self.switch_graph.to_undirected())
         self.output_graph()
+        self.links.append(link)
+
+        printYellow(f"({src_dpid}->{dst_dpid})\t{self.graph[src_dpid][dst_dpid]} joined the network. Link total: {len(self.links)}")
         
     @set_ev_cls(event.EventLinkDelete)
     def handler_link_delete(self, ev:EventLinkDelete):
@@ -290,12 +307,13 @@ class KShortestPaths(app_manager.RyuApp):
         src_dpid:int = link.src.dpid
         dst_dpid:int = link.dst.dpid
 
-        printYellow(f"({src_dpid}->{dst_dpid}) left the network")
         if self.switch_graph.has_edge(src_dpid, dst_dpid):
             self.switch_graph.remove_edge(src_dpid, dst_dpid)
         if self.graph.has_edge(src_dpid, dst_dpid):
             self.graph.remove_edge(src_dpid, dst_dpid)
-        self.switch_mst = nx.minimum_spanning_tree(self.switch_graph.to_undirected())  
+        #self.switch_mst = nx.minimum_spanning_tree(self.switch_graph.to_undirected())
+        self.links.remove(link)  
+        printYellow(f"({src_dpid}->{dst_dpid}) left the network. Link total: {len(self.links)}")
 
     def output_graph(self):
         """
