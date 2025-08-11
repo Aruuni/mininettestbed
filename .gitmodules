@@ -12,7 +12,7 @@
 	path = CC/Orca
 	url = https://github.com/Aruuni/Orca
 [submodule "experiments_mininet/LeoEM"]
-	path = experiments_mininet/LeoEM
+	path = experiments/LeoEM
 	url = https://github.com/Aruuni/LeoEM
 [submodule "CC/PCC-Uspace"]
 	path = CC/PCC-Uspace
