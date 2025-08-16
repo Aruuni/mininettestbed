@@ -17,6 +17,7 @@ TrafficConf.__new__.__defaults__ = (None,) * len(TrafficConf._fields)
 IPERF = ['bbr', 'bbr1', 'pcc', 'cubic', 'snap', 'lia', 'olia', 'balia', 'wvegas']
 ORCA = ['orca', 'sage']
 
+# Make directory and all relevant parent directories if they do not exist
 def mkdirp(path: str) -> None:
     try:
         os.makedirs( path,0o777 )
@@ -192,7 +193,7 @@ def configure_endpoints():
 
 # This really needs refactoring
 # Configures MPTCP endpoints using the ndiffports technique (multiple subflows per interface with unique source ports, hashed to different paths via ECMP)
-def configure_ndiffports_endpoints(net, subflows=2):
+def configure_ndiffports_endpoints(net, subflows=2, debug=False):
     for host in net.hosts:
         if not (str(host).startswith('c') or str(host).startswith('x')):
             continue
@@ -214,7 +215,7 @@ def configure_ndiffports_endpoints(net, subflows=2):
                 elif str(host).startswith('x'):
                     endpoint_cmd = f'ip mptcp endpoint add {intf.IP()} dev {intf} id {subflow_id} port {9000 + i} signal' # id can be specfied with id {num} between dev and port
 
-                printBlue(f'{host} endpoint cmd: {endpoint_cmd}')
+                if debug: printBlue(f'{host} endpoint cmd: {endpoint_cmd}')
                 host.cmd(endpoint_cmd)
                 subflow_id += 1
 
@@ -482,6 +483,17 @@ def get_intf(net, ip):
         for intf in h.intfList():
             if intf.IP() == ip:
                 return intf.name
+
+def add_switch_link(net:Mininet, switch_a_name:str, switch_b_name:str):
+    """
+    Adds a link between a pair of switches in the network. Automatically configures link in such a way to make the Controller notice.
+    """
+    a = net.getNodeByName(switch_a_name)
+    b = net.getNodeByName(switch_b_name)
+    link = net.addLink(a, b) 
+    a.attach(link.intf1.name)
+    b.attach(link.intf2.name)
+    return link
 
 RESET = "\033[0m"
 

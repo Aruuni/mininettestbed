@@ -8,7 +8,10 @@ import itertools
 import matplotlib.gridspec as gridspec
 import numpy as np
 import math
+from pypdf import PdfReader, PdfWriter
+import time
 
+# Parses raw outputs and converts them into CSVs ready for plotting/analysis
 def process_raw_outputs(path, emulation_start_time=None):
     with open(path + '/emulation_info.json', 'r') as fin:
         emulation_info = json.load(fin)
@@ -19,6 +22,7 @@ def process_raw_outputs(path, emulation_start_time=None):
 
     csv_path = path + "/csvs"
     mkdirp(csv_path)
+
     change_all_user_permissions(path)
     for flow in flows:
         sender = str(flow[0])
@@ -98,15 +102,19 @@ def process_raw_outputs(path, emulation_start_time=None):
             pass
             #printRed("ERROR: analysis.py: " +  str(flow[-2]) + " not supported for analysis. This may lead to x_max error. Have you tried adding it to the protocol list in utils.py?" )
 
-def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt', 'cwnd', 'retransmits', 'queues', 'fairness'], multipath=False) -> None:
+def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt', 'cwnd', 'retransmits', 'queues', 'fairness'], duration=0, multipath=False, combine_graph=False) -> None:
     def remove_outliers(df, column, threshold):
         """Remove outliers from a DataFrame column based on a threshold."""
         return df[df[column] < threshold]
     
+    # Will be used to write some aggregate data for plotting another day
+    aggregate_path = os.path.join(path, 'aggregate')
+    mkdirp(aggregate_path)
+
     #TODO: Find a way to calculate this dynamically or only commit to a figure size at the end
-    plot_count = 9
+    plot_count = 10
     if multipath:
-        plot_count = 12
+        plot_count = 13
     fig, axs = plt.subplots(plot_count, 1, figsize=(16, 48))
     
     # Open and read files ---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -122,6 +130,7 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                 flows.append([flow[0], flow[1]])  # Changing conditions?
     #try:
     subplots = []
+    earliest_flow_start_time = time.time() # will decrease as shorter times are found
     for flow_num, flow in enumerate(flows):
         flow_client = flow[0]  # Client flow name like 'c1', 'c2', etc.
         flow_server = flow[1]  # Server flow name like 'x1', 'x2', etc.
@@ -153,7 +162,7 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
         netem_bw = []
         netem_rtt = []
         netem_loss = []
-
+        
         for flow in emulation_info['flows']:
             if flow[6] == 'tbf':
                 netem_bw.append([flow[4], flow[7][1]])  
@@ -208,7 +217,7 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                             ["#bcbd22"],
                             ["#17becf"],
                         ]
-        subflow_plot_bg_color = (.95, .95, .95) # Make subflows plots slightly dark, more identifiable at a glance
+        subflow_plot_bg_color = (.92, .92, .92) # Make subflows plots slightly dark, easier to differentiate at a glance
         p = 0 # Current plot
         for metric in metrics:
             if metric == 'goodput':
@@ -223,6 +232,8 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                     axs[p].set_title("Goodput (sum)")
                     axs[p].set_ylabel("Goodput (mbps)")
                     
+                    earliest_flow_start_time = min(earliest_flow_start_time, df_ss_mp_client['real_time'].min())
+
                     p+=1
 
                     # Client subflow goodputs
@@ -237,7 +248,7 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                             axs[p].set_facecolor(subflow_plot_bg_color)
                     p+=1
                 else:                
-                    printPink("Plotting goodput")
+                    #printPink("Plotting goodput")
                     axs[p].plot(df_server['time'], df_server['bandwidth'], label=f'{flow_server} Goodput')
                     axs[p].set_title("Goodput (Mbps)")
                     axs[p].set_ylabel("Goodput (Mbps)")
@@ -262,14 +273,14 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                         df_sub = df_ss_mp_client[df_ss_mp_client['src'] == subflow]
                         #df_sub = df_sub[~df_sub['token'].str.contains(init_token, regex=False)]
                         if len(df_sub) > subflow_threshold:
-                            #axs[p].plot(df_sub['time'], df_sub['send'], label=f'{flow_client} subflows' if s == 0 else '_nolegend_', color=subflow_colors[flow_num][0] ,alpha = .75)
-                            axs[p].plot(df_sub['time'], df_sub['send'], label=f'{subflow}', color=subflow_colors[flow_num][0] ,alpha = .75)
+                            axs[p].plot(df_sub['time'], df_sub['send'], label=f'{flow_client} subflows' if s == 0 else '_nolegend_', color=subflow_colors[flow_num][0] ,alpha = .75)
+                            #axs[p].plot(df_sub['time'], df_sub['send'], label=f'{subflow}', color=subflow_colors[flow_num][0] ,alpha = .75)
                             axs[p].set_title("Throughput (subflows)")
                             axs[p].set_ylabel("Throughput (mbps)")
                             axs[p].set_facecolor(subflow_plot_bg_color)
                     p+=1
                 else:
-                    printPink("Plotting throughput")
+                    #printPink("Plotting throughput")
                     axs[p].plot(df_client['time'], df_client['bandwidth'], label=f'{flow_client} CWND')
                     axs[p].set_title("Throughput (Mbps)")
                     axs[p].set_ylabel("Throughput (Mbps)")
@@ -300,7 +311,7 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                             axs[p].set_facecolor(subflow_plot_bg_color)
                     p+=1
                 else: 
-                    printPink("Plotting RTT")
+                    #printPink("Plotting RTT")
                     if 'srtt' in df_client.columns:
                         axs[p].plot(df_client['time'], df_client['srtt'], label=f'{flow_client} RTT')
                         axs[p].set_title("RTT from Iperf (ms)")
@@ -310,7 +321,7 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                     axs[p].set_ylabel("RTT (ms)")
                     p += 1
             elif metric == 'cwnd':
-                printPink("Plotting CWND")
+                #printPink("Plotting CWND")
                 if multipath:
                     # CWND (summed from subflows)
                     # Throughput (summed from subflows)
@@ -349,7 +360,7 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                         axs[p].set_title("Cwnd from Iperf (packets)")
                     p += 1
             elif metric == 'retransmits':
-                printPink("Plotting retransmits")
+                #printPink("Plotting retransmits")
                 if 'retr' in df_client.columns:
                     axs[p].plot(df_client['time'], df_client['retr'], label=f'{flow_client} Retransmits')
                     axs[p].set_title("Retransmits from Iperf (packets)")
@@ -359,75 +370,106 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
                 p += 1
 
     # Experiment-wide statistics ----------------------------------------------------------------------------------------------------------------------------------------------
-    if 'fairness' in metrics:
-        fairness_interval = .1
-        duration = axs[throughput_ax].get_xlim()[1]
-        query_times = np.arange(0.0, duration, fairness_interval)
-        interpolated_values = []
-
-        for line in axs[throughput_ax].get_lines():
-            xdata = line.get_xdata()
-            ydata = line.get_ydata()
-            y_interp = np.interp(query_times, xdata, ydata)
-            x_min, x_max = np.min(xdata), np.max(xdata) 
-            for i in range(0, len(query_times)):
-                if query_times[i] < x_min or query_times[i] > x_max:
-                    y_interp[i] = None
-            interpolated_values.append(y_interp)
-        
-        interpolated_values = [list(row) for row in zip(*interpolated_values)]
-        interpolated_values = [[value for value in row if not math.isnan(value)] for row in interpolated_values]
-        fairness = [calculate_jains_index(row) for row in interpolated_values]
-        min_fairness_list = [1.0/len(r) if len(r) != 0 else None for r in interpolated_values]
-
-        axs[p].plot(query_times, fairness, label="Fairness Index")
-        axs[p].step(query_times, min_fairness_list, color='red', linestyle='--', label='Minimum Fairness') # Plot minimum possible fairness based on number of flows
-        #axs[p].set_ylim(bottom=1.0/float(len(flows)), top=1.1) # Set min possible for Jain's index, and max just above 1 so you can see the top of the line
-        axs[p].set_title("Jain's Fairness Index")
-        axs[p].set_ylabel("Fairness Index")
-        p += 1
-
     if 'queues' in metrics:
-        printPink("Plotting queues")
+        # Queue sizes and queue drops
+        #printPink("Plotting queues")
         queue_dir = os.path.join(path, 'queues')  # Specify the folder containing the queue files
         queue_files = [f for f in os.listdir(queue_dir) if f.endswith('.txt')]
-        match = re.search(r"_(\d+)pkts_", queue_dir)
-        queue_limit = int(match.group(1))
-        axs[p].axhline(queue_limit, color='red', linestyle='--', label='Queue Limit')
+        queue_limit = int(re.search(r"_(\d+)pkts_", queue_dir).group(1)) # Grab the queue size from the folder name
+        axs[p].axhline(queue_limit, color='red', linestyle='--', label='Queue Limit') # Plot the max queue size
         for queue_file in queue_files:
             queue_path = os.path.join(queue_dir, queue_file)
 
             df_queue = pd.read_csv(queue_path)
+            df_queue = df_queue[df_queue['qdisc_name'] == 'tbf'] # TODO: Find a better way to grab the relevant qdiscs. For now just filter by TBF
             df_queue['time'] = pd.to_numeric(df_queue['time'], errors='coerce')
-            df_queue['time'] = df_queue['time'] - df_queue['time'].min()
+            min_time = earliest_flow_start_time if multipath else df_queue['time'].min() # filters out queues from pre-experiment iperf control connections for MPTCP (uses ss_MP as it accurately filters using MPTCP tokens). Otherwise just subtract by min time.
+            df_queue['time'] = df_queue['time'] - min_time
 
             # Convert units to numeric values
-            df_queue['root_pkts'] = (
-                df_queue['root_pkts']
+            df_queue['qdisc_pkts'] = (
+                df_queue['qdisc_pkts']
                 .str.replace('b', '')
                 .str.replace('K', '000')
                 .str.replace('M', '000000')
                 .str.replace('G', '000000000')
                 .astype(float)
             )
-            df_queue['root_drp'] = df_queue['root_drp'].fillna(0).astype(float)
+            df_queue['qdisc_drp'] = df_queue['qdisc_drp'].fillna(0).astype(float)
 
-            df_queue['root_pkts'] = df_queue['root_pkts'] / 1500
-            df_queue['interval_drops'] = df_queue['root_drp'].diff().fillna(0)
+            df_queue['qdisc_pkts'] = df_queue['qdisc_pkts'] / 1500 # div by 1500 to convert to packets
+            df_queue['interval_drops'] = df_queue['qdisc_drp'].diff().fillna(0) # root_drop is cumulative - we need to find difference between value pairs (.diff())
 
-            # Remove the legend if there are a large number of queues to track. Large numbers break the plots.
-            if len(queue_files) > 10:
-                qlabel = '_nolegend_'
-            else:
+            
+            
+            # Only labels queues with meaningful queue sizes (or ones that can act as rate limiters)
+            if df_queue['qdisc_pkts'].max() > 3 or 's_' in queue_file:
                 qlabel = f'{queue_file}'
+            else:
+                qlabel = '_nolegend_'
 
-            axs[p].plot(df_queue['time'], df_queue['root_pkts'], label=f'{qlabel} - root_pkts')
+            axs[p].plot(df_queue['time'], df_queue['qdisc_pkts'], label=f'{qlabel} - qdisc_pkts')
             axs[p].set_title("Queue size (packets)")
 
 
-            axs[p+1].plot(df_queue['time'], df_queue['interval_drops'], linestyle='--', label=f'{qlabel} - root_drp')
+            axs[p+1].plot(df_queue['time'], df_queue['interval_drops'], linestyle='--', label=f'{qlabel} - qdisc_drp')
             axs[p+1].set_title("Queue drops (packets)")
+        queue_size_ax = p
         p += 2
+
+        # Average queue size
+        # Get interpolated values from all lines of throughput plot at a regular interval
+        query_times, interpolated_values = get_ax_interpolated_values(axs[queue_size_ax], query_interval=.1)
+
+        # Calculate final y-values
+        averages = []
+        for step, values in enumerate(interpolated_values):
+            if len(values) != 0:
+                averages.append(sum(values)/len(values)) # average
+            else:
+                averages.append(0) # No data found at this interval
+
+        # Plot average queue size values
+        axs[p].plot(query_times, averages, label="Average")
+        #axs[p].step(query_times, min_fairness_list, color='red', linestyle='--', label='Minimum Fairness') # Plot minimum possible fairness based on number of flows
+        axs[p].set_title("Average Queue Size (packets)")
+        axs[p].set_ylabel("Average packets in queue")
+
+        # Save aggregate data for later
+        df = pd.DataFrame({
+            "time": query_times,
+            "avg_queue_size": averages
+        })
+        agg_queues_csv = os.path.join(aggregate_path, "aggregate_path" + '.csv')
+        df.to_csv(agg_queues_csv, index=False)
+
+        p += 1
+
+    if 'fairness' in metrics:
+        # Get interpolated values from all lines of throughput plot at a regular interval
+        query_times, interpolated_values = get_ax_interpolated_values(axs[throughput_ax], query_interval=.1)
+
+        # Calculate final y-values
+        fairness = [calculate_jains_index(row) for row in interpolated_values] # Calculate jain's index on each inner list (all line values at given timestamp)
+        min_fairness_list = [1.0/len(r) if len(r) != 0 else None for r in interpolated_values] # Get the minimum possible fairness of each interval based on the number of reported lines
+
+        # Plot Jain's index
+        axs[p].plot(query_times, fairness, label="Fairness Index")
+        axs[p].step(query_times, min_fairness_list, color='red', linestyle='--', label='Minimum Fairness') # Plot minimum possible fairness based on number of flows
+        axs[p].set_title("Jain's Fairness Index")
+        axs[p].set_ylabel("Fairness Index")
+
+        # Save aggregate data for later
+        df = pd.DataFrame({
+            "time": query_times,
+            "fairness": fairness,
+            "min_fairness": min_fairness_list
+        })
+        agg_csv = os.path.join(aggregate_path, "fairness" + '.csv')
+        df.to_csv(agg_csv, index=False)
+
+        p += 1
+
     # End of experiment-wide statistics ------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -481,13 +523,8 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
             all_x_values.extend(line.get_xdata())
         if all_x_values:
             x_min = 0  # Start from 0
-            x_max = max(all_x_values)  # Maximum value in the data
-            if multipath:
-                # iperf control connection subflows aren't filtered out properly, leading to some long plot tails with useless info
-                # The throughput plot accounts for this, so just use that.
-                ax.set_xlim(0, axs[throughput_ax].get_xlim()[1])
-            else:
-                ax.set_xlim(x_min, x_max)
+            x_max = max(all_x_values) if duration == 0 else duration # Maximum value in the data
+            ax.set_xlim(x_min, x_max)
 
         # Dynamically set y limits
         y_min, y_max = 0, ax.get_ylim()[1]  # Start from 0 to current max of y-axis
@@ -505,6 +542,28 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
     plt.savefig(output_file)
     printGreen(f"Plot saved to {output_file}")
     plt.close()
+
+    if combine_graph:
+        printPink("Attempting to combine plot and graph .pdfs")
+        plots_pdf = PdfReader(os.path.join(path, "plot" + '.pdf'))
+        graph_pdf = PdfReader(os.path.join(path, "graph" + '.pdf'))
+        writer = PdfWriter()
+
+        # Grab all pages from each PDF
+        for page in plots_pdf.pages:
+            writer.add_page(page)
+        for page in graph_pdf.pages:
+            writer.add_page(page)
+
+        # Write out the combined PDF
+        combined_path = os.path.join(path, "combined" + '.pdf')
+        with open(combined_path, "wb") as f:
+            writer.write(f)
+
+        printPink("PDFs combined successfully!")
+        printPink(f"Combined pdf saved to {combined_path}")
+
+
 
 def plot_all_ns3_responsiveness(path: str) -> None:
     plt.rcParams.update({
@@ -791,6 +850,7 @@ def plot_all_ns3_responsiveness_extra(path: str) -> None:
     printBlue(f"NS3 experiment plots saved to '{output_file}'.")
     plt.close()
 
+
 def calculate_jains_index(bandwidths):
     """Calculate Jain's Fairness Index for a given set of bandwidth values."""
     # printGreen(f'{bandwidths}: ')
@@ -802,3 +862,33 @@ def calculate_jains_index(bandwidths):
     jains = (sum_bw ** 2) / (n * sum_bw_sq) if sum_bw_sq != 0 else 0
     # printGreen(jains)
     return jains
+
+def get_ax_interpolated_values(ax, query_interval:float) -> tuple[list[float], list[float]]:
+    """
+    Sums together values from all lines on a particular plot at the specified interval
+    Values between datapoints are interpolated to prevent gaps
+    Interpolated values before/after start/end time are dropped to prevent data pollution
+    Returns list of query times and a list of sums (and a list of lines/datapoints per query, useful for averages, Jain's index, theoreticals maximums, etc.)
+    """
+    query_interval = .1 # Time between each poll for data
+    duration = ax.get_xlim()[1] # Max query time (end of plot)
+    query_times = np.arange(0.0, duration, query_interval) # List of timestamps to sum at, and as final x-values
+
+    interpolated_values = [] # All interpolated y-values. *Each inner array represents a line* [[A_value1, A_value2, A_value3, ...], [B_value1, B_value2, B_value3, ...], [C_value1, C_value2, C_value3, ...]]
+    for line in ax.get_lines():
+        xdata = line.get_xdata()
+        ydata = line.get_ydata()
+        if len(xdata) == 0 or len(ydata) == 0:
+            #printGreen("Warning - cannot interpolate from empty line, skipping")
+            continue
+        y_interp = np.interp(query_times, xdata, ydata)
+        x_min, x_max = np.min(xdata), np.max(xdata) 
+        for i in range(0, len(query_times)):
+            if query_times[i] < x_min or query_times[i] > x_max:
+                y_interp[i] = None
+        interpolated_values.append(y_interp)
+    if len(interpolated_values) == 0: printGreen("Warning - attempted to interpolate values from empty plot")
+    interpolated_values = [list(row) for row in zip(*interpolated_values)] # Transposes values so *each inner array represent an interval* [[A_value1, B_value1, C_value1, ...], [A_value2, B_value3, C_value3, ...], [A_value3, B_value3, C_value3, ...]]
+    interpolated_values = [[value for value in row if not math.isnan(value)] for row in interpolated_values] # Removes NaNs. The tranpose ensures the values/NaNs stay aligned with the correct interval index
+
+    return (query_times, interpolated_values)

@@ -18,10 +18,12 @@ import subprocess
 import sys
 import os
 
-# Starts the ryu remote controller as a subprocess. This is so ugly and bad because of PATH issues
-# Mihai please save me
-def start_remote_controller(controller: str, path_selector: str, num_paths: int, path_penalty: float, output_path: str, path_selector_preset:str=None):
-
+def start_remote_controller(controller: str, path_selector: str, num_paths: int, path_penalty: float, output_path: str, path_selector_preset:str=None, host_ips:str=None):
+    """
+    Starts up a new Ryu instance (python3.7 for compatibility reasons) and passes it some parameters as environment variables.
+    Will attempt to kill any currently running Ryu instaces
+    This process is responsible for handling messages to/from the openflow controller to/from Mininet switches
+    """
     # Kill any leftover ryu instances
     subprocess.run(['sudo', 'fuser', '-k', '6653/tcp'])
 
@@ -38,6 +40,7 @@ def start_remote_controller(controller: str, path_selector: str, num_paths: int,
     env['PATH_PENALTY'] = str(path_penalty)
     env['OUTPUT_PATH'] = str(output_path)
     env['PATH_SELECTOR_PRESET'] = path_selector_preset
+    env['HOST_IPS'] = host_ips
     env['DEBUG_PRINTS'] = "False" # "True" evaluates to true, everything else is false
 
     # Run the subprocess
@@ -49,7 +52,21 @@ def start_remote_controller(controller: str, path_selector: str, num_paths: int,
     return ryu_process
 
 # This experiment runs a custom animated version of the Manhattan topology, intended to loosely simulate the behaviour of LEO satellite networks
-def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2, n_subflows=2, controller_name='None', path_selector="None", num_paths=8, path_penalty=100, seed="NO-SEED", path_selector_preset="None"):
+def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2, n_subflows=2, controller_name='None', path_selector="None", num_paths=8, path_penalty=100, seed="NO-SEED", path_selector_preset="None", output_folder="mininet"):
+    """
+    A mesh-based experiment using the multipath custom controller.
+    Start up at unique satellite positions starting 5 seconds apart, all ending at the same time.
+    Careful- will not run if you add so many hosts that the start time offset exceeds the experiment length.
+
+    Identical manhattan random, but puts hosts behind a rate limiter (same bw limit as an ISL).
+    Useful for seeing how MPTCP performs when given access to the same amount of bw as single-path.
+
+    Intended values: 
+        mesh_size = 4, 
+        flows <= mesh_size^2 / 2 (no more than one host per node)
+        duration >= 5*flows     (preferably 10*, spends half the experiment building up flows and half converging)
+        delay ~= 18             (average ISL delay for starlink)
+    """
     # This experiment is intended to be run only on the MultiCompetitionTopo
     if topology == "manhattan_openflow":
         topo = ManhattanOpenflow(**params)
@@ -58,31 +75,44 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         return
 
     # Experiment properties
-    bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
-    qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
     duration = 60
     subflows = n_subflows
     mesh_size = int(params.get('mesh_size') )
-    printRed(seed)
+
+    
+    bdp_in_bytes = int(bw * (2 ** 20) * 2 * delay * (10 ** -3) / 8)
+    qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
+    
     if seed != "NO-SEED":
+        printGreen(f'USING SEED {seed}')
         random.seed(seed) # Set the specified seed for consistent results. Otherwise, randomize with each run (if this experiment contains any randomness)
+    
+
     if path_selector == "preset":
         controller_path = path_selector_preset
     else:
         controller_path = f"{controller_name}_{path_selector}_{num_paths}maxpaths_{path_penalty}pathpenalty"
-    #                                            /Experiment_type           /events                          /network_characteristics (router/switch/link properties)                                   /routing          /protocol_parameters            /run
-    output_path = f"{HOME_DIR}/cctestbed/mininet/results_manhattan_openflow/{topology}_{seed}_{n_flows}flows/{aqm}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{tcp_buffer_mult}tcpbuf/{controller_path}/{protocol}_{n_subflows}subflows/run{run}" 
+    #                                                    /Experiment_type           /events                          /network_characteristics (router/switch/link properties)                                   /routing          /protocol_parameters            /run
+    output_path = f"{HOME_DIR}/cctestbed/{output_folder}/results_manhattan_openflow_random_rate_limited/{topology}_{seed}_{n_flows}flows/{aqm}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{tcp_buffer_mult}tcpbuf/{controller_path}/{protocol}_{n_subflows}subflows/run{run}" 
     printRed(output_path)
     rmdirp(output_path)
     mkdirp(output_path)
     printGreen(f"delay is {delay}, bw is {bw}, qmult is {qmult}, qsize is {qsize_in_bytes}, bdp is {bdp_in_bytes}, loss is {loss}")
-
-    # Start remote controller (start early to allow time for initialization)
-    controller = start_remote_controller(controller_name, path_selector, num_paths, path_penalty, output_path, path_selector_preset=path_selector_preset)
     net = Mininet(topo=topo, link=TCLink, autoSetMacs=True, autoStaticArp=True
                   ,controller=lambda name: RemoteController(name, ip='127.0.0.1', port=6653),
     )
-    
+    host_ips_list = [f"{host.IP()}:{host.name}" for host in net.hosts]
+    host_ips = ' '.join(host_ips_list)
+    # Start remote controller (start early to allow time for initialization)
+    controller = start_remote_controller(controller_name, path_selector, num_paths, path_penalty, output_path, path_selector_preset=path_selector_preset, host_ips=host_ips)
+
+    # Sample host positions from a random list
+    host_positions = [(x, y) for x in range(1, mesh_size+1) for y in range(1, mesh_size+1)]
+    random.shuffle(host_positions)
+    for h, host in enumerate(net.hosts):
+        x, y = host_positions[h]
+        net.addLink(f'UT_{host.name}', f's{x}_{y}')
+
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult) # idk, buffers setup
     #assign_ips_by_link(net) # Assign interface IPs sequentially
     configure_ndiffports_endpoints(net, subflows)
@@ -91,11 +121,22 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     # EXPERIMENT:
     # -------------------------------------------------------------------------------------------------------------------------------------------
-    network_config=[]   # list of network conditions, such as bandwidth, delay, and loss on each link
-    traffic_config=[]   # list of connections open/close during the experiment
-    monitors=['sysstat']         # list of stats/interfaces to monitor
+    network_config=[]       # list of network conditions, such as bandwidth, delay, and loss on each link
+    traffic_config=[]       # list of connections open/close during the experiment
+    monitors=['sysstat']    # list of stats/interfaces to monitor
 
-    # Bidirectional bandwidth/queue policing
+    # Client/server/flow properties
+    for f in range(1, n_flows + 1):
+        start_time_offset = (f-1)*5 # how many seconds late to start each flow
+        network_config.append(NetworkConf(f's_c{f}', f'UT_c{f}', bw,   delay/6,    qsize_in_bytes, True,  'fifo',  loss)) # Client<->Sat delay (Reported by starlink to be 1.8-3.6ms one-way)
+        network_config.append(NetworkConf(f's_x{f}', f'UT_x{f}', bw,   delay/6,    qsize_in_bytes, True,  'fifo',  loss)) # Server<->Sat delay (Reported by starlink to be 1.8-3.6ms one-way)
+        traffic_config.append(TrafficConf(f'c{f}', f'x{f}', start_time_offset, duration-start_time_offset, protocol)) # Standard flow for entire experiment
+        # You can dynamically add links here. It works, but the controller is slow to react. Work on it if you have time. Do it before net.start() instead for now.
+        # for h in ['c', 'x']:
+        #     x, y = get_unique_position(mesh_size, positions=host_positions)
+        #     add_switch_link(net, f'UT_{h}{f}', f's{x}_{y}')
+
+    # Satellite mesh network config (bandwidth, delay, queues)
     for x in range (1, mesh_size+1):
         for y in range (1, mesh_size+1):
             if x != mesh_size:
@@ -107,21 +148,13 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
                 #network_config.append(NetworkConf(f's{x}_{y}', f's{x}_{y+1}', None,   2*delay,    3*bdp_in_bytes, True,  'fifo',  loss)) # Delay
                 network_config.append(NetworkConf(f's{x}_{y}', f's{x}_{y+1}', bw,     delay,       qsize_in_bytes, True,    aqm,    loss)) # COMBINED DELAY/BW
 
-    # Client/server delay and traffic config
-    for f in range(1, n_flows + 1):
-        network_config.append(NetworkConf(f's_c{f}', f'UT_c{f}', None,   2*delay,    3*bdp_in_bytes, False,  'fifo',  loss)) # Delay
-        traffic_config.append(TrafficConf(f'c{f}', f'x{f}', 0, duration, protocol)) # Standard flow for entire experiment
-
-    # Monitor all satellite interfaces
+   # Monitor all satellite interfaces
     node: Node
     for node in net.switches:
-        if node.name.startswith('s') and not node.name.startswith('s_'):
-            for intf in node.intfList():
-                if "eth" in intf.name:
-                    printPink(f'Monitoring intf {intf.name}')
-                    monitors.append(intf.name)
-    #monitors = ["sysstat", "s2_3-eth2", "s3_1-eth2", "s4_4-eth3"]
-    # printGreen(monitors)
+        for intf in node.intfList():
+            if "eth" in intf.name:
+                printPink(f'Monitoring intf {intf.name}')
+                monitors.append(intf.name)
     # -------------------------------------------------------------------------------------------------------------------------------------------
     
     em = Emulation(net, network_config, traffic_config, output_path, .1)
@@ -129,7 +162,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     em.configure_traffic()
     em.set_monitors(monitors) # monitors switch and router queue sizes
 
-    # CLI(net)
+    #CLI(net)
 
     threads = []
     threads.append(threading.Thread(target=em.run))
@@ -149,8 +182,23 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     change_all_user_permissions(output_path)
     process_raw_outputs(output_path, emulation_start_time=em.start_time) # parsers.py does its thing
     change_all_user_permissions(output_path)
-    plot_all_mn(output_path,aqm=aqm, multipath=True, duration=duration)
+    plot_all_mn(output_path,aqm=aqm, multipath=True, duration=duration, combine_graph=True)
 
+
+def get_unique_position(range, positions):
+    """
+    Returns a random integer position within the given range (1-range inclusive)
+    new positions will be added to the list and duplicate positions will be reshuffled until they are new.
+    """
+    while True:
+        pos = (random.randint(1, range), random.randint(1, range))
+        printRed(f"Pos list: \n{positions}")
+        if positions != "none" and pos not in positions:
+            printGreen(f"appending {pos} to pos list")
+            positions.append(pos)
+            break
+        printRed(f"NOT appending {pos} to pos list")
+    return pos
 
 if __name__ == '__main__':
     topology = 'manhattan_openflow'
@@ -170,13 +218,8 @@ if __name__ == '__main__':
     num_paths = int(sys.argv[14])
     path_penalty = float(sys.argv[15])
     path_selector_preset = str(sys.argv[16])
+    output_folder = sys.argv[17]
     params = {'n': n_flows,
               'mesh_size': mesh_size}
     
-    # $del $bw $qmult $protocol $run $AQM $loss $flow $subflow $mesh_size $controller $seed $path_selector $num_paths
-
-    random.seed(seed) # consider passing the seed to the controller if it has any random behaviour (ECMP?)
-    
-    run_emulation(topology, protocol, params, bw, delay, qmult, 22, run, aqm, loss, n_flows, n_subflows, controller, path_selector, num_paths, path_penalty, seed, path_selector_preset) #Qsize should be at least 1 MSS.
-
-
+    run_emulation(topology, protocol, params, bw, delay, qmult, 22, run, aqm, loss, n_flows, n_subflows, controller, path_selector, num_paths, path_penalty, seed, path_selector_preset, output_folder) #Qsize should be at least 1 MSS.

@@ -384,21 +384,36 @@ class OpenFlowTest(Topo):
 # Routing has to be done manually!
 class ManhattanOpenflow(Topo):
     # Returns a unique DPID. Intended to override the default dpid generation based on name (s1a = 1, and s1b = 1. Collisions are bad.)
-    def get_dpid(self):
-        self.curr_dpid += 1
-        return "%016x" % self.curr_dpid  # Return zero-padded hex string for DPID
+    def get_dpid_from_pos(self, x: int, y: int) -> str:
+        printGreen(x)
+        printGreen(y)
+        printGreen(f"{0:011x}{x:02d}0{y:02d}")
+        return f"{0:011x}{x:02d}0{y:02d}"
+
+    def get_dpid(self, type="none"):
+        if type == "sat":
+            self.curr_sat_dpid += 1
+            return "%016x" % self.curr_sat_dpid
+        elif type == "ground":
+            self.curr_ground_dpid += 1
+            return "%016x" % self.curr_ground_dpid
+        else:
+            printRed("ERROR: DPID type must be specified")
+            return None
+            
 
     def build(self, n=2, mesh_size=10):
         self.n = n # Number of random host-pairs (client c and server x)
         self.mesh_size = mesh_size # Number of rows/columns (square)
-        self.curr_dpid = 0
+        self.curr_sat_dpid = 0 
+        self.curr_ground_dpid = 10000 # Start at 100k, allow anything <100k for mesh switches
         self.host_coords = []
         self.satellites = []
 
         # Routers
         for y in range(1, mesh_size+1):
             for x in range(1, mesh_size+1):
-                s = self.addSwitch(f's{x}_{y}', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
+                s = self.addSwitch(f's{x}_{y}', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid(type='sat'))
                 self.satellites.append(s)
         
         # client-server pairs. User terminals are connected to satellites via their eth-0's
@@ -407,13 +422,12 @@ class ManhattanOpenflow(Topo):
                 x, y = self.get_unique_position()
 
                 host = self.addHost(f'{name}{h}', cls=Host) # Client or server
-                sw = self.addSwitch(f's_{host}', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
-                ut = self.addSwitch(f'UT_{host}', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid())
+                sw = self.addSwitch(f's_{host}', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid(type='ground')) # give non-mesh switches unique DPIDs for easy identification
+                ut = self.addSwitch(f'UT_{host}', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid(type='ground'))
 
                 self.addLink(host, sw) # Host to switch
                 self.addLink(sw, ut) # Switch to user terminal
-                self.addLink(ut, f's{x}_{y}') # UT to some random satellie. Maybe delete this and create/break UT links via the experiment or animation.
-                printRed(f'{name}{h} -> s{x}_{y}')
+                #self.addLink(ut, f's{x}_{y}') # UT to some random satellie. Maybe delete this and create/break UT links via the experiment or animation.
 
         # Switch Links ^>
         for y in range(1, mesh_size+1):

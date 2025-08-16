@@ -7,36 +7,51 @@ import os
 import re
 from core.utils import *
 
-def monitor_qlen(iface, interval_sec = 0.1, path = default_dir, ):
-    mkdirp(path)
-    fname='%s/%s.txt' % (path, iface)
-    pat_queued = re.compile(r'backlog\s+([\d]+\w+)\s+\d+p')
-    pat_dropped = re.compile(r'dropped\s+([\d]+)') 
-    cmd = "tc -s qdisc show dev %s" % (iface)
-    f = open(fname, 'w')
-    f.write('time,root_pkts,root_drp,child_pkts,child_drp\n')
-    f.close()
+def monitor_qlen(iface, interval_sec = 0.1, path = default_dir, debug=True):
+    """
+    Runs and records output of tc at a regular interval on the given interface.
+    Used to monitor qdisc statistics, like queue sizes and packet dropped
+    """
+    mkdirp(path) # Create queues the output directory (and its parent folders)
+    filename=f'{path}/{iface}.txt'
+    tc_cmd = f"tc -s qdisc show dev {iface}" # Command to check interface info
+    file = open(filename, 'w') # open the file in write mode (deletes if exists)
+    file.write('time,qdisc_name,qdisc_id,qdisc_pkts,qdisc_drp\n')
+    file.close()
+    pat_name = re.compile(r"qdisc\s+(\w+)\s+\d+:")  # Qdisc name
+    pat_id = re.compile(r"qdisc\s+\w+\s+(\d+):")  # Qdisc ID
+    pat_queued = re.compile(r'backlog\s+([\d]+\w+)\s+\d+p') # Number of packets ("backlog" in the tc output)
+    pat_dropped = re.compile(r'dropped\s+([\d]+)') # Number of packets dropped, cumulative ("dropped" in the tc output)
+
+    debug_print_freq = 30 # Debug print every n iterations
+    debug_count = 0 # used for debug prints
     while 1:
-        p = Popen(cmd, shell=True, stdout=PIPE)
-        output = p.stdout.read()
-        tmp = ''
-        output = output.decode('utf-8')
-        matches_queued = pat_queued.findall(output)
-        matches_dropped = pat_dropped.findall(output)
+        # Run TC (outputs a single line) and match important values on that line
+        tc_process = Popen(tc_cmd, shell=True, stdout=PIPE)
+        tc_output = tc_process.stdout.read().decode('utf-8')
+        matches_name = pat_name.findall(tc_output)
+        matches_id = pat_id.findall(tc_output)
+        matches_queued = pat_queued.findall(tc_output)
+        matches_dropped = pat_dropped.findall(tc_output)
+        if debug and debug_count == 0:
+                debug_count = (debug_count + 1) % debug_print_freq
+                printGreen(iface)
+                printRed(tc_output)
         if len(matches_queued) != len(matches_dropped):
-            print("WARNING: Two matches have different lengths!")
-            print(output)
-        if matches_queued and matches_dropped:
-            tmp += '%f,%s,%s' % (time(), matches_queued[0],matches_dropped[0])
-            if len(matches_queued) > 1 and len(matches_dropped)> 1: 
-                tmp += ',%s,%s\n' % (matches_queued[1], matches_dropped[1])
-            else:
-                tmp += ',,\n'
-        f = open(fname, 'a')
-        f.write(tmp)
-        f.close
+            printRed(f"WARNING: Two matches have different lengths!\n{tc_output}") # not actually an issue, just might not play nice with the parsing method. just means one of the qdiscs doesn't output both backlog and dropped.
+        timestamp = time()
+        for i in range(0,len(matches_name)): # for each found qdisc
+            qdisc_name = matches_name[i]
+            qdisc_id = matches_id[i] 
+            qdisc_pkts = matches_queued[i]
+            qdisc_drp = matches_dropped[i]
+            qdisc_info = f"{timestamp},{qdisc_name},{qdisc_id},{qdisc_pkts},{qdisc_drp}\n"
+            file = open(filename, 'a') # open file in append mode
+            file.write(f'{qdisc_info}')
+            file.close()
+            if debug and debug_count == 0:
+                printTC(qdisc_info)
         sleep(interval_sec)
-    return
 
 def monitor_qlen_on_router(iface, mininode, interval_sec = 0.1, path = default_dir):
     mkdirp(path)
@@ -147,6 +162,45 @@ def stop_sysstat(folder, sending_nodes):
         Popen(cmd, shell=True).wait()
 
     return
+
+
+# Should still work, I just made the code more readible so I could debug it
+# def monitor_qlen_OLD(iface, interval_sec = 0.1, path = default_dir, ):
+#     mkdirp(path)
+#     fname='%s/%s.txt' % (path, iface)
+#     pat_queued = re.compile(r'backlog\s+([\d]+\w+)\s+\d+p')
+#     pat_dropped = re.compile(r'dropped\s+([\d]+)') 
+#     cmd = "tc -s qdisc show dev %s" % (iface)
+#     f = open(fname, 'w')
+#     f.write('time,root_pkts,root_drp,child_pkts,child_drp\n')
+#     f.close()
+#     count = 0
+#     while 1:
+#         p = Popen(cmd, shell=True, stdout=PIPE)
+#         output = p.stdout.read()
+#         tmp = ''
+#         output = output.decode('utf-8')
+#         matches_queued = pat_queued.findall(output)
+#         matches_dropped = pat_dropped.findall(output)
+#         if len(matches_queued) != len(matches_dropped):
+#             printRed("\nWARNING: Two matches have different lengths!")
+#             printRed(output)
+#         if matches_queued and matches_dropped:
+#             tmp += '%f,%s,%s' % (time(), matches_queued[0],matches_dropped[0])
+#             if len(matches_queued) > 1 and len(matches_dropped)> 1: 
+#                 tmp += ',%s,%s\n' % (matches_queued[1], matches_dropped[1])
+#             else:
+#                 tmp += ',,\n'
+#         count = (count + 1) % 100
+#         if count == 1:
+#             printGreen(iface)
+#             printRed(output)
+#             printRed("")
+#         f = open(fname, 'a')
+#         f.write(tmp)
+#         f.close
+#         sleep(interval_sec)
+#     return
 
 
 

@@ -161,10 +161,11 @@ def parse_ss_mp_output(file_path, offset=0, emulation_start_time=None, suppress_
     with open(file_path, "r") as f:
         tokens = []
         for line in f:
-            #printRed(line)
-
-            token = str(re.search(patterns["token"], line).group(1))
             # Maintain a list of unique connection tokens
+            token_match = re.search(patterns["token"], line)
+            if not token_match:
+                continue
+            token = str(token_match.group(1))
             if token not in tokens:
                 tokens.append(token)
 
@@ -218,8 +219,9 @@ def parse_ss_mp_output(file_path, offset=0, emulation_start_time=None, suppress_
         raise ValueError("No ESTAB state entries found in the input file.")
 
     # Convert the 'time' column to relative time (seconds since the absolute start time, or minimum timestamp)
-    min_time = emulation_start_time if emulation_start_time else df['time'].min()  
+    # min_time = emulation_start_time if emulation_start_time else df['time'].min()  
     min_time = df['time'].min()
+    df['real_time'] = df['time']
     df['time'] = df['time'] - min_time + offset
     return df
 

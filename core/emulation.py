@@ -89,9 +89,9 @@ class Emulation:
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: sfb penalty_burst {blue_burst}"
 
             elif delay and bw:
-                burst = int(10*bw*(2**20)/250/8)
-                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 netem delay {delay}ms limit {100000} && sudo tc qdisc {command} dev {intf_name} parent 1:1 handle 10:0 tbf rate {bw}mbit burst {burst} limit {qsize}"
-
+                burst = int(10*bw*(2**20)/250/8) #consider making this smaller? Things get weird when the limit is smaller than it (1bdp ish at 20 delay)
+                
+                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 netem delay {delay}ms && sudo tc qdisc {command} dev {intf_name} parent 1:1 handle 10:0 tbf rate {bw}mbit burst {burst} limit {qsize}"
             else:
                 print("ERROR: either the delay or bandiwdth must be specified")
 
@@ -115,7 +115,6 @@ class Emulation:
             time.sleep(interrupt / 1000.0)
             printTC(f"Running '{cmd} up'")
             node.cmd(f"{cmd} up")
-
 
     def configure_routing(self, num_pairs):
         "Configure static routing on routers"
@@ -442,12 +441,12 @@ class Emulation:
         
         # Monitor per-subflow statistics with ss
         # duration + 10 just as a test. I want to manually set min and max at some point
-        ss_mptcp_cmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_mptcp.sh'} {monitor_interval} {self.path}/{node.name}_ss_mp.csv {duration+1} &"
+        ss_mptcp_cmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_mptcp.sh'} {monitor_interval} {self.path}/{node.name}_ss_mp.csv {duration+8} &"
         printBlue(f'Sending command {ss_mptcp_cmd} to host {node.name}')
         node.cmd(ss_mptcp_cmd)
 
         # Monitor statistics about this connection with ss
-        sscmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_iperf3.sh'} {monitor_interval} {self.path}/{node.name}_ss.csv {duration+1} &"
+        sscmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_iperf3.sh'} {monitor_interval} {self.path}/{node.name}_ss.csv {duration+8} &"
         printBlue(f'Sending command {sscmd} to host {node.name}')
         node.cmd(sscmd)
 

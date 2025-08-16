@@ -1,4 +1,5 @@
 import ipaddress
+import random
 
 def spaghetti_ip():
     for nodes_visited in range(0, 9999999999):
@@ -23,5 +24,11 @@ def calculate_jains_index(bandwidths):
     print(jains)
     return jains
 
-
-calculate_jains_index([20, 40, 43, 80, 80, 100])
+# for x in range (1, 10):
+#     for y in range (1, 10):
+#         print(x)
+#         print(y)
+#         print(f"{0:011x}{x:02d}0{y:02d}")
+host_positions = [(x, y) for x in range(1, 6) for y in range(1, 6)]
+random.shuffle(host_positions)
+print(host_positions)
