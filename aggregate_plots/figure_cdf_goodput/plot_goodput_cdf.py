@@ -12,7 +12,7 @@ import statistics
 from matplotlib.lines import Line2D
 plt.rcParams['text.usetex'] = True
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '../../..')
+mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 from core.plotting import *
