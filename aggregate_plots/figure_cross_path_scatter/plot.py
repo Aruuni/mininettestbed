@@ -13,7 +13,7 @@ from matplotlib.patches import Ellipse
 import matplotlib.transforms as transforms
 
 script_dir = os.path.dirname(__file__)
-mymodule_dir = os.path.join(script_dir, '../../..')
+mymodule_dir = os.path.join(script_dir, '../..')
 sys.path.append(mymodule_dir)
 from core.config import *
 from core.plotting import *
