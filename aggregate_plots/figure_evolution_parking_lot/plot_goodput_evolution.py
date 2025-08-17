@@ -7,7 +7,7 @@ import scienceplots
 
 # Setup paths from core.config
 script_dir = os.path.dirname(__file__)
-mymodule_dir = os.path.join(script_dir, '../../..')
+mymodule_dir = os.path.join(script_dir, '../..')
 sys.path.append(mymodule_dir)
 from core.config import *  # HOME_DIR should be defined here
 
