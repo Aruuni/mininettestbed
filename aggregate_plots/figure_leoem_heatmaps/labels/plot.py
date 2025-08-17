@@ -17,7 +17,7 @@ plt.rcParams['text.usetex'] = True
 
 # --- ensure core.plotting is importable ---
 script_dir   = os.path.dirname(__file__)
-mymodule_dir = os.path.abspath(os.path.join(script_dir, "../../../.."))
+mymodule_dir = os.path.abspath(os.path.join(script_dir, "../../.."))
 sys.path.append(mymodule_dir)
 
 from core.plotting import PATHS_INFO
