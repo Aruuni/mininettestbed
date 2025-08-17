@@ -11,7 +11,7 @@ plt.rcParams['xtick.labelsize'] = 16
 plt.rcParams['ytick.labelsize'] = 16
 # add project root to path so we can import core modules
 tb_dir = os.path.dirname(__file__)
-root = os.path.abspath(os.path.join(tb_dir, '../../../..'))
+root = os.path.abspath(os.path.join(tb_dir, '../../..'))
 sys.path.append(root)
 
 from core.config import *
