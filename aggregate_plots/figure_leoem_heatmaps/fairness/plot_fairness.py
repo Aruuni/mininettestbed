@@ -18,7 +18,7 @@ plt.rcParams['font.size']      = 40
 plt.rcParams['text.usetex'] = True
 
 script_dir = os.path.dirname(__file__)
-mymodule_dir = os.path.join(script_dir, '../../../..')
+mymodule_dir = os.path.join(script_dir, '../../..')
 sys.path.append(mymodule_dir)
 
 from core.config import *
