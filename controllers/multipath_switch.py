@@ -62,7 +62,7 @@ class MultipathSwitch(app_manager.RyuApp):
             ip, host = mapping.split(':')
             self.ip_to_host[ip] = host
         # Custom path selector parameters from experiment (deprecated)
-        # self.NUM_PATHS = int(os.getenv("NUM_PATHS")) # Max num of paths to generate per connection (anything over 8 is overkill. No limit will slow the controller to halt in large topologies.)
+        self.NUM_PATHS = int(os.getenv("NUM_PATHS")) # Max num of paths to generate per connection (anything over 8 is overkill. No limit will slow the controller to halt in large topologies.)
         # self.PATH_SELECTOR_NAME = os.getenv("PATH_SELECTOR") # which path selector to use
         # self.PATH_PENALTY = float(os.getenv("PATH_PENALTY")) # What penalty multipier to apply to used paths
         # # try to grab the function with name PATH_SELECTOR_NAME from path_selectors.py
@@ -154,8 +154,12 @@ class MultipathSwitch(app_manager.RyuApp):
         
         # Flood if the dst has not yet been discovered
         if dst_ip not in self.hosts:
-            self.clients.append(src_ip) # Trying to send to undiscovered host, this must be the initiating client
-            self.servers.append(dst_ip) # Trying to reach this server
+            if src_ip not in self.clients:
+                self.clients.append(src_ip) # Trying to send to undiscovered host, this must be the initiating client
+            if dst_ip not in self.servers:
+                self.servers.append(dst_ip) # Trying to reach this server
+            # printGreen(f"FOUND CLIENT {src_ip}")
+            # printGreen(f"FOUND SERVER {dst_ip}")
             if self.DEBUG: printYellow(f'{dst_ip} not yet learned, flooding from {datapath.id}')
             actions = [parser.OFPActionOutput(ofproto.OFPP_FLOOD)]
             out = parser.OFPPacketOut(datapath=datapath,
@@ -216,6 +220,7 @@ class MultipathSwitch(app_manager.RyuApp):
 
         # Drop if packets from this dst port have already been assigned a path
         self.paths.setdefault(src_ip, {}).setdefault(dst_ip, {})
+        self.paths.setdefault(dst_ip, {}).setdefault(src_ip, {})
         #printYellow(f"found a TCP packet - {src_ip}:{src_port} headed to {dst_ip}:{dst_port}")
         paths_dict = self.paths[src_ip][dst_ip]
 
@@ -224,9 +229,10 @@ class MultipathSwitch(app_manager.RyuApp):
             #printRed(f"TCP packet {src_ip}:{src_port} should already be on a path. Dropping.")
             return
         
-        # Compute the shortest simple paths list if it doesn't already exist
-        if len(paths_dict) == 0:
-            paths:list[tuple] = get_paths(self.graph, src_ip, dst_ip, self.PATH_SELECTOR_PRESET) # Generate list of paths according to the selected preset
+        # Compute the shortest simple paths list if it doesn't already exist (don't let servers generate the paths)
+        if len(paths_dict) == 0 and src_ip not in self.servers:
+            printRed(f"about to generate paths list: {(self.graph, src_ip, dst_ip, self.PATH_SELECTOR_PRESET, self.NUM_PATHS)}")
+            paths:list[tuple] = get_paths(self.graph, src_ip, dst_ip, self.PATH_SELECTOR_PRESET, self.NUM_PATHS) # Generate list of paths according to the selected preset
             # paths = self.PATH_SELECTOR(self.graph, src_ip, dst_ip, self.NUM_PATHS, self.PATH_PENALTY) # Runs whatever path selector was requested by arguments
             for path in paths:
                 self.paths.setdefault(src_ip, {}).setdefault(dst_ip, {}).setdefault(tuple(path), []) # Update paths list for this connection (no subflows assigned to paths yet!)
@@ -235,12 +241,13 @@ class MultipathSwitch(app_manager.RyuApp):
         # Apply a high-priority rule along the kth-shortest path for this dst_port (subflow) ideally tokens should be used instead, but OpenFlow doesn't currently support MPTCP statistics. dst_port works better than src_port thanks to iperf control subflows stealing paths
         forward_match:OFPMatch = parser.OFPMatch(eth_type=0x0800, ip_proto=inet.IPPROTO_TCP, ipv4_src=src_ip, ipv4_dst=dst_ip, tcp_dst=dst_port) # Match packets sending as part of this subflow (sending from src_ip, sending to dst_ip, sending to dst_port)
         backward_match:OFPMatch = parser.OFPMatch(eth_type=0x0800, ip_proto=inet.IPPROTO_TCP, ipv4_src=dst_ip, ipv4_dst=src_ip, tcp_src=dst_port) # Match packets returning on this subflow (sending from dst_ip, sending to src_ip, sending from dst_port)
-        min_length = min(len(subflow_count) for subflow_count in paths_dict.values()) # lowest subflow count
-        for path, subflows in paths_dict.items(): # find the (shortest) path with the least subflows
-            if len(subflows) == min_length:
-                self.apply_rules_along_path(path, forward_match, backward_match, self.PRIORITY_HIGH, parser, ofproto, table_id=self.TCP_TABLE) # apply high-priority rule
-                paths_dict[path].append(dst_port) # record which path this subflow will use
-                break
+        if len(paths_dict.items()) != 0:
+            min_length = min(len(subflow_count) for subflow_count in paths_dict.values())# lowest subflow count
+            for path, subflows in paths_dict.items(): # find the (shortest) path with the least subflows
+                if len(subflows) == min_length:
+                    self.apply_rules_along_path(path, forward_match, backward_match, self.PRIORITY_HIGH, parser, ofproto, table_id=self.TCP_TABLE) # apply high-priority rule
+                    paths_dict[path].append(dst_port) # record which path this subflow will use
+                    break
     
     def apply_rules_along_path(self, path:tuple, forward_match, backward_match, priority:int, parser:ofproto_v1_3_parser, ofproto:ofproto_v1_3, table_id:int):
         """
@@ -249,8 +256,9 @@ class MultipathSwitch(app_manager.RyuApp):
             forward_match: matches to packets sent from src on this subflow
             backward_match: matches to packet returning to src from dst on this subflow
         """
-        if self.DEBUG: printYellow(f"applying rules to path: {path}")
-        found_overhead = False # Will be set to true when the the src's overhead satellite has been identified
+        if self.DEBUG: printYellow(f"\tapplying rules to path: {path}")
+        found_client_overhead = False # Will be set to true when the the src's overhead satellite has been identified
+        found_server_overhead = False
         # Install flow rules to each switch on the path
         for i, dpid in enumerate(path): 
             if i >= len(path)-1:
@@ -264,10 +272,14 @@ class MultipathSwitch(app_manager.RyuApp):
                 # Update mesh nodes and edges with knowledge of this path (Only used for plotting)
                 if dpid in self.mesh_graph.nodes():
                     # Tell the "first" switch that it is overhead of the host
-                    if not found_overhead and dpid < 10000:     
-                        found_overhead = True
+                    if not found_client_overhead and dpid < 10000:     
+                        found_client_overhead = True
                         if path[0] not in self.mesh_graph.nodes[dpid]['overhead']: 
                             self.mesh_graph.nodes[dpid]['overhead'].append(path[0]) # Tell the current switch it is directly overhead of the src_ip
+                    if not found_server_overhead and dpid < 10000 and next_hop > 10000:
+                        found_server_overhead = True
+                        if path[0] not in self.mesh_graph.nodes[dpid]['overhead']: 
+                            self.mesh_graph.nodes[dpid]['overhead'].append(path[-1]) # Tell the current switch it is directly overhead of the dst_ip
                     # Update mesh graph only with "forward" paths. Allow repeats to represents mutliple siblings subflows on shared edges.
                     if path[0] in self.clients:
                         # Tell the current switch that an IP passed through it
@@ -404,7 +416,7 @@ class MultipathSwitch(app_manager.RyuApp):
 
     # Plotting and other -------------------------------------------------------------------------------------------------
 
-    def grid_pos(self, num_nodes):
+    def grid_pos(self, num_nodes, x_offset=0, y_offset=0):
         """
         Returns a grid of positions based on the input number of nodes
         """
@@ -413,18 +425,20 @@ class MultipathSwitch(app_manager.RyuApp):
         for i in range(0, num_nodes):
             row = i // side
             col = i % side
-            pos[i+1] = (col, row)
+            pos[i+1] = (col + x_offset, row + y_offset)
         return pos
 
     def output_graph(self, out_graph, output_path:str):
         """
         Saves the given graph as a page in the output pdf.
         """
+        printYellow(f"Clients: {self.clients}")
+        printBlue(f'Servers: {self.servers}')
         # Assign colors to hosts based on their name (c1 gets 1st color, x2 second color, and so on)
         colors_list = ["#1f77bf", "#ff7f0e", "#2ca02c", "#d6272b", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
         host_colors = {}
         for src in self.hosts:
-            host_colors[src] = colors_list[int(self.ip_to_host[src][1:]) - 1]
+            host_colors[src] = colors_list[(int(self.ip_to_host[src][1:]) - 1) % len(colors_list)]
         if self.DEBUG: 
             printYellow("done assigning connection colors.")
             printYellow(f'\t{host_colors}')
@@ -479,8 +493,8 @@ class MultipathSwitch(app_manager.RyuApp):
 
         
         subflow_line = {
-            "line_width": 5,
-            "line_spread": .008,
+            "line_width": 4,
+            "line_spread": .013, # .14 creates very minimal gaps
             "global_line_offset": .01,
             "line_alpha": 1,
             "line_style": '-'
@@ -488,7 +502,7 @@ class MultipathSwitch(app_manager.RyuApp):
 
         empty_line = {
             "line_width": 1.6,
-            "line_spread": .019, # .014 creates minimal gaps, any lower creates overlap and is unfeasbile
+            "line_spread": .019,
             "global_line_offset": .01,
             "line_alpha": .6,
             "line_style": '--'
@@ -497,6 +511,7 @@ class MultipathSwitch(app_manager.RyuApp):
 
         for edge in edge_to_colors:
             for c, color in enumerate(sorted(edge_to_colors[edge])):
+                # Assign line properties based on link utilization status
                 if color == '#888888':
                     style = empty_line
                     connection_style = 'arc3'
@@ -505,9 +520,41 @@ class MultipathSwitch(app_manager.RyuApp):
                     spread = style['line_width'] * style['line_spread']
                     bar_fraction = spread*(c+1)-spread*len(edge_to_colors[edge])/2 - .01
                     connection_style = f'bar,fraction={bar_fraction}'
+
+                # Make wrapped lines render differently
+                graph_pos = pos.copy()
+                node_a = edge[0]
+                node_b = edge[1]
+
+                # Edge wrapping horizontally, first node is on the right edge
+                if pos[node_a][0] - pos[node_b][0] > 1:
+                    right_node = node_a 
+                    left_node = node_b
+                    graph_pos[left_node] = (pos[right_node][0] + 1, pos[left_node][1])
+
+                # Edge wrapping horizontally, first node is on the left edge
+                if pos[node_a][0] - pos[node_b][0] < -1:
+                    right_node = node_b 
+                    left_node = node_a
+                    graph_pos[left_node] = (pos[right_node][0] + 1, pos[left_node][1])
+
+                # Edge wrapping vertically, first node is on the top edge
+                if pos[node_a][1] - pos[node_b][1] > 1:
+                    top_node = node_a 
+                    bottom_node = node_b
+                    graph_pos[bottom_node] = (pos[bottom_node][0], pos[top_node][1] + 1)
+
+                # Edge wrapping vertically, first node is on the top edge
+                if pos[node_a][1] - pos[node_b][1] < -1:
+                    top_node = node_b
+                    bottom_node = node_a
+                    graph_pos[bottom_node] = (pos[bottom_node][0], pos[top_node][1] + 1)
+
+                # TODO: when edge is wrapping, render it a second time on the opposite side.
+
                 nx.draw_networkx_edges(
                     out_graph, 
-                    pos=pos,
+                    pos=graph_pos,
                     edgelist=[edge],
                     edge_color=color,
                     width=style['line_width'],

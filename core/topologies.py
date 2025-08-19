@@ -446,6 +446,71 @@ class ManhattanOpenflow(Topo):
                 break
         return pos
 
+# A perfect grid of routers interconnected with their adjacent neighbours. Intended to (roughly) mimic an LEO satellite network mesh
+# Created with switches - routing must be done through a custom openflow controller (one that can handle loops - basic learning switches won't do)
+# Routing has to be done manually!
+class ManhattanOpenflowWrapped(Topo):
+    # Returns a unique DPID. Intended to override the default dpid generation based on name (s1a = 1, and s1b = 1. Collisions are bad.)
+    def get_dpid_from_pos(self, x: int, y: int) -> str:
+        printGreen(x)
+        printGreen(y)
+        printGreen(f"{0:011x}{x:02d}0{y:02d}")
+        return f"{0:011x}{x:02d}0{y:02d}"
+
+    def get_dpid(self, type="none"):
+        if type == "sat":
+            self.curr_sat_dpid += 1
+            return "%016x" % self.curr_sat_dpid
+        elif type == "ground":
+            self.curr_ground_dpid += 1
+            return "%016x" % self.curr_ground_dpid
+        else:
+            printRed("ERROR: DPID type must be specified")
+            return None
+            
+
+    def build(self, n=2, mesh_size=10):
+        self.n = n # Number of random host-pairs (client c and server x)
+        self.mesh_size = mesh_size # Number of rows/columns (square)
+        self.curr_sat_dpid = 0 
+        self.curr_ground_dpid = 10000 # Start at 100k, allow anything <100k for mesh switches
+        self.host_coords = []
+        self.satellites = []
+
+        # Satellites
+        for y in range(1, mesh_size+1):
+            for x in range(1, mesh_size+1):
+                s = self.addSwitch(f's{x}_{y}', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid(type='sat'))
+                self.satellites.append(s)
+        
+        # client-server pairs. User terminals are connected to satellites via their eth-0's
+        for h in range(1, n+1):
+            for name in ['c', 'x']:
+                #x, y = self.get_unique_position()
+
+                host = self.addHost(f'{name}{h}', cls=Host) # Client or server
+                sw = self.addSwitch(f's_{host}', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid(type='ground')) # give non-mesh switches unique DPIDs for easy identification
+                ut = self.addSwitch(f'UT_{host}', cls=OVSKernelSwitch, protocols='OpenFlow13', dpid=self.get_dpid(type='ground'))
+
+                self.addLink(host, sw) # Host to switch
+                self.addLink(sw, ut) # Switch to user terminal
+                #self.addLink(ut, f's{x}_{y}') # UT to some random satellie. Maybe delete this and create/break UT links via the experiment or animation.
+
+        # Satellite Links ^>
+        for y in range(1, mesh_size+1):
+            for x in range(1, mesh_size+1):
+                self.addLink(f's{x}_{y}', f's{x%mesh_size+1}_{y}') # East
+                self.addLink(f's{x}_{y}', f's{x}_{y%mesh_size+1}') # North
+        
+    def get_unique_position(self):
+        #random.seed(24601) # Will this seed make each integer the same?
+        while True:
+            pos = (random.randint(1, self.mesh_size), random.randint(1, self.mesh_size))
+            if pos not in self.host_coords:
+                self.host_coords.append(pos)
+                break
+        return pos
+
 topos = { 'dumbell': DumbellTopo,
           'double_dumbell': DoubleDumbbellTopo,
           'parking_lot': ParkingLot,
@@ -457,4 +522,5 @@ topos = { 'dumbell': DumbellTopo,
           "manhattan" : ManhattanTopo,
           'openflowtest' : OpenFlowTest,
             "manhattan_openflow" : ManhattanOpenflow,
+            'manhattan_openflow_wrapped' : ManhattanOpenflowWrapped,
         }

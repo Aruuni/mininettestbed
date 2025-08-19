@@ -66,9 +66,6 @@ def shortest_pseudo_disjoint_paths(original_graph: DiGraph, src, dst, max_paths:
         # Apply penalties, if they exist
         if penalty_mult != 1: apply_penalty_along_path(graph, current_path, penalty_mult)
         if shared_penalty_mult != 1: apply_penalty_along_path(original_graph, current_path, shared_penalty_mult)
-    print(paths)
-    for u, v, data in graph.edges(data=True):
-        print(u, v, data.get("weight"))
     return paths
 
 def shortest_similar_paths(original_graph: DiGraph, src, dst, max_paths:int, threshold:float=50, penalty_mult:float=500):
@@ -101,7 +98,7 @@ def apply_penalty_along_path(graph:DiGraph, path:tuple, penalty:float, additive=
 
 # End of utility functions -------------------------------------------------------------------------------------------------------------------------------------------------------
 
-def get_paths(original_graph: DiGraph, src, dst, preset:str, max_paths=8):
+def get_paths(original_graph: DiGraph, src, dst, preset:str, max_paths):
     """
     Returns a list of shortest paths, acquired using some path selection strategy preset
     
@@ -112,17 +109,17 @@ def get_paths(original_graph: DiGraph, src, dst, preset:str, max_paths=8):
     if preset == "k-shortest": # Shortest unique paths, no disjointedness enforced
         return get_shortest_paths(original_graph, src, dst, max_paths=max_paths)
     
-    elif preset == "all-lightly-disjoint": # Subflows are lightly encouraged to be disjoint to ALL subflows equally
-        return shortest_pseudo_disjoint_paths(original_graph, src, dst, max_paths=max_paths, penalty_mult=1.05, shared_penalty_mult=1.05)
+    elif preset == "all-lightly-disjoint": # Subflows are lightly encouraged to be disjoint to ALL subflows equally. Make use of equal-cost paths, but likely nothing more.
+        return shortest_pseudo_disjoint_paths(original_graph, src, dst, max_paths=max_paths, penalty_mult=1.20, shared_penalty_mult=1.20)
     
-    elif preset == "all-strongly-disjoint": # Subflows are strongly encouraged to be disjoint to ALL subflows equally
+    elif preset == "all-strongly-disjoint": # Subflows are strongly encouraged to be disjoint to ALL subflows
         return shortest_pseudo_disjoint_paths(original_graph, src, dst, max_paths=max_paths, penalty_mult=1000, shared_penalty_mult=1000)
     
     elif preset == "strongly-disjoint-siblings": # Subflows are strongly encouraged to be disjoint to sibling subflows
-        return shortest_pseudo_disjoint_paths(original_graph, src, dst, max_paths=max_paths, penalty_mult=1000, shared_penalty_mult=1.05)
+        return shortest_pseudo_disjoint_paths(original_graph, src, dst, max_paths=max_paths, penalty_mult=1000, shared_penalty_mult=1.20)
     
     elif preset == "strongly-disjoint-strangers": # Subflows are strongly encouraged to be disjoint to stranger subflows (and slightly to each other, or else you would repeatedly be assigned the same path)
-        return shortest_pseudo_disjoint_paths(original_graph, src, dst, max_paths=max_paths, penalty_mult=1.05, shared_penalty_mult=1000)
+        return shortest_pseudo_disjoint_paths(original_graph, src, dst, max_paths=max_paths, penalty_mult=1.20, shared_penalty_mult=1000)
     
     else:
         print(f"ERROR - path selection preset \"{preset}\" does not exist!")

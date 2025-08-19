@@ -403,7 +403,7 @@ def plot_all_mn(path: str, aqm='fifo', metrics = ['goodput', 'throughput', 'rtt'
             
             
             # Only labels queues with meaningful queue sizes (or ones that can act as rate limiters)
-            if df_queue['qdisc_pkts'].max() > 3 or 's_' in queue_file:
+            if df_queue['qdisc_pkts'].max() > 10 or 's_' in queue_file:
                 qlabel = f'{queue_file}'
             else:
                 qlabel = '_nolegend_'
@@ -594,6 +594,7 @@ def plot_all_ns3_responsiveness(path: str) -> None:
         emulation_info = json.load(f)
 
     fig, axs = plt.subplots(5, 1, figsize=(17, 30))
+    plt.subplots_adjust(hspace = 10)
 
     netem_bw, netem_rtt, netem_loss = [], [], []
 

@@ -64,9 +64,8 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
         duration >= 20          (Don't run short experiment here, if your computer is busy then hosts can take a few seconds to get fully connected)
         delay ~= 18             (average ISL delay for starlink)
     """
-    # This experiment is intended to be run only on the MultiCompetitionTopo
-    if topology == "manhattan_openflow":
-        topo = ManhattanOpenflow(**params)
+    if topology == "manhattan_openflow_wrapped":
+        topo = ManhattanOpenflowWrapped(**params)
     else:
         printRed("ERROR: topology \'%s\' not recognised" % topology)
         return
@@ -90,9 +89,9 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     if path_selector == "preset":
         controller_path = path_selector_preset
     else:
-        controller_path = f"{controller_name}_{path_selector}_{num_paths}maxpaths_{path_penalty}pathpenalty"
+        controller_path = f"{controller_name}_{path_selector}_{subflows}maxpaths_{path_penalty}pathpenalty"
     #                                                    /Experiment_type           /events                          /network_characteristics (router/switch/link properties)                                   /routing          /protocol_parameters            /run
-    output_path = f"{HOME_DIR}/cctestbed/{output_folder}/results_manhattan_openflow_random_flooded/{topology}_{seed}_{n_flows}flows/{aqm}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{tcp_buffer_mult}tcpbuf/{controller_path}/{protocol}_{n_subflows}subflows/run{run}" 
+    output_path = f"{HOME_DIR}/cctestbed/{output_folder}/results_manhattan_wrapped_random_flooded/{topology}_{seed}_{n_flows}flows/{aqm}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{tcp_buffer_mult}tcpbuf/{controller_path}/{protocol}_{n_subflows}subflows/run{run}" 
     printRed(output_path)
     rmdirp(output_path)
     mkdirp(output_path)
@@ -100,17 +99,21 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     net = Mininet(topo=topo, link=TCLink, autoSetMacs=True, autoStaticArp=True
                   ,controller=lambda name: RemoteController(name, ip='127.0.0.1', port=6653),
     )
+
     host_ips_list = [f"{host.IP()}:{host.name}" for host in net.hosts]
     host_ips = ' '.join(host_ips_list)
     # Start remote controller (start early to allow time for initialization)
-    controller = start_remote_controller(controller_name, path_selector, n_subflows, path_penalty, output_path, path_selector_preset=path_selector_preset, host_ips=host_ips)
+    controller = start_remote_controller(controller_name, path_selector, subflows, path_penalty, output_path, path_selector_preset=path_selector_preset, host_ips=host_ips)
 
     # Sample host positions from a random list
     host_positions = [(x, y) for x in range(1, mesh_size+1) for y in range(1, mesh_size+1)]
     random.shuffle(host_positions)
+    
     for h, host in enumerate(net.hosts):
-        x, y = host_positions[h]
+        x, y = host_positions[h%len(host_positions)]
         net.addLink(f'UT_{host.name}', f's{x}_{y}') 
+        strd = f's{x}_{y}'
+        printGreen(f'LINK ADDED {strd}')
 
     tcp_buffers_setup(bdp_in_bytes + qsize_in_bytes, multiplier=tcp_buffer_mult) # make sure send/receive buffers are not the bottleneck
     #assign_ips_by_link(net) # Assign interface IPs sequentially
@@ -137,14 +140,12 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     # Satellite mesh network config (bandwidth, delay, queues)
     for x in range (1, mesh_size+1):
         for y in range (1, mesh_size+1):
-            if x != mesh_size:
-                #network_config.append(NetworkConf(f's{x}_{y}', f's{x+1}_{y}', bw,     None,       qsize_in_bytes, True,    aqm,    None)) # Right
-                #network_config.append(NetworkConf(f's{x}_{y}', f's{x+1}_{y}', None,   2*delay,    3*bdp_in_bytes, True,  'fifo',  loss)) # Delay
-                network_config.append(NetworkConf(f's{x}_{y}', f's{x+1}_{y}', bw,     sat_delay,       qsize_in_bytes, True,    aqm,    loss)) # COMBINED DELAY/BW
-            if y != mesh_size:
-                #network_config.append(NetworkConf(f's{x}_{y}', f's{x}_{y+1}', bw,     None,       qsize_in_bytes, True,    aqm,    None)) # Above
-                #network_config.append(NetworkConf(f's{x}_{y}', f's{x}_{y+1}', None,   2*delay,    3*bdp_in_bytes, True,  'fifo',  loss)) # Delay
-                network_config.append(NetworkConf(f's{x}_{y}', f's{x}_{y+1}', bw,     sat_delay,       qsize_in_bytes, True,    aqm,    loss)) # COMBINED DELAY/BW
+            #network_config.append(NetworkConf(f's{x}_{y}', f's{x+1}_{y}', bw,     None,       qsize_in_bytes, True,    aqm,    None)) # Right
+            #network_config.append(NetworkConf(f's{x}_{y}', f's{x+1}_{y}', None,   2*delay,    3*bdp_in_bytes, True,  'fifo',  loss)) # Delay
+            network_config.append(NetworkConf(f's{x}_{y}', f's{x%mesh_size+1}_{y}', bw,     sat_delay,       qsize_in_bytes, True,    aqm,    loss)) # COMBINED DELAY/BW
+            #network_config.append(NetworkConf(f's{x}_{y}', f's{x}_{y+1}', bw,     None,       qsize_in_bytes, True,    aqm,    None)) # Above
+            #network_config.append(NetworkConf(f's{x}_{y}', f's{x}_{y+1}', None,   2*delay,    3*bdp_in_bytes, True,  'fifo',  loss)) # Delay
+            network_config.append(NetworkConf(f's{x}_{y}', f's{x}_{y%mesh_size+1}', bw,     sat_delay,       qsize_in_bytes, True,    aqm,    loss)) # COMBINED DELAY/BW
 
     # Monitor all satellite interfaces
     node: Node
@@ -201,7 +202,7 @@ def get_unique_position(range, positions):
     return pos
 
 if __name__ == '__main__':
-    topology = 'manhattan_openflow'
+    topology = 'manhattan_openflow_wrapped'
     delay = int(sys.argv[1])
     bw = int(sys.argv[2])
     qmult = float(sys.argv[3])
