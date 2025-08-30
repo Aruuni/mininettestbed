@@ -5,13 +5,13 @@ import matplotlib.pyplot as plt
 import scienceplots
 
 script_dir = os.path.dirname(__file__)
-mymodule_dir = os.path.join(script_dir, "../../..")
+mymodule_dir = os.path.join(script_dir, "../..")
 sys.path.append(mymodule_dir)
 from core.config import *
 from core.plotting import * 
 plt.style.use("science")
-plt.rcParams["text.usetex"] = False
-plt.rcParams["font.size"]   = 11
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.size"]   = 13
 
 # Root path for ParkingLot data
 FLOWS = ["x1", "x2", "x3", "x4"]
@@ -88,7 +88,7 @@ def plot_data(data, filename, ylim=None, xlim=None):
             ax.set_xticks(range(0, 176, 25))
 
         if i == len(PROTOCOLS_EXTENSION)-1:
-            ax.set(xlabel='time (s)')
+            ax.set(xlabel='Time (s)')
 
         ax.text(70, 85, PROTOCOLS_FRIENDLY_NAME_LEO[protocol], va='center', c=COLORS_EXTENSION[protocol])
         ax.grid()
@@ -101,8 +101,8 @@ if __name__ == "__main__":
     EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_aqm"
     BW = 100
     DELAY = 10
-    AQM = 'fifo'
-    AQM_LIST = ['fifo']
+    AQM = 'fq_codel'
+    AQM_LIST = ['fq_codel']
 
     for QMULT in QMULTS:
         goodput_data = {}
@@ -111,6 +111,7 @@ if __name__ == "__main__":
             goodput_data[aqm] = goodput
 
         for format in ['pdf']:
-            plot_data(goodput_data, 'aqm_goodput_%smbps_%sms_%smult.%s' % (BW, DELAY, QMULT, format), ylim=[0, 100], xlim=[0,175])
+            plot_data(goodput_data, 'aqm_goodput_%smbps_%sms_%smult.%s' % (BW, 10, QMULT, format), ylim=[0, 100], xlim=[0,175])
+            plot_data(goodput_data, 'aqm_goodput_%smbps_%sms_%smult.%s' % (BW, 100, QMULT, format), ylim=[0, 100], xlim=[0,175])
             # plot_data(delay_data, 'aqm_delay_%smbps_%sms_%smult.png' % (BW, DELAY, QMULTS))
             # plot_data(retr_data, 'aqm_retr_%smbps_%sms_%smult.png' % (BW, DELAY, QMULTS))

@@ -7,14 +7,14 @@ import os, sys
 from matplotlib.ticker import ScalarFormatter
 import numpy as np
 
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '../../..')
+mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 from core.plotting import * 
 
-EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_intra_rtt_async/fifo" 
+EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_intra_rtt/fifo" 
 
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]

@@ -2,17 +2,17 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import os, sys
 script_dir = os.path.dirname(__file__)
-mymodule_dir = os.path.join(script_dir, '../..')
+mymodule_dir = os.path.join(script_dir, '..')
 sys.path.append(mymodule_dir)
 sys.dont_write_bytecode = True 
-
+plt.rcParams['text.usetex'] = True
 from core.plotting import (
     COLORS_EXTENSION,
     PROTOCOLS_MARKERS_EXTENSION,
     PROTOCOLS_FRIENDLY_NAME_EXTENSION,
     PROTOCOLS_EXTENSION
 )
-
+PROTOCOLS_EXTENSION = ['orca', 'sage', 'astraea', 'vivace-uspace', 'bbr3' ]
 fig, ax = plt.subplots(figsize=(40, 3))
 ax.axis('off')
 
@@ -42,7 +42,7 @@ legend = ax.legend(
     borderaxespad=1       # optional: distance from axes box
 )
 # Save the legend-only plot with tight bounding box
-legend_fig_path = "protocol_legend_markers.pdf"
+legend_fig_path = "protocol_legend_markers_nocubic.pdf"
 fig.savefig(legend_fig_path, bbox_inches='tight', pad_inches=0, transparent=True)
 
 print(f"Legend saved to: {legend_fig_path}")

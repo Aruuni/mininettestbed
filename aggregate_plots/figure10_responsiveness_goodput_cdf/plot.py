@@ -10,9 +10,9 @@ import numpy as np
 from matplotlib.pyplot import figure
 import statistics
 from matplotlib.lines import Line2D
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '../../..')
+mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 from core.plotting import * 
@@ -100,7 +100,7 @@ for protocol in PROTOCOLS_EXTENSION:
     cum = np.cumsum(vals)
     ax.plot(bins[:-1], cum / 50 * 100, c=COLORS_EXTENSION[protocol], linestyle='--', linewidth=1.0)
 
-ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percentage of Trials (%)")
+ax.set(xlabel="Average Goodput (Mbps)", ylabel="\% of Trials")
 # ax.annotate(
 #     'link capacity',
 #     xy=(76, 50), xytext=(32, 20), color='black',
@@ -111,13 +111,13 @@ ax.set(xlabel="Average Goodput (Mbps)", ylabel="Percentage of Trials (%)")
 
 all_handles = protocol_handles
 all_labels = protocol_labels
-fig.legend(
-    all_handles, all_labels,
-    loc='upper center', bbox_to_anchor=(0.5, 1),
-    ncol=3, frameon=False,
-    fontsize=7, columnspacing=1.0,
-    handlelength=2.5, handletextpad=0.7
-)
+# fig.legend(
+#     all_handles, all_labels,
+#     loc='upper center', bbox_to_anchor=(0.5, 1),
+#     ncol=3, frameon=False,
+#     fontsize=7, columnspacing=1.0,
+#     handlelength=2.5, handletextpad=0.7
+# )
 ax.legend(
     [bw_rtt_loss, bw_rtt_loss_line],
     ['bw-rtt', 'bw-loss'],

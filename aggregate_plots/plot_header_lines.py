@@ -2,20 +2,20 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import os, sys
 
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 
 # Setup paths
 script_dir = os.path.dirname(__file__)
-mymodule_dir = os.path.join(script_dir, '../..')
+mymodule_dir = os.path.join(script_dir, '..')
 sys.path.append(mymodule_dir)
 sys.dont_write_bytecode = True 
-
 # Import protocol styling dictionaries
 from core.plotting import (
     COLORS_EXTENSION,
     PROTOCOLS_FRIENDLY_NAME_EXTENSION,
     PROTOCOLS_EXTENSION
 )
+PROTOCOLS_EXTENSION = ['orca', 'sage', 'astraea', 'vivace-uspace', 'bbr3' ]
 
 # Create the legend strip figure
 fig, ax = plt.subplots(figsize=(40, 1))  # very thin strip
@@ -49,7 +49,7 @@ legend = ax.legend(
 )
 
 # Save the legend-only plot
-legend_fig_path = "protocol_legend_lines.pdf"
+legend_fig_path = "protocol_legend_lines_nocubic.pdf"
 fig.savefig(legend_fig_path, bbox_inches='tight', pad_inches=0, transparent=True)
 
 print(f"Legend saved to: {legend_fig_path}")

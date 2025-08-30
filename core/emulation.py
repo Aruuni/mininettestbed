@@ -71,7 +71,7 @@ class Emulation:
 
             elif bw and not delay:
                 burst = int(10*bw*(2**20)/250/8)
-                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 tbf rate {bw}mbit burst 15k limit {qsize * 22 if aqm != 'fifo' else qsize} "
+                cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 tbf rate {bw}mbit burst {burst} limit {qsize * 22 if aqm != 'fifo' else qsize} "
                 printPink(cmd)
                 if aqm == 'fq_codel':
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq_codel limit {int(qsize/1500)} target 5ms interval 100ms flows 100"
@@ -494,11 +494,11 @@ class Emulation:
 
     def start_sage_sender(self, node_name, duration, port=5555):
         node = self.network.get(node_name)
-        sscmd = f"./core/ss/ss_script_sage.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
+        sscmd = f"./core/ss/ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
         printPurple(f"Sending command '{sscmd}' to host {node.name}")
         node.cmd(sscmd)
 
-        sagecmd = f"sudo -u {USERNAME}  EXPERIMENT_PATH={self.path} {SAGE_INSTALL_FOLDER}/sender.sh {port} {self.sage_flows_counter} {duration} {SAGE_INSTALL_FOLDER}" 
+        sagecmd = f"sudo -u {USERNAME}  EXPERIMENT_PATH={self.path} {SAGE_INSTALL_FOLDER}/sender.sh {port} {self.sage_flows_counter} {duration} {SAGE_INSTALL_FOLDER} {HOME_DIR}/venvpy38" 
         printPurple(f"Sending command '{sagecmd}' to host {node.name}")
         node.sendCmd(sagecmd)
         

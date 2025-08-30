@@ -7,11 +7,11 @@ import os, sys
 import matplotlib as mpl
 import numpy as np
 from matplotlib.pyplot import figure
+from copy import copy
 
-
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '../../..')
+mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 from core.plotting import * 
@@ -26,7 +26,7 @@ start_time = 100
 end_time = 200
 LINEWIDTH = 0.7
 
-fig, axes = plt.subplots(nrows=2, ncols=1,figsize=(3,2), sharex=True)
+fig, axes = plt.subplots(nrows=2, ncols=1,figsize=(5,2), sharex=True, constrained_layout=True)
 ax = axes[0]
 ax2 = ax.twinx()
 
@@ -57,9 +57,9 @@ for protocol in PROTOCOLS_EXTENSION:
 
 
 
-ax.step(list(range(start_time,end_time+1,10)),bw_capacities,where='post', color='black',linewidth=0.5, label='bandwidth',  alpha=0.5)
-ax2.step(list(range(start_time,end_time+1,10)),min_rtts,where='post', color='red',linewidth=0.5, label='min RTT', linestyle='dashed', alpha=0.5)
-ax2.set_ylabel('min RTT\n(ms)')
+ax.step(list(range(start_time,end_time+1,10)),bw_capacities,where='post', color='black',linewidth=0.5, label='Bandwidth',  alpha=0.5)
+ax2.step(list(range(start_time,end_time+1,10)),min_rtts,where='post', color='red',linewidth=0.5, label='Base RTT', linestyle='dashed', alpha=0.5)
+ax2.set_ylabel('Base RTT (ms)', fontsize=8)
 
 handles, labels = ax.get_legend_handles_labels()
 for handle, label in zip(handles,labels):
@@ -98,9 +98,11 @@ for protocol in PROTOCOLS_EXTENSION:
         sender = sender.set_index('time')
         ax.plot(sender.index + 1, sender['bandwidth'], color=COLORS_EXTENSION[protocol], linewidth=LINEWIDTH, label=PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol])
 
-ax.step(list(range(start_time, end_time + 1, 10)), bw_capacities, where='post', color='black', linewidth=0.5, label='bandwidth', alpha=0.5)
-ax2.step(list(range(start_time, end_time + 1, 10)), losses, where='post', color='red', linewidth=0.5,label='loss rate', linestyle='-.', alpha=0.5)
-ax2.set_ylabel('Loss Rate\n(\%)')
+ax.step(list(range(start_time, end_time + 1, 10)), bw_capacities, where='post', color='black', linewidth=0.5, label='Bandwidth', alpha=0.5)
+ax.set_xlim(100, 201)
+ax2.set_xlim(100, 201)
+ax2.step(list(range(start_time, end_time + 1, 10)), losses, where='post', color='red', linewidth=0.5,label='Loss rate', linestyle='-.', alpha=0.5)
+ax2.set_ylabel('Loss Rate (\%)', fontsize=8)
 
 handles, labels = ax.get_legend_handles_labels()
 for handle, label in zip(handles, labels):
@@ -114,9 +116,34 @@ for handle, label in zip(handles, labels):
         final_labels.append(label)
         final_handles.append(handle)
 
-ax.set(xlabel="time (s)")
-fig.text(-0.05,0.5,"Sending Rate (Mbps)", rotation='vertical', va='center', ha='center')
-ax2.yaxis.set_label_coords(1.15, 0.5)
-fig.legend(final_handles, final_labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.23),columnspacing=0.5,handletextpad=0.5, handlelength=1)
+ax.set(xlabel="Time (s)")
+#fig.text(0.02, 0.5, "Sending Rate (Mbps)", rotation='vertical', va='center', ha='center')  
+fig.supylabel("Sending Rate (Mbps)")
+ax2.yaxis.set_label_coords(1.075, 0.5)
+#fig.legend(final_handles, final_labels,ncol=3, loc='upper center',bbox_to_anchor=(0.5, 1.23),columnspacing=0.5,handletextpad=0.5, handlelength=1)
+# ----- legend-only figure (7 columns) -----
+thicker_handles = []
+for h in final_handles:
+    h_copy = copy(h)                 # copy the original line handle
+    try:
+        h_copy.set_linewidth(1.3)    # adjust thickness here (e.g., 2.0 or 2.5)
+    except Exception:
+        pass
+    thicker_handles.append(h_copy)
+
+
+legend_fig = plt.figure(figsize=(40, 3))  # tweak width/height if you need
+legend = legend_fig.legend(
+    thicker_handles,
+    final_labels,
+    ncol=9,
+    loc='center',
+    columnspacing=3,
+    handletextpad=0.5,
+    handlelength=2,
+    frameon=False
+)
+legend_fig.savefig("sending_rate_header.pdf", dpi=720, pad_inches=0)
+plt.close(legend_fig)
 
 fig.savefig("joined_sending_rate.pdf", dpi=720)

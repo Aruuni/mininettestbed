@@ -7,15 +7,15 @@ import os, sys
 from matplotlib.ticker import ScalarFormatter, LogLocator, LogFormatter, FuncFormatter
 import numpy as np
 
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '../../..')
+mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 from core.plotting import * 
 sys.dont_write_bytecode = True
 EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_friendly_intra_rtt_flows/fifo" 
-
+PROTOCOLS_EXTENSION = ['orca', 'sage', 'astraea', 'vivace-uspace', 'bbr3' ]
 BWS = [100]
 DELAY = 15
 FLOWS = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21]

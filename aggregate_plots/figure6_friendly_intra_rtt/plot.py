@@ -10,9 +10,9 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 import numpy as np
 
 
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '../../..')
+mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 from core.plotting import * 
@@ -23,7 +23,7 @@ BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 RUNS = [1, 2, 3, 4, 5]
 LOSSES=[0]
-
+PROTOCOLS_EXTENSION = ['orca', 'sage', 'astraea', 'vivace-uspace', 'bbr3' ]
 for mult in QMULTS:
     data = []
     for protocol in PROTOCOLS_EXTENSION:
@@ -59,7 +59,6 @@ for mult in QMULTS:
                         total['bandwidth1'] = total['bandwidth1'].clip(lower=1)
                         total['bandwidth2'] = total['bandwidth2'].clip(lower=1)
                         ratio = total['bandwidth2'] / total['bandwidth1']
-                        print(ratio)
                         goodput_ratios_total.append(ratio)
                     else:
                         print(f"Folder {PATH} not found.")

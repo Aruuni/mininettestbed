@@ -5,11 +5,11 @@ from matplotlib.legend_handler import HandlerLineCollection
 import os, sys
 import numpy as np
 
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 
 # Setup paths (same as your script)
 script_dir = os.path.dirname(__file__)
-mymodule_dir = os.path.join(script_dir, '../..')
+mymodule_dir = os.path.join(script_dir, '..')
 sys.path.append(mymodule_dir)
 sys.dont_write_bytecode = True
 

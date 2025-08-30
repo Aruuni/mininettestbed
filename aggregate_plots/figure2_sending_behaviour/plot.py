@@ -12,14 +12,14 @@ from matplotlib.lines import Line2D
 import numpy as np
 import matplotlib.patches as mpatches
 import sys
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 
 # Global configuration: set the time range as multipliers of the delay.
 # For example, (2, 4) means only data with time between delay*2 and delay*4 will be used.
 GLOBAL_TIME_RANGE_MULTIPLIERS = (2, 4)
 
 script_dir = os.path.dirname(__file__)
-mymodule_dir = os.path.join(script_dir, '../../..')
+mymodule_dir = os.path.join(script_dir, '../..')
 sys.path.append(mymodule_dir)
 from core.config import *
 from core.plotting import *
@@ -90,7 +90,7 @@ class HandlerDashedLines(HandlerLineCollection):
 
 def plot_one(QMULT, RUN):
     # Plot congestion window, or sending rate
-    ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_intra_rtt_async/fifo" 
+    ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_intra_rtt/fifo" 
     BW = 100
     DELAY = 40
     SCALE = 'linear'
@@ -197,7 +197,8 @@ def plot_one(QMULT, RUN):
     # append it to the same lists you already hand to the legend
     linecollections.append(optimal_handle)
     friendly_labels.append('Optimal')
-
+    axes[-1].set_xlabel("Time (ms)")
+    fig.supylabel("Sending Behaviour(cwnd or rate)")
     # now your existing legend call picks it up as one of the entries
     # fig.legend(linecollections, friendly_labels,
     #         handler_map={type(lc): HandlerDashedLines()},

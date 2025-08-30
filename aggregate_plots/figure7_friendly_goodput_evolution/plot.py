@@ -6,9 +6,9 @@ plt.style.use('science')
 import os, sys
 import numpy as np
 
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '../../..')
+mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 from core.plotting import * 
@@ -188,7 +188,7 @@ if __name__ == "__main__":
                   if not LEGENDMAP.get(label,None):
                      LEGENDMAP[label] = handle
 
-            fig.text(0.5, 0.01, 'time (s)', ha='center')
+            fig.text(0.5, 0.01, 'Time (s)', ha='center')
             fig.text(0.030, 0.6, 'Goodput (Mbps)', va='center', rotation='vertical')
 
             # fig.legend(list(LEGENDMAP.values()), list(LEGENDMAP.keys()), loc='upper center',ncol=3, bbox_to_anchor=(0.5, 1.17))

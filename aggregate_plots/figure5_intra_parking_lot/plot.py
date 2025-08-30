@@ -7,15 +7,15 @@ import os, sys
 from matplotlib.ticker import ScalarFormatter
 import numpy as np
 
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 
 script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '../../..')
+mymodule_dir = os.path.join( script_dir, '../..')
 sys.path.append( mymodule_dir )
 from core.config import *
 from core.plotting import * 
 
-ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_parking_lot/fifo" 
+ROOT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_parking_lot/sfq" 
 BWS = [100]
 DELAYS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 FLOWS=4
@@ -108,7 +108,7 @@ for mult in QMULTS:
         ax.axhline(y, color=color, linestyle='--', linewidth=0.75)
         ax.text(ax.get_xlim()[1], y + offset, f' {label}', color=color, fontsize=6, va='bottom', ha='right')
 
-    ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio', ylim=[-0.1, None]) # ylim=[-0.1,1.1]
+    ax.set(yscale='linear',xlabel='RTT (ms)', ylabel='Goodput Ratio', ylim=[-0.1, 2]) # ylim=[-0.1,1.1]
 
 
     for axis in [ax.xaxis, ax.yaxis]:

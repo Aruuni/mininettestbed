@@ -1,11 +1,11 @@
 source common.sh
 bash setup.sh
 
-PROTOCOLS="vivace-uspace"
+PROTOCOLS="sage"
 BANDWIDTHS="100"
 DELAYS="20"
 RUNS="1"
-QMULTS="0.2"
+QMULTS="1"
 FLOWS="2"
 
 for bw in $BANDWIDTHS
@@ -20,7 +20,7 @@ do
                 do
                     for run in $RUNS
                     do
-                        run experiments_mininet/custom/experiment_custom.py $del $bw $qmult $protocol $run fifo 0 $flow
+                        run experiments/custom/experiment_custom.py $del $bw $qmult $protocol $run fifo 0 $flow
                     done
                 done
             done

@@ -17,7 +17,7 @@ else
     # Execute if on any other Ubuntu version
     sudo add-apt-repository ppa:deadsnakes/ppa
     sudo apt update
-    sudo apt install -y python3-pip python3.7 python3.7-dev python3.7-distutils
+    sudo apt install -y python3-pip python3.7 python3.7-dev python3.7-distutils python3.8 python3.8-dev python3.8-distutils
     sudo pip3 install -U virtualenv==15.2.*
     sudo python3 -m pip install mininet numpy==2.1.3 matplotlib==3.9.2 pandas==2.2.3 scienceplots networkx scipy
 
@@ -49,18 +49,8 @@ cd ../..
 bash build.sh
 
 
-echo "Downloading and setting up ns-3"
-git clone https://gitlab.com/nsnam/ns-3-dev ~/ns-3-dev
-cp ns3_simscript/CCTestBed.cc ~/ns-3-dev/scratch
-cp ns3_simscript/cross_path.cc ~/ns-3-dev/scratch
-cd ~/ns-3-dev
-./ns3 configure --build-profile=optimized 
-./ns3 
 
 
-if [[ "$UBUNTU_VERSION" == "16.04" ]]; then
-    echo "Downloading and setting up sage"
-    cd  $CURRENT_DIR/CC/sage
-    bash build.sh
 
-fi
+cd  $CURRENT_DIR/CC/sage
+bash build.sh
