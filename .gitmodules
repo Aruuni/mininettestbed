@@ -1,6 +1,7 @@
 [submodule "CC/sage"]
 	path = CC/sage
 	url = https://github.com/Aruuni/sage
+	branch = sagereborn
 [submodule "CC/astraea-open-source"]
 	path = CC/astraea-open-source
 	url = https://github.com/Aruuni/astraea-open-source
