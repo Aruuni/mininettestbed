@@ -19,3 +19,6 @@
 	path = CC/PCC-Uspace
 	url = https://github.com/Aruuni/PCC-Uspace
 	branch = vivace-mininet
+[submodule "CC/tcpdatagen"]
+	path = CC/tcpdatagen
+	url = https://github.com/Aruuni/tcpdatagen
