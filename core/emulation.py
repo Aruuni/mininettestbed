@@ -8,7 +8,7 @@ import json
 import threading 
 
 class Emulation:
-    def __init__(self, network, network_config = None, traffic_config = None, path='.', interval=1, pcap=False, ubuntu16=False):
+    def __init__(self, network, network_config = None, traffic_config = None, path='.', interval=1, pcap=False, data_generation={}):
         self.network = network
         self.network_config = network_config
         self.traffic_config = traffic_config
@@ -35,7 +35,7 @@ class Emulation:
 
         self.pcap = pcap
         self.flip = True
-        self.ubuntu16 = ubuntu16
+        self.data_generation = data_generation
 
     def configure_network(self, network_config=None):
         if network_config:
@@ -263,16 +263,28 @@ class Emulation:
                 self.call_second.append(Command(command, params, start_time, source_node))
                 
             elif protocol == 'vivace-uspace':
+                # Create server start up call
+                params = (source_node, destination, duration)
+                command = self.start_vivace_sender
+                self.call_second.append(Command(command, params, start_time, source_node))
                 # Create client start up call
                 command = self.start_vivace_receiver
                 params = (destination, duration)
                 self.call_first.append(Command(command, params, None, destination))
                 
-                # Create server start up call
-                params = (source_node, destination, duration)
-                command = self.start_vivace_sender
-                self.call_second.append(Command(command, params, start_time, source_node))
 
+            elif protocol == 'tcpdatagen':
+                destination = flowconfig.source
+                source_node = flowconfig.dest
+                # Create server start up call
+                params = (destination, duration)
+                command = self.start_tcpdatagen_server
+                self.call_first.append(Command(command, params, None, destination))
+
+                # Create client start up call
+                params = (source_node,destination)
+                command = self.start_tcpdatagen_client
+                self.call_second.append(Command(command, params, start_time, source_node))
             elif protocol == 'tbf' or protocol == 'netem':
                 # Change the tbf rate to the value provided
                 params = list(flowconfig.params)
@@ -429,18 +441,35 @@ class Emulation:
         """
         node = self.network.get(node_name)
 
-        sscmd = f"./core/ss/{'ss_script_sage.sh' if self.ubuntu16 else 'ss_script_iperf3.sh'} 0.1 {self.path}/{node.name}_ss.csv &"
+        sscmd = f"./core/ss/ss_script_iperf3.sh 0.1 {self.path}/{node.name}_ss.csv &"
         printBlue(f'Sending command {sscmd} to host {node.name}')
         node.cmd(sscmd)
 
         iperfCmd = (
-            f"iperf3 -p {port} "
-            + ("" if self.ubuntu16
-            else "--cport=11111 ")
-            + f"-i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}"
+            f"iperf3 -p {port} --cport=11111 " + 
+            f"-i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}"
         ).replace("  ", " ").strip()       
         printBlueFill(f'Sending command {iperfCmd} to host {node.name}')
         node.sendCmd(iperfCmd)
+
+    def start_tcpdatagen_server(self, node_name: str, duration: int,  monitor_interval=1, port=44279):
+        """
+        Starts a tcpdatagen connection
+        """
+        node = self.network.get(node_name)
+        sscmd = f"./core/ss/ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
+        printGreenFill(f"Sending command '{sscmd}' to host {node.name}")
+        node.cmd(sscmd)
+        cmd = f"{TCPDATAGEN_INSTALL_FOLDER}/bin/sage_dataset {port} /its/home/mm2350/Desktop/mininettestbed/sage_dataset 0 {self.data_generation['num_flows']} {self.data_generation['env_bw']} 1 {self.data_generation['scheme']} 0 empty empty empty test {duration} empty 0 0 {int(time.time() * 1_000)} {self.data_generation['bw2']} 7 "
+        printPinkFill(f"Sending command '{cmd}' to host {node.name}")
+        node.sendCmd(cmd)
+
+    def start_tcpdatagen_client(self, node_name: str, destination_name: str, monitor_interval=1 , port=44279):
+        node = self.network.get(node_name)
+        
+        cmd = f"{TCPDATAGEN_INSTALL_FOLDER}/bin/client {self.network.get(destination_name).IP()} 0 {port}"
+        printPinkFill(f"Sending command '{cmd}' to host {node.name}")
+        node.sendCmd(cmd)
 
     def start_astraea_server(self, node_name: str, monitor_interval=1, port=44279):
         """
