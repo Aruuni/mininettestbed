@@ -96,14 +96,19 @@ def plot_all_mn(path: str, aqm='fifo') -> None:
         for flow in flows:
             flow_client = flow[0]  # Client flow name like 'c1', 'c2', etc.
             flow_server = flow[1]  # Server flow name like 'x1', 'x2', etc.
-
-            df_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}.csv'))
+            try:
+                df_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}.csv'))
+            except FileNotFoundError:
+                df_client = pd.DataFrame()
             try:
                 df_ss_client = pd.read_csv(os.path.join(path, f'csvs/{flow_client}_ss.csv'))
             except FileNotFoundError:
                 df_ss_client = pd.DataFrame()
-            df_server = pd.read_csv(os.path.join(path, f'csvs/{flow_server}.csv'))
-
+            try:
+                df_server = pd.read_csv(os.path.join(path, f'csvs/{flow_server}.csv'))
+            except FileNotFoundError:
+                df_server = pd.DataFrame()
+        
             netem_bw = []
             netem_rtt = []
             netem_loss = []
@@ -155,7 +160,7 @@ def plot_all_mn(path: str, aqm='fifo') -> None:
                 axs[1].plot(df_client['time'], df_client['srtt'], label=f'{flow_client} RTT')
                 axs[1].set_title("RTT from Iperf (ms)")
             else:
-                axs[1].plot(df_ss_client['time'], df_ss_client['srtt'], label=f'{flow_client} RTT')
+                axs[1].plot(df_ss_client['time'], df_ss_client['rtt'], label=f'{flow_client} RTT')
                 axs[1].set_title("RTT from SS (ms)")
             
             axs[1].set_ylabel("RTT (ms)")
@@ -188,10 +193,10 @@ def plot_all_mn(path: str, aqm='fifo') -> None:
                 axs[4].plot(df_client['time'], df_client['retr'], label=f'{flow_client} Retransmits')
                 axs[4].set_title("Retransmits from Iperf (packets)")
             else:
-                axs[4].plot(df_ss_client['time'], df_ss_client['retr'], label=f'{flow_client} Retransmits')
+                axs[4].plot(df_ss_client['time'], df_ss_client['lost'], label=f'{flow_client} Retransmits')
                 axs[4].set_title("Retransmits from SS (packets)")
-    except:
-        printC("Error in plotting data for flows", "red", ERROR)
+    except Exception as e:
+        printC(f"Error in plotting data for flows {e}", "red", ERROR)
 
     
     queue_dir = os.path.join(path, 'queues')
