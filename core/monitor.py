@@ -15,7 +15,7 @@ def monitor_qlen(iface: str, interval_sec=0.1, path=default_dir) -> None:
     f = open(fname, 'w')
     f.write("time,root_pkts,root_drp,child_pkts,child_drp\n")
     f.close()
-    matches_queued_root, matches_dropped_root, matches_queued_child, matches_dropped_child = 0, 0, 0, 0
+    matches_dropped_root, matches_dropped_child = 0, 0
     while 1:
         p = Popen(cmd, shell=True, stdout=PIPE)
         output = p.stdout.read()
@@ -28,11 +28,10 @@ def monitor_qlen(iface: str, interval_sec=0.1, path=default_dir) -> None:
             print(output)
 
         if matches_queued and matches_dropped:
-            tmp += f"{time()-start},{to_bytes(matches_queued[0]) - matches_queued_root},{int(matches_dropped[0]) - matches_dropped_root}"
-            matches_queued_root, matches_dropped_root = to_bytes(matches_queued[0]), int(matches_dropped[0])
+            tmp += f"{time()-start},{to_bytes(matches_queued[0])},{int(matches_dropped[0]) - matches_dropped_root}"
+            matches_dropped_root = int(matches_dropped[0])
             if len(matches_queued) > 1 and len(matches_dropped)> 1: 
-                tmp += f",{to_bytes(matches_queued[1]) - matches_queued_child},{int(matches_dropped[1]) - matches_dropped_child}\n"
-                matches_queued_child, matches_dropped_child = to_bytes(matches_queued[1]), int(matches_dropped[1])
+                tmp += f",{to_bytes(matches_queued[1])},{int(matches_dropped[1]) - matches_dropped_child}\n"
 
             else:
                 tmp += ",,\n"
