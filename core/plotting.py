@@ -3,11 +3,11 @@ LINEWIDTH = 0.30
 ELINEWIDTH = 0.75
 CAPTHICK = ELINEWIDTH
 CAPSIZE= 2
-PROTOCOLS_FRIENDLY_NAME_EXTENSION = {'cubic': 'Cubic', 'orca': 'Orca', 'bbr3': 'BBRv3', 'sage': 'Sage', 'vivace': 'Vivace', 'astraea': 'Astraea', 'vivace-uspace': 'Vivace', 'bbr1': 'BBRv1', 'astraea_old': 'Astraea (old)', 'orca-100': 'Orca-100msMTP'}
-PROTOCOLS_EXTENSION = ['orca', 'sage', 'astraea', 'vivace-uspace', 'cubic', 'bbr3' ]
-
-PROTOCOLS_MARKERS_EXTENSION = {'cubic': 'x', 'orca': '+', 'bbr3': '.', 'sage': '*', 'astraea_old': '4', 'astraea': '2', 'vivace-uspace': '_', 'bbr1': '1', 'orca-100': '3'}
-COLORS_EXTENSION = {'cubic': '#0C5DA5', 'orca': '#00B945', 'bbr3': '#FF9500', 'sage': '#FF2C01', 'astraea_old': '#845B97', 'astraea': '#686868', 'vivace-uspace': '#845B97', 'bbr1': '#964B00', 'orca-100': "#056428"}
+PROTOCOLS_FRIENDLY_NAME_EXTENSION = {'cubic': 'Cubic', 'orca': 'Orca', 'bbr3': 'BBRv3', 'sage': 'Sage', 'vivace': 'Vivace', 'astraea': 'Astraea', 'vivace-uspace': 'Vivace', 'bbr1': 'BBRv1', 'astraea_old': 'Astraea (old)', 'orca-100': 'Orca-100msMTP', 'sage-24h': 'Sage-24h'}
+#PROTOCOLS_EXTENSION = ['orca', 'sage', 'astraea', 'vivace-uspace', 'cubic', 'bbr3' ]
+PROTOCOLS_EXTENSION = ['sage', 'sage-24h' ]
+PROTOCOLS_MARKERS_EXTENSION = {'cubic': 'x', 'orca': '+', 'bbr3': '.', 'sage': '*', 'astraea_old': '4', 'astraea': '2', 'vivace-uspace': '_', 'bbr1': '1', 'orca-100': '3', 'sage-24h': '_'}
+COLORS_EXTENSION = {'cubic': '#0C5DA5', 'orca': '#00B945', 'bbr3': '#FF9500', 'sage': '#FF2C01', 'astraea_old': '#845B97', 'astraea': '#686868', 'vivace-uspace': '#845B97', 'bbr1': '#964B00', 'orca-100': "#056428", 'sage-24h': "#EA00FF"}
 
 PROTOCOLS_FRIENDLY_NAME_LEO = {'cubic': 'Cubic', 'orca': 'Orca', 'bbr3': 'BBRv3', 'sage': 'Sage', 'vivace': 'Vivace', 'astraea': 'Astraea', 'vivace-uspace': 'Vivace', 'bbr1': 'BBRv1', 'satcp': 'SaTCP'}
 PROTOCOLS_LEO = ['cubic', 'bbr3',  'vivace-uspace', 'sage', 'astraea']
@@ -28,7 +28,7 @@ AQM_FRIENDLY_NAME = {'fifo':'FIFO', 'fq_codel': 'FQ_CoDel', 'fq_pie':'FQ_PIE', '
 # PROTOCOLS_MARKERS_EXTENSION = {'cubic': 'x', 'orca': '+', 'bbr3': '^', 'sage': '*', 'vivace': '_', 'astraea': '2', 'vivace-uspace': '4', 'bbr1': '1', }
 # COLORS_EXTENSION = {'cubic': '#0C5DA5', 'orca': '#00B945', 'bbr3': '#FF9500', 'sage': '#FF2C01', 'vivace': '#845B97', 'astraea': '#686868', 'vivace-uspace': '#ADD8E6', 'bbr1': '#964B00'}
 
-QMULTS = [0.2,1,4]
+QMULTS = [1]
 RUNS = [1, 2, 3, 4, 5]
 LOSSES=[0]
 

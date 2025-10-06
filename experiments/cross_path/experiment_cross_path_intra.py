@@ -34,7 +34,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     rmdirp(path)
     mkdirp(path)
-    printGreenFill(path)
+    printC(path, "green_fill", ALL)
     if (protocol == "bbr3"):
         protocol = "bbr"
     if (protocol == "vivace"):
@@ -73,9 +73,9 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
 
     Timer(delay * 4, em.reroute_traffic, args=(n_flows, True)).start()
-    printDebug2(f'change to cross path routing happening at time {delay * 2} seconds')
+    printC(f'change to cross path routing happening at time {delay * 2} seconds', "yellow_fill", ALL)
     Timer(delay * 8, em.reroute_traffic, args=(n_flows, False)).start()
-    printDebug2(f'change to original routing happening at time {delay * 4} seconds')
+    printC(f'change to original routing happening at time {delay * 4} seconds', "yellow_fill", ALL )
 
     em.run()
     em.dump_info()

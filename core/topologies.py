@@ -2,26 +2,24 @@ from mininet.topo import Topo
 from mininet.node import OVSKernelSwitch, Host, Node
 
 class DumbellTopo(Topo):
-    "Single bottleneck topology with n pairs of client/servers interconnected by two switches."
-    def build(self, n=2):
-        switch1 = self.addSwitch('s1', cls=OVSKernelSwitch, failMode='standalone')
-        switch2 = self.addSwitch('s2', cls=OVSKernelSwitch, failMode='standalone')
-        switch3 = self.addSwitch('s3', cls=OVSKernelSwitch, failMode='standalone')
+    "Single bottleneck topology with n pairs of client/servers interconnected by two switches. This topology can be used when running experiments in parallel by specifying different ex_idx values to create multiple isolated dumbell topologies."
+    def build(self, n: int, ex_idx=""): 
+        switch1 = self.addSwitch(f's1{ex_idx}', cls=OVSKernelSwitch, failMode='standalone')
+        switch2 = self.addSwitch(f's2{ex_idx}', cls=OVSKernelSwitch, failMode='standalone')
+        switch3 = self.addSwitch(f's3{ex_idx}', cls=OVSKernelSwitch, failMode='standalone')
 
         self.addLink(switch1, switch2)
         self.addLink(switch2, switch3)
-
         self.n = n
-
         for h in range(n):
-            client = self.addHost('c%s' % (h + 1), cls=Host)
+            client = self.addHost(f'c{h+1}{ex_idx}', cls=Host)
             self.addLink(client, switch1)
         for h in range(n):
-            server = self.addHost('x%s' % (h + 1), cls=Host)
+            server = self.addHost(f'x{h+1}{ex_idx}', cls=Host)
             self.addLink(server, switch3)
 
     def __str__(self):
-        return "DumbellTopo(n=%d)" % self.n
+        return f"DumbellTopo(n={self.n})" 
     
 class LinuxRouter(Node):
     "A Node with IP forwarding enabled."
@@ -35,8 +33,6 @@ class LinuxRouter(Node):
 
 class DoubleDumbbellTopo(Topo):
     "Two isolated dumbbell topologies with dynamic client-server pairs. Interconencted usign routers"
-          
-
     def build(self, n=1):
         self.n = n
         # First Dumbbell Topology
@@ -59,7 +55,6 @@ class DoubleDumbbellTopo(Topo):
         self.addLink(r1a, r1b, intfName1='r1a-eth1', intfName2='r1b-eth1')
         self.addLink(r3a, r3b, intfName1='r3a-eth1', intfName2='r3b-eth1')
 
-
         for i in range(1, n + 1):
             c = self.addHost(f'c1_{i}', ip=f'192.168.{i}.100/24', defaultRoute=f'via 192.168.{i}.1')
             x = self.addHost(f'x1_{i}', ip=f'192.168.{i+n}.100/24', defaultRoute=f'via 192.168.{i+n}.1')
@@ -78,10 +73,7 @@ class DoubleDumbbellTopo(Topo):
     def __str__(self):
         return "DoubleDumbellTopo(n=%d)" % self.n
 
-
 class ParkingLot(Topo):
-    """
-    """
     def build(self, n=3):
         assert n >= 3, "Number of flows must be at least 3 for the parking lot topology. At one node there is no bw policing as the middle links dont exist, and at 2 is is effectively a dumbbell topology."
         switches = []
@@ -108,6 +100,5 @@ class ParkingLot(Topo):
 
     def __str__(self):
         return "ParkingLotTopo(n=%d)" % self.n
-
 
 topos = { 'dumbell': DumbellTopo, 'double_dumbell': DoubleDumbbellTopo, 'parking_lot': ParkingLot }

@@ -8,7 +8,7 @@ import json
 import threading 
 
 class Emulation:
-    def __init__(self, network, network_config = None, traffic_config = None, path='.', interval=1, pcap=False, data_generation={}):
+    def __init__(self, network, network_config = None, traffic_config = None, path='.', interval=1, pcap=False, idx=0, data_generation={}):
         self.network = network
         self.network_config = network_config
         self.traffic_config = traffic_config
@@ -32,7 +32,8 @@ class Emulation:
         self.sage_flows_counter = 0
         self.astraea_flows_counter = 0
         self.counter = 0
-
+        self.sysstat = False
+        self.idx = idx
         self.pcap = pcap
         self.flip = True
         self.data_generation = data_generation
@@ -56,7 +57,7 @@ class Emulation:
     
     def configure_link(self, link, bw, delay, qsize, bidir, aqm='fifo', loss=None, command='add'):
         interfaces = [link.intf1, link.intf2]
-        printDebug(f"intf 1: {link.intf1}, intf 2: {link.intf2}")
+        printC(f"intf 1: {link.intf1}, intf 2: {link.intf2}", "magenta_fill", ALL)
         if bidir:
             n = 2
         else:
@@ -67,12 +68,12 @@ class Emulation:
             if delay and not bw:
                 cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 3:0 netem delay {delay}ms limit {100000}"
                 if (loss is not None) and (float(loss) > 0):
-                    cmd += " loss %s%%" % (loss)
+                    cmd += f" loss {loss}%"
 
             elif bw and not delay:
                 burst = int(10*bw*(2**20)/250/8)
                 cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 tbf rate {bw}mbit burst {burst} limit {qsize * 22 if aqm != 'fifo' else qsize} "
-                printPink(cmd)
+                printC(cmd, "magenta", ALL)
                 if aqm == 'fq_codel':
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq_codel limit {int(qsize/1500)} target 5ms interval 100ms flows 100"
                 elif aqm == 'codel':
@@ -97,11 +98,11 @@ class Emulation:
                 print("ERROR: either the delay or bandiwdth must be specified")
 
             if 's' in intf_name:
-                printTC(f"Running the following command in root terminal: {cmd}" )
+                printC(f"Running the following command in root terminal: {cmd}", "yellow", ALL)
                 # os.system("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
                 os.system(cmd)
             else:
-                printTC(f"Running the following command in {node.name}'s terminal: {cmd}")
+                printC(f"Running the following command in {node.name}'s terminal: {cmd}", "yellow", ALL)
                 # node.cmd("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
                 node.cmd(cmd)
 
@@ -110,11 +111,11 @@ class Emulation:
         cmd = f"ifconfig {node_name}-{if_name}"
         for i in range(interval, duration, interval):
             time.sleep(interval)
-            printTC(f"Running '{cmd} down'")
+            printC(f"Running '{cmd} down'", "yellow", ALL)
             node.cmd(f"{cmd} down")
-            printTC(f"waiting for {interrupt / 1000.0 } s")
+            printC(f"waiting for {interrupt / 1000.0 } s", "yellow", ALL)
             time.sleep(interrupt / 1000.0)
-            printTC(f"Running '{cmd} up'")
+            printC(f"Running '{cmd} up'", "yellow", ALL)
             node.cmd(f"{cmd} up")
 
 
@@ -185,7 +186,7 @@ class Emulation:
             r2a.cmd(f'ip route add {c2_subnet} via 10.0.1.1')    
 
     def reroute_traffic(self, n_flows, flip):
-        printDebug3("Rerouting traffic")
+        printC("Rerouting traffic", "yellow", ALL)
         r1b, r3b = self.network.get('r1b', 'r3b')
         # thsi is for the case of HARD handover  ??
         #r2b.cmd('ifconfig r2b-eth1 down')
@@ -242,7 +243,7 @@ class Emulation:
                 command = self.start_orca_receiver
                 self.call_second.append(Command(command, params, start_time, destination))
 
-            elif protocol == 'sage':
+            elif 'sage' in protocol:
                 params = (source_node,duration)
                 command = self.start_sage_sender
                 self.call_first.append(Command(command, params, None, source_node))
@@ -251,14 +252,14 @@ class Emulation:
                 command = self.start_sage_receiver
                 self.call_second.append(Command(command, params, start_time, destination))
 
-            elif protocol == 'astraea':
+            elif 'astraea' in protocol:
                 # Create server start up call
                 params = (destination,)
                 command = self.start_astraea_server
                 self.call_first.append(Command(command, params, None, destination))
 
                 # Create client start up call
-                params = (source_node,destination,duration)
+                params = (source_node, destination, duration, ('tcpdatagen' in protocol))
                 command = self.start_astraea_client
                 self.call_second.append(Command(command, params, start_time, source_node))
                 
@@ -272,18 +273,17 @@ class Emulation:
                 params = (destination, duration)
                 self.call_first.append(Command(command, params, None, destination))
                 
-
-            elif protocol == 'tcpdatagen':
+            elif 'tcpdatagen' == protocol:
                 destination = flowconfig.source
                 source_node = flowconfig.dest
                 # Create server start up call
                 params = (destination, duration)
-                command = self.start_tcpdatagen_server
+                command = self.start_tcpdatagen_sender
                 self.call_first.append(Command(command, params, None, destination))
 
                 # Create client start up call
                 params = (source_node,destination)
-                command = self.start_tcpdatagen_client
+                command = self.start_tcpdatagen_receiver
                 self.call_second.append(Command(command, params, start_time, source_node))
             elif protocol == 'tbf' or protocol == 'netem':
                 # Change the tbf rate to the value provided
@@ -303,7 +303,9 @@ class Emulation:
                 params = (source_node, destination, duration, protocol, self.interval)
                 command = self.start_iperf_client
                 self.call_second.append(Command(command, params, start_time, source_node))
-
+    # if you are reading this and you are not me, then i am sorry for this run and how confusing it is. the way it works is that you send a command to a mininet host, and then you call waitOutput on it in a separate thread. this is because waitOutput is blocking, and will wait for a signal from the appliation its using to indicate successful termination.
+    # this way is cringe, because if the application crashes or something, then the whole emulation will hang forever. if it is successful, its terminal output is saved to a file. This standard again is a little cringe, but it works quite well, very hard to debug
+    # again, sorry, bla bla bla tech debt bla bla bla
     def run(self):
         """
         The main function that runs the experiment. It works by starting the senders first, the monitors and then the receivers.
@@ -337,7 +339,7 @@ class Emulation:
             This thread is used to wait for the output of the given node.
             """
             host = self.network.get(node_name)
-            #printRed(host.waitOutput(verbose = True))
+            #printC(host.waitOutput(verbose = True), "red", DEBUG)
             output = host.waitOutput(verbose = True)
             mkdirp(self.path)
             with open( f"{self.path}/{node_name}_output.txt", 'w') as fout:
@@ -395,7 +397,7 @@ class Emulation:
 
         if self.pcap:
             stop_tcpdump()  
-        printDebug3("All flows have finished")
+        printC("All flows have finished", "green_fill", ALL)
         
         for monitor in self.qmonitors:
             if monitor is not None:
@@ -430,7 +432,7 @@ class Emulation:
         """
         node = self.network.get(node_name)
         cmd = f"iperf3 -p {port} -i {monitor_interval} --one-off --json -s"
-        printBlueFill(f"Sending command '{cmd}' to host {node.name}")
+        printC(f"Sending command '{cmd}' to host {node.name}", "blue_fill", ALL)
         node.sendCmd(cmd)
 
     def start_iperf_client(self, node_name: str, destination_name: str, duration: int, protocol: str, monitor_interval=0.1, port=5201):
@@ -441,34 +443,34 @@ class Emulation:
         """
         node = self.network.get(node_name)
 
-        sscmd = f"./core/ss/ss_script_iperf3.sh 0.1 {self.path}/{node.name}_ss.csv &"
-        printBlue(f'Sending command {sscmd} to host {node.name}')
+        sscmd = f"{SS_PATH}/ss_script_iperf3.sh 0.1 {self.path}/{node.name}_ss.csv &"
+        printC(f'Sending command {sscmd} to host {node.name}', "blue", ALL)
         node.cmd(sscmd)
 
         iperfCmd = (
             f"iperf3 -p {port} --cport=11111 " + 
             f"-i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}"
         ).replace("  ", " ").strip()       
-        printBlueFill(f'Sending command {iperfCmd} to host {node.name}')
+        printC(f'Sending command {iperfCmd} to host {node.name}', "blue", ALL)
         node.sendCmd(iperfCmd)
 
-    def start_tcpdatagen_server(self, node_name: str, duration: int,  monitor_interval=1, port=44279):
+    def start_tcpdatagen_sender(self, node_name: str, duration: int,  monitor_interval=1, port=44279):
         """
         Starts a tcpdatagen connection
         """
         node = self.network.get(node_name)
-        sscmd = f"./core/ss/ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
-        printGreenFill(f"Sending command '{sscmd}' to host {node.name}")
-        node.cmd(sscmd)
-        cmd = f"{TCPDATAGEN_INSTALL_FOLDER}/bin/sage_dataset {port} /its/home/mm2350/Desktop/mininettestbed/sage_dataset 0 {self.data_generation['num_flows']} {self.data_generation['env_bw']} 1 {self.data_generation['scheme']} 0 empty empty empty test {duration} empty 0 0 {int(time.time() * 1_000)} {self.data_generation['bw2']} 7 "
-        printPinkFill(f"Sending command '{cmd}' to host {node.name}")
+        # sscmd = f"./core/ss/ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
+        # print(f"Sending command '{sscmd}' to host {node.name}")
+        # node.cmd(sscmd)
+        flows_str = ",".join(map(str, self.data_generation['flows_order']))     
+        cmd = f"{TCPDATAGEN_INSTALL_FOLDER}/bin/sage_dataset {port} {TCPDATAGEN_TRACES_FOLDER} \"{flows_str}\" {self.data_generation['env_bw']} {self.data_generation['scheme']} delay {self.data_generation['trace_file']} {duration} reserved {int(time.time() * 1_000)} {self.data_generation['bw2']} 1000 "
+        printC(f"Sending command '{cmd}' to host {node.name}", "cyan", ALL)
         node.sendCmd(cmd)
 
-    def start_tcpdatagen_client(self, node_name: str, destination_name: str, monitor_interval=1 , port=44279):
+    def start_tcpdatagen_receiver(self, node_name: str, destination_name: str, port=44279):
         node = self.network.get(node_name)
-        
         cmd = f"{TCPDATAGEN_INSTALL_FOLDER}/bin/client {self.network.get(destination_name).IP()} 0 {port}"
-        printPinkFill(f"Sending command '{cmd}' to host {node.name}")
+        printC(f"Sending command '{cmd}' to host {node.name}", "cyan_fill", ALL)
         node.sendCmd(cmd)
 
     def start_astraea_server(self, node_name: str, monitor_interval=1, port=44279):
@@ -477,18 +479,17 @@ class Emulation:
         """
         node = self.network.get(node_name)
         cmd = f"sudo -u {USERNAME} {ASTRAEA_INSTALL_FOLDER}/src/build/bin/server --port={port} --perf-interval={monitor_interval * 1000}  --one-off --terminal-out"
-        printPinkFill(f"Sending command '{cmd}' to host {node.name}")
+        printC(f"Sending command '{cmd}' to host {node.name}", "yellow_fill", ALL)
         node.sendCmd(cmd)
 
-    def start_astraea_client(self, node_name: str, destination_name: str, duration: int,  monitor_interval=1 , port=44279):
+    def start_astraea_client(self, node_name: str, destination_name: str, duration: int, datagen: bool, monitor_interval=1 , port=44279, ):
         node = self.network.get(node_name)
         # Might not need
         # sscmd = f"./ss_script.sh 0.1 {self.path}/{node.name}_ss.csv &" 
-        # printBlue(f'Sending command {sscmd} to host {node.name}')
-        # node.cmd(sscmd)
-
-        cmd = f"sudo  -u {USERNAME} {ASTRAEA_INSTALL_FOLDER}/src/build/bin/client_eval --ip={self.network.get(destination_name).IP()} --port={port} --cong=astraea --interval=20  --terminal-out --pyhelper={ASTRAEA_INSTALL_FOLDER}/python/infer.py --model={ASTRAEA_INSTALL_FOLDER}/models/py/ --duration={duration} --id={self.astraea_flows_counter}"
-        printPinkFill(f"Sending command '{cmd}' to host {node.name}")
+        # print(f'Sending command {sscmd} to host {node.name}')
+        flows_str = ",".join(map(str, self.data_generation['flows_order']))
+        cmd = f"sudo -u {USERNAME} {ASTRAEA_INSTALL_FOLDER}/src/build/bin/client_eval --ip={self.network.get(destination_name).IP()} --port={port} --cong=astraea --interval=20  --terminal-out --pyhelper={ASTRAEA_INSTALL_FOLDER}/python/infer.py --model={ASTRAEA_INSTALL_FOLDER}/models/py/ --duration={duration} --id={self.astraea_flows_counter} " + (f"--tcpdatagen-log={TCPDATAGEN_TRACES_FOLDER+self.data_generation['trace_file']}.txt --bw={self.data_generation['env_bw']} --start-timestamp={int(time.time() * 1_000)} --flow-arrival={flows_str} --bw2={self.data_generation['bw2']}" if datagen else "")
+        printC(f"Sending command '{cmd}' to host {node.name}", "yellow", ALL)
         node.sendCmd(cmd)
         self.astraea_flows_counter+= 1
 
@@ -500,11 +501,11 @@ class Emulation:
         node = self.network.get(node_name)
         
         sscmd = f"./core/ss/ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
-        printGreenFill(f"Sending command '{sscmd}' to host {node.name}")
+        printC(f"Sending command '{sscmd}' to host {node.name}", "green", ALL)
         node.cmd(sscmd)
 
         orcacmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {ORCA_INSTALL_FOLDER}/sender.sh {port} {self.orca_flows_counter} {duration} {ORCA_INSTALL_FOLDER}"  
-        printGreen(f"Sending command '{orcacmd}' to host {node.name}")
+        printC(f"Sending command '{orcacmd}' to host {node.name}", "green", ALL)
         node.sendCmd(orcacmd)
         
         self.orca_flows_counter+= 1 
@@ -514,21 +515,18 @@ class Emulation:
         Start the orca receiver on the given node with the given destination and port.
         """
         node = self.network.get(node_name)
-        destination = self.network.get(destination_name)
-
-        orcacmd = f"sudo -u {USERNAME} {ORCA_INSTALL_FOLDER}/receiver.sh {destination.IP()} {port} {0} {ORCA_INSTALL_FOLDER}"
-        printGreenFill(f"Sending command '{orcacmd}' to host {node.name}")
+        orcacmd = f"sudo -u {USERNAME} {ORCA_INSTALL_FOLDER}/receiver.sh {self.network.get(destination_name).IP()} {port} {0} {ORCA_INSTALL_FOLDER}"
+        printC(f"Sending command '{orcacmd}' to host {node.name}", "green_fill", ALL)
         node.sendCmd(orcacmd)
-
 
     def start_sage_sender(self, node_name, duration, port=5555):
         node = self.network.get(node_name)
-        sscmd = f"./core/ss/ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
-        printPurple(f"Sending command '{sscmd}' to host {node.name}")
+        sscmd = f"{PARENT_DIR}/core/ss/ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
+        printC(f"Sending command '{sscmd}' to host {node.name}", "magenta", ALL)
         node.cmd(sscmd)
 
-        sagecmd = f"sudo -u {USERNAME}  EXPERIMENT_PATH={self.path} {SAGE_INSTALL_FOLDER}/sender.sh {port} {self.sage_flows_counter} {duration} {SAGE_INSTALL_FOLDER} {HOME_DIR}/venvpy38" 
-        printPurple(f"Sending command '{sagecmd}' to host {node.name}")
+        sagecmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {SAGE_INSTALL_FOLDER}/sender.sh {port} {(self.idx if self.idx else '')}{self.sage_flows_counter} {duration} {SAGE_INSTALL_FOLDER} {HOME_DIR}/venvpy38"
+        printC(f"Sending command '{sagecmd}' to host {node.name}", "magenta", ALL)
         node.sendCmd(sagecmd)
         
         self.sage_flows_counter+= 1 
@@ -537,20 +535,20 @@ class Emulation:
         node = self.network.get(node_name)
         destination = self.network.get(destination_name)
         sagecmd = f"sudo -u {USERNAME} {SAGE_INSTALL_FOLDER}/receiver.sh {destination.IP()} {port} {0} {SAGE_INSTALL_FOLDER}"
-        printPurple(f"Sending command '{sagecmd}' to host {node.name}" )
+        printC(f"Sending command '{sagecmd}' to host {node.name}", "magenta_fill", ALL)
         node.sendCmd(sagecmd)
 
     def start_vivace_sender(self, node_name, destination_name, duration, port=6666, perf_interval=1):
         node = self.network.get(node_name)
         destination = self.network.get(destination_name)
         auroracmd = f"sudo -u {USERNAME} LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/sender/src {PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/sender/app/gradient_descent_pcc_client {destination.IP()} {port} 1 --duration {duration} --interval 0.1"        
-        printRed(f"Sending command '{auroracmd}' to host {node.name}")
+        printC(f"Sending command '{auroracmd}' to host {node.name}", "red", ALL)
         node.sendCmd(auroracmd)
 
     def start_vivace_receiver(self, node_name, duration, port=6666, perf_interval=1):
         node = self.network.get(node_name)
         auroracmd = f"sudo -u {USERNAME} LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/receiver/src {PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/receiver/app/appserver --one-off --duration {duration} {port}"
-        printRed(f"Sending command '{auroracmd}' to host {node.name}")
+        printC(f"Sending command '{auroracmd}' to host {node.name}", "red_fill", ALL)
         node.sendCmd(auroracmd)
 
     def dump_info(self):
@@ -561,6 +559,6 @@ class Emulation:
             flow = [config.source, config.dest, self.network.get(config.source).IP(), self.network.get(config.dest).IP(), config.start, config.duration, config.protocol, config.params]
             flows.append(flow)
         emulation_info['flows'] = flows
-        with open(self.path + "/emulation_info.json", 'w') as fout:
+        with open(f"{self.path}/emulation_info.json", 'w') as fout:
             json.dump(emulation_info,fout)
 

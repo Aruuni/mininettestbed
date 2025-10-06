@@ -29,7 +29,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     path = f"{HOME_DIR}/cctestbed/mininet/results_friendly_intra_rtt_flows/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{tcp_buffer_mult}tcpbuf_{protocol}/run{run}" 
     random.seed(run * n_flows)
     rmdirp(path)
-    printGreen(path)
+    printC(path, "green_fill", ALL)
     mkdirp(path)
     if (protocol == "bbr3"):
         protocol = "bbr"

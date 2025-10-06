@@ -1,155 +1,105 @@
+import os, re
 from subprocess import Popen, PIPE
-from core.parsers import *
 from multiprocessing import Process
 from time import sleep, time
-import subprocess
-import os
-import re
+from core.parsers import *
 from core.utils import *
 
-
-
-def monitor_qlen(iface, interval_sec = 0.1, path = default_dir, ):
+def monitor_qlen(iface: str, interval_sec=0.1, path=default_dir) -> None:
     mkdirp(path)
-    fname='%s/%s.txt' % (path, iface)
+    start = time()
+    fname=f"{path}/{iface}.txt"
     pat_queued = re.compile(r'backlog\s+([\d]+\w+)\s+\d+p')
     pat_dropped = re.compile(r'dropped\s+([\d]+)') 
-    cmd = "tc -s qdisc show dev %s" % (iface)
+    cmd = f"tc -s qdisc show dev {iface}"
     f = open(fname, 'w')
-    f.write('time,root_pkts,root_drp,child_pkts,child_drp\n')
+    f.write("time,root_pkts,root_drp,child_pkts,child_drp\n")
     f.close()
+    matches_queued_root, matches_dropped_root, matches_queued_child, matches_dropped_child = 0, 0, 0, 0
     while 1:
         p = Popen(cmd, shell=True, stdout=PIPE)
         output = p.stdout.read()
-        tmp = ''
+        tmp = ""
         output = output.decode('utf-8')
         matches_queued = pat_queued.findall(output)
         matches_dropped = pat_dropped.findall(output)
         if len(matches_queued) != len(matches_dropped):
             print("WARNING: Two matches have different lengths!")
             print(output)
+
         if matches_queued and matches_dropped:
-            tmp += '%f,%s,%s' % (time(), matches_queued[0],matches_dropped[0])
+            tmp += f"{time()-start},{to_bytes(matches_queued[0]) - matches_queued_root},{int(matches_dropped[0]) - matches_dropped_root}"
+            matches_queued_root, matches_dropped_root = to_bytes(matches_queued[0]), int(matches_dropped[0])
             if len(matches_queued) > 1 and len(matches_dropped)> 1: 
-                tmp += ',%s,%s\n' % (matches_queued[1], matches_dropped[1])
+                tmp += f",{to_bytes(matches_queued[1]) - matches_queued_child},{int(matches_dropped[1]) - matches_dropped_child}\n"
+                matches_queued_child, matches_dropped_child = to_bytes(matches_queued[1]), int(matches_dropped[1])
+
             else:
-                tmp += ',,\n'
+                tmp += ",,\n"
         f = open(fname, 'a')
         f.write(tmp)
         f.close
         sleep(interval_sec)
     return
 
-def monitor_qlen_on_router(iface, mininode, interval_sec = 0.1, path = default_dir):
+def monitor_qlen_on_router(iface: str, mininode, interval_sec=0.1, path = default_dir) -> None:
     mkdirp(path)
-    fname='%s/%s.txt' % (path, iface)
+    fname=f"{path}/{iface}.txt"
+    start = time()
     pat_queued = re.compile(r'backlog\s+([\d]+\w+)\s+\d+p')
     pat_dropped = re.compile(r'dropped\s+([\d]+)') 
-    cmd = "tc -s qdisc show dev %s" % (iface)
+    cmd = f"tc -s qdisc show dev {iface}"
     f = open(fname, 'w')
-    f.write('time,root_pkts,root_drp,child_pkts,child_drp\n')
+    f.write("time,root_pkts,root_drp,child_pkts,child_drp\n")
     f.close()
     while 1:
         output = mininode.cmd(cmd)
-        tmp = ''
+        tmp = ""
         matches_queued = pat_queued.findall(output)
         matches_dropped = pat_dropped.findall(output)
         if len(matches_queued) != len(matches_dropped):
             print("WARNING: Two matches have different lengths!")
             print(output)
         if matches_queued and matches_dropped:
-            tmp += '%f,%s,%s' % (time(), matches_queued[0],matches_dropped[0])
+            tmp += f"{time()-start},{matches_queued[0]},{matches_dropped[0]}"
             if len(matches_queued) > 1 and len(matches_dropped)> 1: 
-                tmp += ',%s,%s\n' % (matches_queued[1], matches_dropped[1])
+                tmp += f",{matches_queued[1]},{matches_dropped[1]}\n"
             else:
-                tmp += ',,\n'
+                tmp += ",,\n"
         f = open(fname, 'a')
         f.write(tmp)
         f.close
         sleep(interval_sec)
     return
 
-def monitor_ifconfig(iface, interval_sec = 1, path = default_dir):
-    mkdirp(path)
-    fname='%s/%s.txt' % (path, iface)
-    pat_queued = re.compile(r'backlog\s+\d+\w+\s+([\d]+)p')
-    pat_dropped = re.compile(r'dropped\s+([\d]+)') 
-    cmd = "ifconfig %s" % (iface)
-    # f = open(fname, 'w')
-    # f.write('time,root_pkts,root_drp,child_pkts,child_drp\n')
-    # f.close()
-    while 1:
-        p = Popen(cmd, shell=True, stdout=PIPE)
-        output = p.stdout.read()
-        # tmp = ''
-        # matches_queued = pat_queued.findall(output)
-        # matches_dropped = pat_dropped.findall(output)
-        # if len(matches_queued) != len(matches_dropped):
-        #     print("WARNING: Two mathces have different lengths!")
-        #     print(output)
-        # if matches_queued and matches_dropped:
-        #     tmp += '%f,%s,%s' % (time(), matches_queued[0],matches_dropped[0])
-        #     if len(matches_queued) > 1 and len(matches_dropped)> 1: 
-        #         tmp += ',%s,%s\n' % (matches_queued[1], matches_dropped[1])
-        #     else:
-        #         tmp += ',,,\n'
-        # f = open(fname, 'a')
-        # f.write(tmp)
-        # f.close
-        sleep(interval_sec)
-    return
-
-
-def monitor_devs_ng(fname="%s/txrate.txt" % default_dir, interval_sec=1):
-    """Uses bwm-ng tool to collect iface tx rate stats.  Very reliable."""
-    cmd = ("sleep 1; bwm-ng -t %s -o csv "
-           "-u bits -T rate -C ',' > %s" %
-           (interval_sec, fname))
-    Popen(cmd, shell=True).wait()
-
-def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
-    monitor = Process(target=monitor_qlen,
-                      args=(iface, interval_sec, outfile))
-    monitor.start()
-    return monitor
-
-
-def start_sysstat(interval, count, folder, node=None):
-    mkdirp("%s/sysstat" % (folder))
+def start_sysstat(interval: int, count: int, folder: str, node=None) -> None:
+    mkdirp(f"{folder}/sysstat")
     if node == None:
-        cmd = "sudo /usr/lib/sysstat/sadc -S SNMP %s %s %s/sysstat/datafile_root.log &" % (interval, count, folder)
+        cmd = f"sudo /usr/lib/sysstat/sadc -S SNMP {interval} {count} {folder}/sysstat/datafile_root.log &"
         os.system(cmd)
     else:
-        cmd = "sudo /usr/lib/sysstat/sadc -S SNMP %s %s %s/sysstat/datafile_%s.log &" % (interval, count, folder, node.name )
-        print("\033[38;2;165;42;42mSending command '%s' to node %s\033[0m" % (cmd, node.name))
+        cmd = f"sudo /usr/lib/sysstat/sadc -S SNMP {interval} {count} {folder}/sysstat/datafile_{node.name}.log &"
         node.popen(cmd,shell=True)
 
-
-def stop_sysstat(folder, sending_nodes):
-    Popen("killall -9 sadc", shell=True).wait()
+def stop_sysstat(folder: str, sending_nodes: list) -> None:
+    #Popen("killall -9 sadc", shell=True).wait()
     # Run sadf to generate CSV like (semi-colon separated) file
-    cmd = "sadf -d -U -- -n DEV %s/sysstat/datafile_root.log > %s/sysstat/dev_root.log" % (folder,folder)
+    cmd = f"sadf -d -U -- -n DEV {folder}/sysstat/datafile_root.log > {folder}/sysstat/dev_root.log"
     Popen(cmd, shell=True).wait()
-    cmd = "sadf -d -U -- -n EDEV %s/sysstat/datafile_root.log > %s/sysstat/edev_root.log" % (folder,folder)
+    cmd = f"sadf -d -U -- -n EDEV {folder}/sysstat/datafile_root.log > {folder}/sysstat/edev_root.log"
     Popen(cmd, shell=True).wait()
-    cmd = "sadf -d -U -- -P ALL %s/sysstat/datafile_root.log > %s/sysstat/cpu_root.log" % (folder,folder)
+    cmd = f"sadf -d -U -- -P ALL {folder}/sysstat/datafile_root.log > {folder}/sysstat/cpu_root.log"
     Popen(cmd, shell=True).wait()
     for node_name in sending_nodes:
         # Run sadf to generate CSV like (semi-colon separated) file
-        cmd = "sadf -d -U -- -n DEV %s/sysstat/datafile_%s.log > %s/sysstat/dev_%s.log" % (folder,node_name,folder, node_name)
+        cmd = f"sadf -d -U -- -n DEV {folder}/sysstat/datafile_{node_name}.log > {folder}/sysstat/dev_{node_name}.log"
         Popen(cmd, shell=True).wait()
-        cmd = "sadf -d -U -- -n EDEV %s/sysstat/datafile_%s.log > %s/sysstat/edev_%s.log" % (folder,node_name,folder, node_name)
+        cmd = f"sadf -d -U -- -n EDEV {folder}/sysstat/datafile_{node_name}.log > {folder}/sysstat/edev_{node_name}.log"
         Popen(cmd, shell=True).wait()
-        cmd = "sadf -d -U -- -n ETCP %s/sysstat/datafile_%s.log > %s/sysstat/etcp_%s.log" % (folder,node_name,folder, node_name)
+        cmd = f"sadf -d -U -- -n ETCP {folder}/sysstat/datafile_{node_name}.log > {folder}/sysstat/etcp_{node_name}.log"
         Popen(cmd, shell=True).wait()
-        cmd = "sadf -d -U -- -n UDP %s/sysstat/datafile_%s.log > %s/sysstat/udp_%s.log" % (folder,node_name,folder, node_name)
+        cmd = f"sadf -d -U -- -n UDP {folder}/sysstat/datafile_{node_name}.log > {folder}/sysstat/udp_{node_name}.log"
         Popen(cmd, shell=True).wait()
-        cmd = "sadf -d -U -- -P ALL %s/sysstat/datafile_%s.log > %s/sysstat/cpu_%s.log" % (folder,node_name,folder, node_name)
+        cmd = f"sadf -d -U -- -P ALL {folder}/sysstat/datafile_{node_name}.log > {folder}/sysstat/cpu_{node_name}.log"
         Popen(cmd, shell=True).wait()
-
     return
-
-
-
-
-    

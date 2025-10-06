@@ -1,4 +1,4 @@
-import os 
+import os, pwd, grp, re
 import subprocess
 from collections import namedtuple
 from core.config import USERNAME
@@ -15,12 +15,20 @@ IPERF = ['bbr', 'bbr1', 'pcc', 'cubic', 'snap']
 ORCA = ['orca', 'sage']
 
 def mkdirp(path: str) -> None:
+    """
+    Recursive mkdir with permissive mode and optional chown to `username`.
+    """
     try:
-        os.makedirs( path,0o777 )
+        os.makedirs(path, mode=0o770, exist_ok=True)
     except OSError:
-        if not os.path.isdir( path ):
+        if not os.path.isdir(path):
             raise
-
+    try:
+        pw = pwd.getpwnam(USERNAME)
+        os.chown(path, pw.pw_uid, pw.pw_gid)
+    except KeyError:
+        raise RuntimeError(f"User {USERNAME} not found")
+                               
 def rmdirp(path: str) -> None:
     try:
         for root, dirs, files in os.walk(path, topdown=False):
@@ -32,110 +40,101 @@ def rmdirp(path: str) -> None:
     except OSError as e:
         if os.path.isdir(path):
             raise
+def remove(path: str) -> None:
+    try:
+        os.remove(path)
+    except OSError:
+        if os.path.isfile(path):
+            raise
+        
+def to_bytes(value: str) -> int:
+    if isinstance(value, int):
+        return value
 
-def convert_to_mega_units(string):
-    value, units = string.split(" ")
-    if "K" in units:
-        return float(value)/(2**10)
-    elif "M" in units:
-        return float(value)
-    elif "G" in units:
-        return float(value)*(2**10)
-    else:
-        return float(value)/(2**20)
+    s = str(value).strip().replace('_', '')
+    m = re.fullmatch(r'(?i)\s*(\d+)\s*([KMG]?b)?\s*', s)
+    if not m:
+        raise ValueError(f"Unrecognized size format: {value!r}")
 
-def dump_system_config(path):
-    with open('%s/sysctl.txt' % (path), 'w') as fout:
+    n = int(m.group(1))
+    suffix = (m.group(2) or '').lower()
+
+    # Match tc’s SI byte units
+    mul = {'': 1, 'b': 1, 'kb': 1_000, 'mb': 1_000_000, 'gb': 1_000_000_000, }
+    return n * mul.get(suffix, 1)
+
+def dump_system_config(path: str) -> None:
+    with open(f'{path}/sysctl.txt', 'w') as fout:
         fout.write(subprocess.check_output(['sysctl', 'net.core.netdev_max_backlog']) + '\n')
         fout.write(subprocess.check_output(['sysctl', 'net.ipv4.tcp_rmem']) + '\n')
         fout.write(subprocess.check_output(['sysctl', 'net.ipv4.tcp_wmem']) + '\n')
         fout.write(subprocess.check_output(['sysctl', 'net.ipv4.tcp_mem']) + '\n')
         fout.write(subprocess.check_output(['sysctl', 'net.ipv4.tcp_window_scaling']) + '\n')
 
-def change_all_user_permissions(path):
+def change_all_user_permissions(path: str) -> None:
     subprocess.call(['sudo','chown', '-R',USERNAME, path])
 
 
-def tcp_buffers_setup(target_bdp_bytes, multiplier=3):
-    # --- Configure TCP Buffers on all senders and receivers
-    # The send and receive buffer sizes should be set to at least
-    # 2BDP (if BBR is used as the congestion control algorithm, this should be set to even a
-    # larger value). We also want to account for the router/switch buffer size, makingsure
-    # the tcp buffere is not the bottleneck.
+def tcp_buffers_setup(target_bdp_bytes: int, multiplier=3) -> None:
+    # WE WANT BIG BEAUTIFUL TCP BUFFERS, SOME SAY THE BIGGEST BUFFERS, I LOOK AT THESE BUFFERS AND I SAY: "WOW, WHAT A BEAUTIFUL BUFFER"
+    os.system(f"sudo sysctl -w net.ipv4.tcp_rmem='10240 87380 {multiplier*target_bdp_bytes}' > /dev/null")
+    os.system(f"sudo sysctl -w net.ipv4.tcp_wmem='10240 87380 {multiplier*target_bdp_bytes}' > /dev/null")
 
-    if multiplier:
-        os.system('sudo sysctl -w net.ipv4.tcp_rmem=\'10240 87380 %s\'' % (multiplier*(target_bdp_bytes)))
-        os.system('sudo sysctl -w net.ipv4.tcp_wmem=\'10240 87380 %s\'' % (multiplier*(target_bdp_bytes)))
 
-def disable_offload(net):
+def disable_offload(net) -> None:
     for node_name, node in net.items():
         for intf_name in node.intfNames():
             if 'c' in  intf_name or 'x' in intf_name:
-                node.cmd('sudo ethtool -K %s tso off' % intf_name)
-                node.cmd('sudo ethtool -K %s gro off' % intf_name)
-                node.cmd('sudo ethtool -K %s gso off' % intf_name)
-                node.cmd('sudo ethtool -K %s lro off' % intf_name)
-                node.cmd('sudo ethtool -K %s ufo off' % intf_name)
+                node.cmd(f'sudo ethtool -K {intf_name} tso off')
+                node.cmd(f'sudo ethtool -K {intf_name} gro off')
+                node.cmd(f'sudo ethtool -K {intf_name} gso off')
+                node.cmd(f'sudo ethtool -K {intf_name} lro off')
+                # node.cmd(f'sudo ethtool -K {intf_name} ufo off')
             if 's' in intf_name:
-                os.system('sudo ethtool -K %s tso off' % intf_name)
-                os.system('sudo ethtool -K %s gro off' % intf_name)
-                os.system('sudo ethtool -K %s gso off' % intf_name)
-                os.system('sudo ethtool -K %s lro off' % intf_name)
-                #os.system('sudo ethtool -K %s ufo off' % intf_name) no need as no udp traffic
+                os.system(f'sudo ethtool -K {intf_name} tso off')
+                os.system(f'sudo ethtool -K {intf_name} gro off')
+                os.system(f'sudo ethtool -K {intf_name} gso off')
+                os.system(f'sudo ethtool -K {intf_name} lro off')
+                #os.system('sudo ethtool -K {intf_name} ufo off') no need as no udp traffic
 
+
+ERROR = -3
+DEBUG=0
+INFO=1
+ALL=2
+
+_COLORS = {
+    "reset": "\033[0m",
+
+    # foreground (text)
+    "black":   "\033[30m",
+    "red":     "\033[31m",
+    "green":   "\033[32m",
+    "yellow":  "\033[33m",
+    "blue":    "\033[34m",
+    "magenta": "\033[35m",
+    "cyan":    "\033[36m",
+    "white":   "\033[37m",
+
+    # background (fill)
+    "black_fill":   "\033[40m",
+    "red_fill":     "\033[41m",
+    "green_fill":   "\033[42m",
+    "yellow_fill":  "\033[43m",
+    "blue_fill":    "\033[44m",
+    "magenta_fill": "\033[45m",
+    "cyan_fill":    "\033[46m",
+    "white_fill":   "\033[47m",
+}
+
+LOG_LEVEL = 1
 
 
 RESET = "\033[0m"
-
-def printDebug(string):
-    COLOR="\033[95m"
-    print(f"{COLOR}{string}{RESET}")
-def printDebug2(string):
-    COLOR="\033[103m"
-    print(f"{COLOR}{string}{RESET}")
-def printDebug3(string):
-    COLOR="\033[42m"
-    print(f"{COLOR}{string}{RESET}")
-
-
-
-
-def printBlue(string):
-    COLOR = "\033[94m"
-    print(f"{COLOR}{string}{RESET}")
-
-def printBlueFill(string):
-    COLOR = "\033[104m"
-    print(f"{COLOR}{string}{RESET}")
-
-def printGreen(string):
-    COLOR = "\033[32m"
-    print(f"{COLOR}{string}{RESET}")
-
-def printGreenFill(string):
-    COLOR = "\033[102m"
-    print(f"{COLOR}{string}{RESET}")
-
-def printPurple(string):
-    COLOR = "\033[93m" 
-    print(f"{COLOR}{string}{RESET}")
-
-def printRed(string):
-    COLOR = "\033[31m"
-    print(f"{COLOR}{string}{RESET}")
-
-def printSS(string):
-    COLOR = "\033[33m"
-    print(f"{COLOR}{string}{RESET}")
-
-def printTC(string):
-    COLOR = "\033[90m"
-    print(f"{COLOR}{string}{RESET}")
-
-def printPink(string):
-    COLOR = "\033[95m" 
-    print(f"{COLOR}{string}{RESET}")
-
-def printPinkFill(string):
-    COLOR = "\033[105m"
-    print(f"{COLOR}{string}{RESET}")
+def printC(msg: str, color="white", log_level=2) -> None:
+    """
+    Possible colors: black, red, green, yellow, blue, magenta, cyan, white. Can use [color]_fill for background color.  \\
+    Log levels: ERROR=-3, DEBUG=0, INFO=1, ALL=2.
+    """
+    if log_level <= LOG_LEVEL:
+        print(f"{_COLORS[color]}{msg}{RESET}", flush=True)

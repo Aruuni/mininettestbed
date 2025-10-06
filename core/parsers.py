@@ -1,11 +1,8 @@
-import re
-import pandas as pd
-import json
-import os
+import re, csv, json, os, pandas as pd
 from core.utils import *
 from collections import defaultdict
 
-def parse_tc_show_output(output):
+def parse_tc_show_output(output: str) -> dict:
     '''
     Parse tc show dev output. Assumes that dev can only have one netem and/or one tbf. 
     Returns a dict where key is type of qdisc and value is another dict with dropped, bytes queues and pkts queued.
@@ -19,7 +16,6 @@ def parse_tc_show_output(output):
                 # Get number of dropped pkts from this qdisc
             elif "tbf" in line:
                 qdisc_type = 'tbf'
-
 
             dropped = 0
             bytes_queued = 0
@@ -42,147 +38,162 @@ def parse_tc_show_output(output):
     
     return ret
 
-def parse_ss_output(file_path, offset=0):
-    #df = pd.read_csv(file_path)
-    patterns = {
-        "time": r"^(\d+\.\d+),",  # Timestamp at the beginning
-        "state": r"\sESTAB\s",  # Match exact ESTAB state
-        "cwnd": r"cwnd:(\d+)",
-        "srtt": r"rtt:([\d.]+)/",  # Extract srtt
-        "rttvar": r"rtt:[\d.]+/([\d.]+)",  # Extract rttvar
-        "retr": r"retrans:(\d+)/"   
-    }
-    data = defaultdict(list)  # Initializes a dictionary where values are lists
-    with open(file_path, "r") as f:
-        for line in f:
-            # Filter for exact ESTAB state
-            if not re.search(patterns["state"], line):
-                continue
+def parse_ss_to_csv(in_path: str, out_path: str, offset=0.0) -> bool:
+    ts_re = re.compile(r'^(\d+\.\d+),')
+    ip_port_re = re.compile(r'([\da-fA-F:.]+):(\d+)')
+    keyval_colon = re.compile(r'([a-zA-Z_][\w\-]*):([^\s]+)')
+    keyval_space = re.compile(r'([a-zA-Z_][\w\-]*)\s+([^\s:]+)')
+    section_re = re.compile(r'([A-Za-z_][\w\-]*)\:\(([^)]*)\)')
 
-            # Extract timestamp
-            time_match = re.search(patterns["time"], line)
-            if not time_match:
-                continue
-            timestamp = float(time_match.group(1))
-            data["time"].append(timestamp)
+    SPECIAL = {'rtt': ('rtt', 'rttvar'), 'retrans': ('retrans', 'retrans_total'), 'wscale': ('wscale_snd','wscale_rcv')}
+    ms_pct = re.compile(r'([\d.]+)ms(?:\(([\d.]+)%\))?$')
+    num_pct = re.compile(r'([\d.]+)\(([\d.]+)%\)$')
+    bps = re.compile(r'([\d.]+)bps$')
 
-            # Extract metrics
-            for key, pattern in patterns.items():
-                if key == "time" or key == "state":
+    def num(x):
+        try:
+            return int(x) if x.isdigit() else float(x)
+        except:
+            return x
+
+    def norm(k):
+        return k.lower().replace('-', '_')
+
+    def split_pair(k, v):
+        if k in SPECIAL and (',' in v or '/' in v):
+            a,b = v.replace(',', '/').split('/',1)
+            k1,k2 = SPECIAL[k]
+            return {k1: num(a), k2: num(b)}
+        if ',' in v:
+            a,b = v.split(',',1); return {f'{k}_1': num(a), f'{k}_2': num(b)}
+        if '/' in v:
+            a,b = v.split('/',1); return {f'{k}_1': num(a), f'{k}_2': num(b)}
+        return None
+
+    def normalize(k, v):
+        k = norm(k)
+        sp = split_pair(k, v)
+        if sp: return sp
+        m = ms_pct.match(v)
+        if m:
+            out = {f'{k}_ms': num(m.group(1))}
+            if m.group(2): out[f'{k}_pct'] = num(m.group(2))
+            return out
+        m = num_pct.match(v)
+        if m: return {k: num(m.group(1)), f'{k}_pct': num(m.group(2))}
+        m = bps.match(v)
+        if m: return {f'{k}_bps': num(m.group(1))}
+        return {k: num(v)}
+
+    def parse_section(sec_key, body):
+        out = {}
+        for item in body.split(','):
+            item = item.strip()
+            if not item or ':' not in item:
+                continue
+            k, v = item.split(':', 1)
+            for kk, vv in normalize(f'{sec_key}_{k}', v).items():
+                out[kk] = vv
+        return out
+
+    base_cols = ['time','state','tx_queue','rx_queue','local_ip','local_port','remote_ip','remote_port','cong']
+
+    try:
+        rows, keys = [], set(base_cols)
+
+        with open(in_path, 'r', encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                line = line.strip()
+                if not line or ' ESTAB ' not in line:
                     continue
-                match = re.search(pattern, line)
-                value = float(match.group(1)) if match else None
-                data[key].append(value if value is not None else 0)
-    df = pd.DataFrame(data)
-
-    if df.empty:
-        raise ValueError("No ESTAB state entries found in the input file.")
-
-    # Convert the 'time' column to relative time (seconds since the minimum timestamp)
-    min_time = df['time'].min()
-    df['time'] = df['time'] - min_time + offset
-    return df
-
-def parse_ss_sage_output(file_path, offset=0):
-    #df = pd.read_csv(file_path)
-    estab = {
-                "state": r"\sESTAB\s",  # Match exact ESTAB state
-    }
-    patterns = {
-        "time": r"^(\d+\.\d+),",  # Timestamp at the beginning
-        "cwnd": r"cwnd:(\d+)",
-        "srtt": r"rtt:([\d.]+)/",  # Extract srtt
-        "rttvar": r"rtt:[\d.]+/([\d.]+)",  # Extract rttvar
-        "retr": r"retrans:(\d+)/"   
-    }
-    data = defaultdict(list)  # Initializes a dictionary where values are lists
-    with open(file_path, "r") as f:
-        for line in f:
-            if not re.search(patterns["cwnd"], line):
-                continue
-            # Extract timestamp
-            time_match = re.search(patterns["time"], line)
-
-            if not time_match:
-                continue
-            timestamp = float(time_match.group(1))
-            data["time"].append(timestamp)
-
-            # Extract metrics
-            for key, pattern in patterns.items():
-                if key == "time" or key == "state":
+                m = ts_re.match(line)
+                if not m:
                     continue
-                match = re.search(pattern, line)
-                value = float(match.group(1)) if match else None
-                data[key].append(value if value is not None else 0)
-    df = pd.DataFrame(data)
+                ts = float(m.group(1))
 
-    if df.empty:
-        raise ValueError("No ESTAB state entries found in the input file.")
+                tokens = line.split()
+                try:
+                    ei = tokens.index('ESTAB')
+                except ValueError:
+                    continue
 
-    # Convert the 'time' column to relative time (seconds since the minimum timestamp)
-    min_time = df['time'].min()
-    df['time'] = df['time'] - min_time + offset
-    return df
+                row = {k: None for k in base_cols}
+                row['time'], row['state'] = ts, 'ESTAB'
 
-def parse_iperf_output(output):
-    """Parse iperf output and return bandwidth.
-    iperfOutput: string
-    returns: result string"""
-    
-    r_client =  r"\[\s*(\d+)\]\s+(\d+\.?\d*-\d+\.?\d*)\s+sec\s+(\d+\.?\d*\s+[KMG]?Bytes)\s+(\d+\.?\d*\s+[KMG]?bits/sec)\s+(\d+)\s+(\d+\.?\d*\s+[KMG]?Bytes)"
-    values_client = re.findall(r_client, iperfOutput )
-    
-    r_server =  r"\[\s*(\d+)\]\s+(\d+\.?\d*-\d+\.?\d*)\s+sec\s+(\d+\.?\d*\s+[KMG]?Bytes)\s+(\d+\.?\d*\s+[KMG]?bits/sec)"
-    values_server = re.findall(r_server, iperfOutput )
+                tx = tokens[ei+1] if ei+1 < len(tokens) and tokens[ei+1].isdigit() else None
+                rx = tokens[ei+2] if ei+2 < len(tokens) and tokens[ei+2].isdigit() else None
+                row['tx_queue'] = int(tx) if tx else None
+                row['rx_queue'] = int(rx) if rx else None
 
-    if len(values_client) > 2:
-        if mode == 'last':
-            # TODO:
-            return values_client[-1]
-        elif mode == 'series':
-            ids = []
-            time = []
-            transferred = []
-            bandwidth = []
-            retr = []
-            cwnd = []
-            for x in values_client:
-                ids.append(x[0])
-                time.append(float(x[1].split('-')[-1]) + time_offset)
-                transferred.append(convert_to_mega_units(x[2]))
-                bandwidth.append(convert_to_mega_units(x[3]))
-                retr.append(x[4])
-                cwnd.append(convert_to_mega_units(x[5])*(2**20)/1500)
+                pairs = ip_port_re.findall(line)
+                if len(pairs) >= 2:
+                    (lip,lport),(rip,rport) = pairs[:2]
+                    row.update(local_ip=lip, local_port=int(lport), remote_ip=rip, remote_port=int(rport))
 
-            return [time, transferred, bandwidth, retr, cwnd]
-        else:
-            print( 'mode not accepted')
-    elif len(values_server) > 2:
-        if mode == 'last':
-            # TODO:
-            return values_server[-1]
-        elif mode == 'series':
-            ids = []
-            time = []
-            transferred = []
-            bandwidth = []
-            for x in values_server:
-                ids.append(x[0])
-                time.append(float(x[1].split('-')[-1]) + time_offset)
-                transferred.append(convert_to_mega_units(x[2]))
-                bandwidth.append(convert_to_mega_units(x[3]))
+                cong = None
+                if len(pairs) >= 2:
+                    ip_seen = 0
+                    for i,t in enumerate(tokens):
+                        if ip_port_re.fullmatch(t):
+                            ip_seen += 1
+                            if ip_seen == 2 and i+1 < len(tokens):
+                                cand = tokens[i+1]
+                                if ':' not in cand and not cand.replace('.','',1).isdigit():
+                                    cong = cand
+                                break
+                row['cong'] = cong
 
-            return [time, transferred, bandwidth]
-        else:
-            print( 'mode not accepted')
-    
-    else:
-        # was: raise Exception(...)
-        print( 'could not parse iperf output: ' + iperfOutput )
-        return ''
+                extras = {}
 
-def parse_iperf_json(file, offset):
+                for skey, body in section_re.findall(line):
+                    skey = norm(skey)
+                    extras.update(parse_section(skey, body))
+
+                scrub = section_re.sub(' ', line)
+
+                for k, v in keyval_colon.findall(scrub):
+                    if ip_port_re.fullmatch(f'{k}:{v}'):
+                        continue
+                    extras.update(normalize(k, v))
+
+                scrub2 = keyval_colon.sub(' ', scrub)
+                for k, v in keyval_space.findall(scrub2):
+                    if ':' in k or ':' in v:
+                        continue
+                    if ip_port_re.fullmatch(k) or ip_port_re.fullmatch(v):
+                        continue
+                    nv = normalize(k, v)
+                    for kk, vv in nv.items():
+                        if kk not in extras:
+                            extras[kk] = vv
+
+                for k,v in extras.items():
+                    row[k] = v
+                    keys.add(k)
+                rows.append(row)
+
+        if not rows:
+            return False  # nothing parsed
+
+        # Make time relative from 0.0 (plus optional offset)
+        t0 = min(r['time'] for r in rows if r['time'] is not None)
+        for r in rows:
+            r['time'] = (r['time'] - t0) + (offset or 0.0)
+
+        header = base_cols + sorted(k for k in keys if k not in base_cols)
+
+        with open(out_path, 'w', newline='') as fh:
+            w = csv.DictWriter(fh, fieldnames=header)
+            w.writeheader()
+            for r in rows:
+                w.writerow({k: r.get(k) for k in header})
+
+        return True
+
+    except Exception:
+        return False
+
+def parse_iperf_json(file: str, offset: int) -> pd.DataFrame:
 
     with open(file, 'r') as fin:
         iperfOutput = json.load(fin)
@@ -227,7 +238,7 @@ def parse_iperf_json(file, offset):
     df = pd.DataFrame(data_dict)
     return df
 
-def parse_orca_output(file, offset):
+def parse_orca_output(file: str, offset: int) -> pd.DataFrame:
     with open(file, 'r') as fin:
         orcaOutput = fin.read()
     start_index = orcaOutput.find("----START----")
