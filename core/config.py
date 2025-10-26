@@ -15,5 +15,6 @@ PCC_RL_INSTALL_FOLDER = f"{PARENT_DIR}/CC/PCC-RL"
 ASTRAEA_INSTALL_FOLDER = f"{PARENT_DIR}/CC/astraea-open-source"
 LEOEM_INSTALL_FOLDER = f"{PARENT_DIR}/experiments_mininet/LeoEM"
 TCPDATAGEN_INSTALL_FOLDER = f"{PARENT_DIR}/CC/tcpdatagen"
-TCPDATAGEN_TRACES_FOLDER = f"{HOME_DIR}/raw_tcpdatagen_traces"
+
+
 SS_PATH = f"{PARENT_DIR}/core/ss"

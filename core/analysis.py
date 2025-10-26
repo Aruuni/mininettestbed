@@ -2,6 +2,7 @@ import json, glob
 from core.parsers import *
 from core.utils import *
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 
 def process_raw_outputs(path: str) -> None:
@@ -15,12 +16,15 @@ def process_raw_outputs(path: str) -> None:
     csv_path = path + "/csvs"
     mkdirp(csv_path)
     change_all_user_permissions(path)
+    first = False
     for flow in flows:
         sender = str(flow[0])
         receiver = str(flow[1])
         sender_ip = str(flow[2])
         receiver_ip = str(flow[3])
         start_time = int(flow[-4])
+        if 'datagen' in flow[-2] or flow[-2] == 'netem' or flow[-2] == 'tbf':
+            continue
         if 'orca' in flow[-2]:
             df = parse_orca_output(f"{path}/{sender}_output.txt", start_time)
             df.to_csv(f"{csv_path}/{sender}.csv", index=False)
@@ -32,12 +36,12 @@ def process_raw_outputs(path: str) -> None:
             df = parse_orca_output(f"{path}/{receiver}_output.txt", start_time)
             df.to_csv(f"{csv_path}/{receiver}.csv", index=False)
             remove(f"{path}/{receiver}_output.txt")
-        if 'sage' in flow[-2]:
-            df = parse_orca_output(f"{path}/{sender}_output.txt", start_time)
+        elif 'sage' in flow[-2] or 'athena' in flow[-2]:
+            df = parse_orca_output(f"{path}/{sender}_output.txt", start_time-4 if first else start_time)
             df.to_csv(f"{csv_path}/{sender}.csv", index=False)
             remove(f"{path}/{sender}_output.txt")
 
-            if parse_ss_to_csv(f"{path}/{sender}_ss.csv", f"{csv_path}/{sender}_ss.csv", start_time):
+            if parse_ss_to_csv(f"{path}/{sender}_ss.csv", f"{csv_path}/{sender}_ss.csv", start_time-4 if first else start_time):
                 remove(f"{path}/{sender}_ss.csv")
 
             df = parse_orca_output(f"{path}/{receiver}_output.txt", start_time)
@@ -57,13 +61,7 @@ def process_raw_outputs(path: str) -> None:
             df = parse_astraea_output(f"{path}/{receiver}_output.txt", start_time)
             df.to_csv(f"{csv_path}/{receiver}.csv", index=False)
             remove(f"{path}/{receiver}_output.txt")
-        elif flow[-2] == 'vivace-uspace':
-            df = parse_vivace_uspace_output(f"{path}/{sender}_output.txt", start_time)
-            df.to_csv(f"{csv_path}/{sender}.csv", index=False)
-            
-            df = parse_vivace_uspace_output(f"{path}/{receiver}_output.txt", start_time)
-            df.to_csv(f"{csv_path}/{receiver}.csv", index=False)
-        elif flow[-2] in IPERF:
+        else:
             df = parse_iperf_json(f"{path}/{sender}_output.txt", start_time)
             df.to_csv(f"{csv_path}/{sender}.csv", index=False)
             remove(f"{path}/{sender}_output.txt")
@@ -74,9 +72,8 @@ def process_raw_outputs(path: str) -> None:
             df = parse_iperf_json(f"{path}/{receiver}_output.txt", start_time)
             df.to_csv(f"{csv_path}/{receiver}.csv", index=False)
             remove(f"{path}/{receiver}_output.txt")
-        else:
-            printC(f"Unknown protocol {flow[-2]} for flow {flow}, set it up correctly at core/analysis.py, skipping...", "red", ERROR)
 
+        first = True
 def plot_all_mn(path: str, aqm='fifo') -> None:
     def remove_outliers(df, column, threshold):
         """Remove outliers from a DataFrame column based on a threshold."""
@@ -258,7 +255,6 @@ def plot_all_mn(path: str, aqm='fifo') -> None:
     printC(f"Plot saved to {output_file}", "green", INFO)
     plt.close()
 
-
 def plot_all_cpu(path: str) -> None:
     """
     Generate a single figure with 7 stacked subplots:
@@ -378,3 +374,170 @@ def plot_all_cpu(path: str) -> None:
     plt.savefig(out)
     printC(f"CPU plot (with per-core subplot) saved to {out}", "magenta", INFO)
     plt.close(fig)
+
+
+
+def plot_avg_across_runs(run_paths, out_path="avg_metrics.png", dt=0.2):
+    """
+    Aggregate per-node metrics across runs and plot mean ± std as a shaded band.
+    Logical node = FIRST digit of the numeric id (e.g., x11/x12/x13 -> node '1').
+    Expects each run path to contain a 'csvs/' folder with files like:
+      - xNN.csv      -> goodput from 'bandwidth'
+      - cNN_ss.csv   -> rtt + cwnd (needs columns: time,rtt,cwnd)
+    """
+
+    # ---------- helpers ----------
+    def _csv_dirs(run_paths):
+        return [os.path.join(p, "csvs") for p in run_paths if os.path.isdir(os.path.join(p, "csvs"))]
+
+    def _raw_node_id(fname):
+        # matches x12.csv, c12_ss.csv -> "12"
+        m = re.search(r'([cx])(\d+)(?:_ss)?\.csv$', os.path.basename(fname))
+        return m.group(2) if m else None
+
+    def _logical_node(raw_id: str) -> str:
+        # first digit is the client index (1..9)
+        return raw_id[0] if raw_id else None
+
+    def _load_x(path):
+        # time, bandwidth (tolerate missing headers)
+        try:
+            df = pd.read_csv(path)
+            if "time" not in df.columns or "bandwidth" not in df.columns:
+                df = pd.read_csv(path, header=None,
+                                 names=["time","bandwidth","bytes","totalgoodput"])
+        except Exception:
+            df = pd.read_csv(path, header=None,
+                             names=["time","bandwidth","bytes","totalgoodput"])
+        return df[["time","bandwidth"]].dropna().sort_values("time")
+
+    def _load_ss(path):
+        # need time, rtt, cwnd (case-insensitive)
+        df = pd.read_csv(path)
+        df.columns = [c.strip().lower() for c in df.columns]
+        need = ["time","rtt","cwnd"]
+        for n in need:
+            if n not in df.columns:
+                raise KeyError(f"Missing column '{n}' in {path}")
+        return df[need].dropna().sort_values("time")
+
+    def _interp_to_grid(df, tgrid, ycol):
+        s = df.set_index("time")[ycol].sort_index()
+        out = np.full_like(tgrid, np.nan, dtype=float)
+        tmin, tmax = s.index.min(), s.index.max()
+        mask = (tgrid >= tmin) & (tgrid <= tmax)
+        if mask.any():
+            out[mask] = np.interp(tgrid[mask], s.index.values, s.values)
+        return out
+
+    def _mean_std_no_warn(M):
+        # M: (runs, T) possibly with NaNs
+        if M.size == 0:
+            return np.array([]), np.array([])
+        counts = np.sum(np.isfinite(M), axis=0)
+        sums = np.nansum(M, axis=0)
+        mean = np.full(M.shape[1], np.nan)
+        nz = counts > 0
+        mean[nz] = sums[nz] / counts[nz]
+        sq_sums = np.nansum(np.square(M), axis=0)
+        var = np.full(M.shape[1], np.nan)
+        var[nz] = (sq_sums[nz] / counts[nz]) - np.square(mean[nz])
+        var[var < 0] = 0.0
+        std = np.sqrt(var)
+        return mean, std
+
+    # ---------- discover all csv dirs ----------
+    csv_dirs = _csv_dirs(run_paths)
+    if not csv_dirs:
+        raise RuntimeError("No csvs/ directories found under the provided run paths.")
+
+    # ---------- first pass: global time range ----------
+    tmins, tmaxs = [], []
+    for d in csv_dirs:
+        for f in glob.glob(os.path.join(d, "x*.csv")) + glob.glob(os.path.join(d, "c*_ss.csv")):
+            try:
+                df = _load_ss(f) if f.endswith("_ss.csv") else _load_x(f)
+                tmins.append(df["time"].min())
+                tmaxs.append(df["time"].max())
+            except Exception:
+                continue
+
+    if not tmins:
+        raise RuntimeError("No usable CSV data found.")
+
+    tmin, tmax = max(min(tmins), 0.0), max(tmaxs)
+    n = max(2, int((tmax - tmin) / dt))
+    tgrid = np.linspace(tmin, tmax, n)
+
+    # ---------- collect per-LOGICAL-node series for three metrics ----------
+    per_node = {"goodput": {}, "rtt": {}, "cwnd": {}}
+
+    def _accumulate(metric, node, series):
+        # require at least 2 finite samples to keep
+        if np.isfinite(series).sum() >= 2:
+            per_node[metric].setdefault(node, []).append(series)
+
+    for d in csv_dirs:
+        # x*.csv -> goodput (bandwidth)
+        for f in glob.glob(os.path.join(d, "x*.csv")):
+            raw = _raw_node_id(f)
+            node = _logical_node(raw)
+            if not node:
+                continue
+            try:
+                df = _load_x(f)
+                arr = _interp_to_grid(df, tgrid, "bandwidth")
+                _accumulate("goodput", node, arr)
+            except Exception:
+                pass
+
+        # c*_ss.csv -> rtt, cwnd
+        for f in glob.glob(os.path.join(d, "c*_ss.csv")):
+            raw = _raw_node_id(f)
+            node = _logical_node(raw)
+            if not node:
+                continue
+            try:
+                df = _load_ss(f)
+                _accumulate("rtt",  node, _interp_to_grid(df, tgrid, "rtt"))
+                _accumulate("cwnd", node, _interp_to_grid(df, tgrid, "cwnd"))
+            except Exception:
+                pass
+
+    # ---------- compute mean/std per logical node (no warnings) ----------
+    stats = {}
+    for metric, nodes in per_node.items():
+        stats[metric] = {}
+        for node, runs in nodes.items():
+            if not runs:
+                continue
+            M = np.vstack(runs)  # (num_runs, len(tgrid))
+            mean, std = _mean_std_no_warn(M)
+            stats[metric][node] = {"mean": mean, "std": std}
+
+    # ---------- plot in one tall figure (three stacked panels) ----------
+    fig, axes = plt.subplots(3, 1, figsize=(12, 14), sharex=True)
+    panels = [
+        ("goodput", "Goodput (bandwidth)", "bandwidth"),
+        ("rtt",     "RTT",                 "rtt [ms]"),
+        ("cwnd",    "CWND",                "cwnd [pkts]"),
+    ]
+
+    for ax, (metric, title, ylabel) in zip(axes, panels):
+        nodes = stats.get(metric, {})
+        for node in sorted(nodes.keys(), key=lambda x: int(x)):
+            mean = nodes[node]["mean"]
+            std  = nodes[node]["std"]
+            ax.plot(tgrid, mean, label=f"node {node}")
+            ax.fill_between(tgrid, mean - std, mean + std, alpha=0.2)
+        ax.set_title(title)
+        ax.set_ylabel(ylabel)
+        ax.grid(True, alpha=0.3)
+        if metric == "goodput":
+            ax.legend(loc="best")
+
+    axes[-1].set_xlabel("time [s]")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+    printC(f"Saved {out_path}", "cyan_fill", INFO)

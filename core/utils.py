@@ -1,4 +1,4 @@
-import os, pwd, grp, re
+import sys,os, pwd, grp, re
 import subprocess
 from collections import namedtuple
 from core.config import USERNAME
@@ -70,6 +70,17 @@ def dump_system_config(path: str) -> None:
         fout.write(subprocess.check_output(['sysctl', 'net.ipv4.tcp_wmem']) + '\n')
         fout.write(subprocess.check_output(['sysctl', 'net.ipv4.tcp_mem']) + '\n')
         fout.write(subprocess.check_output(['sysctl', 'net.ipv4.tcp_window_scaling']) + '\n')
+
+def handle_interrupt(signum, frame):
+    """Handle SIGINT and SIGTERM signals to clean up Mininet properly."""
+    print("\n[!] Caught interrupt signal, cleaning up Mininet...")
+    try:
+        subprocess.run(["sudo", "mn", "-c"], check=False)
+        print("[✓] Mininet cleaned up successfully.")
+    except Exception as e:
+        print(f"[x] Error during cleanup: {e}")
+    finally:
+        sys.exit(0)
 
 def change_all_user_permissions(path: str) -> None:
     subprocess.call(['sudo','chown', '-R',USERNAME, path])

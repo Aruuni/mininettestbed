@@ -463,7 +463,10 @@ class Emulation:
         # print(f"Sending command '{sscmd}' to host {node.name}")
         # node.cmd(sscmd)
         flows_str = ",".join(map(str, self.data_generation['flows_order']))     
-        cmd = f"{TCPDATAGEN_INSTALL_FOLDER}/bin/sage_dataset {port} {TCPDATAGEN_TRACES_FOLDER} \"{flows_str}\" {self.data_generation['env_bw']} {self.data_generation['scheme']} delay {self.data_generation['trace_file']} {duration} reserved {int(time.time() * 1_000)} {self.data_generation['bw2']} 1000 "
+        getter = self.data_generation.get('timestamp')
+        time_stamp = int(getter) if getter is not None else int(time.time() * 1000)
+        cmd = f"{TCPDATAGEN_INSTALL_FOLDER}/bin/{self.data_generation['actor_version']} {port} \"{flows_str}\" {self.data_generation['env_bw']} {self.data_generation['scheme']} delay {self.data_generation['trace_set']}/{self.data_generation['trace_file']} {duration} reserved {time_stamp} {self.data_generation['bw2']} {self.data_generation['bw2_flip_period']} "
+
         printC(f"Sending command '{cmd}' to host {node.name}", "cyan", ALL)
         node.sendCmd(cmd)
 
@@ -482,7 +485,7 @@ class Emulation:
         printC(f"Sending command '{cmd}' to host {node.name}", "yellow_fill", ALL)
         node.sendCmd(cmd)
 
-    def start_astraea_client(self, node_name: str, destination_name: str, duration: int, datagen: bool, monitor_interval=1 , port=44279, ):
+    def start_astraea_client(self, node_name: str, destination_name: str, duration: int, datagen: bool, monitor_interval=1 , port=44279 ):
         node = self.network.get(node_name)
         # Might not need
         # sscmd = f"./ss_script.sh 0.1 {self.path}/{node.name}_ss.csv &" 
@@ -525,7 +528,7 @@ class Emulation:
         printC(f"Sending command '{sscmd}' to host {node.name}", "magenta", ALL)
         node.cmd(sscmd)
 
-        sagecmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {SAGE_INSTALL_FOLDER}/sender.sh {port} {(self.idx if self.idx else '')}{self.sage_flows_counter} {duration} {SAGE_INSTALL_FOLDER} {HOME_DIR}/venvpy38"
+        sagecmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {SAGE_INSTALL_FOLDER}/sender.sh {port} {(self.idx if self.idx else '')}{self.sage_flows_counter} {duration} {SAGE_INSTALL_FOLDER} {HOME_DIR}/venvpy38" #  |& tee -a {self.path}/{node.name}_sage_sender_{(self.idx if self.idx else '')}{self.sage_flows_counter}.txt &"
         printC(f"Sending command '{sagecmd}' to host {node.name}", "magenta", ALL)
         node.sendCmd(sagecmd)
         
