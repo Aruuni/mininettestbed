@@ -16,7 +16,7 @@ sys.dont_write_bytecode = True
 # Your style dicts
 from core.plotting import (
     COLORS_EXTENSION,
-    PROTOCOLS_FRIENDLY_NAME_EXTENSION,
+    PROTOCOLS_FRIENDLY_NAMES,
     PROTOCOLS_EXTENSION
 )
 
@@ -62,7 +62,7 @@ for proto in PROTOCOLS_EXTENSION:
                   # thicker lines
     )
     handles.append(lc)
-    labels.append(PROTOCOLS_FRIENDLY_NAME_EXTENSION[proto])
+    labels.append(PROTOCOLS_FRIENDLY_NAMES[proto])
 
 # Optimal dashed‐only, thicker
 opt = Line2D([], [], color='magenta',

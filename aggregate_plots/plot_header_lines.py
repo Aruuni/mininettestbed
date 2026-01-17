@@ -12,7 +12,7 @@ sys.dont_write_bytecode = True
 # Import protocol styling dictionaries
 from core.plotting import (
     COLORS_EXTENSION,
-    PROTOCOLS_FRIENDLY_NAME_EXTENSION,
+    PROTOCOLS_FRIENDLY_NAMES,
     PROTOCOLS_EXTENSION
 )
 PROTOCOLS_EXTENSION = ['orca', 'sage', 'astraea', 'vivace-uspace', 'bbr3' ]
@@ -26,7 +26,7 @@ handles = [
     mlines.Line2D(
         [], [], color=COLORS_EXTENSION[p],
         linestyle='-', linewidth=30,
-        label=PROTOCOLS_FRIENDLY_NAME_EXTENSION[p]
+        label=PROTOCOLS_FRIENDLY_NAMES[p]
     )
     for p in PROTOCOLS_EXTENSION
 ]

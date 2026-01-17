@@ -14,23 +14,45 @@ from core.emulation import *
 from core.config import *
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+
+
+DELAYS = [30]
+BANDWIDTHS = [100]
+PROTOCOLS = ['sage_transformer']
+QMULTS = [2]  # Multiples of BDP
+RUNS = [i for i in range(1, 6)]
+DELAY_CHANGE = 30
+
+
 _run_id_lock = threading.Lock()
 _mn_clean_lock = threading.Lock()
 _run_id_counter = itertools.count(1)
+_print_lock = threading.Lock()
 
-BASE_CTRL_PORT = 42000 
 
 def next_ex_idx() -> int:
     # Guarantees uniqueness across threads
     with _run_id_lock:
         return next(_run_id_counter)
 
-def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
-    rng = random.Random(params['ex_idx'])
+paths = []
+
+def process_raw_out(path: str) -> None:
+    change_all_user_permissions(path)
+    process_raw_outputs(path)
+    change_all_user_permissions(path)
+    with _print_lock:
+        plot_all_mn(path)
+    # plot_all_cpu(path)
+
+
+def run_emulation(topology: str, protocol: str, params, bw: int, delay:int, qmult:float, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2) -> None:
+
     topo = DumbellTopo(**params)
     bdp_in_bytes = int(bw * (2 ** 20) * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
     duration_s = 100
+    delay_gap = 25
 
     net = Mininet(topo=topo, controller=None, autoSetMacs=True, autoStaticArp=True)
 
@@ -53,12 +75,12 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     
 
     traffic_config = [TrafficConf(f"c1{params['ex_idx']}", f"x1{params['ex_idx']}", 0, duration_s, protocol)]
+    traffic_config.append(TrafficConf(f"s1{params['ex_idx']}", f"s2{params['ex_idx']}", delay_gap, duration_s-delay_gap, 'netem', ((f"s1{params['ex_idx']}", f"s2{params['ex_idx']}"), None, DELAY_CHANGE, 3*bdp_in_bytes, False, 'fifo', None, 'change')))
 
-    gap = 30
     next_start_s = 0
     for i in range(2, n_flows + 1):
         next_start_s += gap # rng.randint(0, gap) # random start gap, 
-        traffic_config.append(TrafficConf(f"c{i}{params['ex_idx']}", f"x{i}{params['ex_idx']}", next_start_s, duration_s, protocol))
+        traffic_config.append(TrafficConf(f"c{i}{params['ex_idx']}", f"x{i}{params['ex_idx']}", next_start_s, duration_s-next_start_s, protocol))
 
     trace_mame = f"/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{protocol}scheme_{run}run"
     bw2 = bw
@@ -67,44 +89,54 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     em = Emulation(net, network_config, traffic_config, path, 0.1, False, params['ex_idx']) 
     em.configure_network()
     em.configure_traffic()
-    em.set_monitors([f"s1{params['ex_idx']}-eth1", f"s2{params['ex_idx']}-eth2", 'sysstat'])
+    em.set_monitors([f"s1{params['ex_idx']}-eth1", f"s2{params['ex_idx']}-eth2"])
     em.run()
     em.dump_info()
+
     with _mn_clean_lock:
-        net.stop()
-    
-    change_all_user_permissions(path)
-    process_raw_outputs(path)
-    change_all_user_permissions(path)
-    plot_all_mn(path)
-    plot_all_cpu(path)
+                net.stop()
+    paths.append(path)
+
+    # change_all_user_permissions(path)
+    # process_raw_outputs(path)
+    # change_all_user_permissions(path)
+    # plot_all_mn(path)
+    # plot_all_cpu(path)
     
 if __name__ == '__main__':
-    DELAYS = [20, 40, 60, 80, 100]
-    BANDWIDTHS = [100]
-    PROTOCOLS = ['sage-24h']
-    QMULTS = [1]  # Multiples of BDP
-    RUNS = [1,2, 3, 4, 5]
+
     #QMULTS = [0.1, 1, 10]  # Multiples of BDP
-    def _worker(protocol, bw, delay, qmult, run):
+    def run_worker(protocol, bw, delay, qmult, run):
         # Each worker gets a unique run id + unique ex_idx, never reused.
         ex_idx = next_ex_idx()
-        flows = 2
+        flows = 1
         params = {'n': flows, 'ex_idx': ex_idx}
         run_emulation('Dumbell', protocol, params, bw, delay, qmult, 22, run, "fifo", "0", flows)
 
-    MAX_JOBS = 10
+
+    MAX_JOBS = 5
 
 
-    jobs = []
+    jobs_emu = []
     for protocol in PROTOCOLS: 
         for bw in BANDWIDTHS:   
             for delay in DELAYS:
                 for qmult in QMULTS:
                     for run in RUNS:
-                        jobs.append((protocol, bw, delay, qmult, run))
+                        jobs_emu.append((protocol, bw, delay, qmult, run))
 
     with ThreadPoolExecutor(max_workers=MAX_JOBS) as ex:
-        futures = [ex.submit(_worker, *job) for job in jobs]
+        futures = [ex.submit(run_worker, *job) for job in jobs_emu]
         for fut in as_completed(futures):
                 fut.result()
+    
+    jobs_proc = []
+    for path in paths:
+        jobs_proc.append((path,))
+
+    with ThreadPoolExecutor(max_workers=MAX_JOBS) as ex:
+        futures = [ex.submit(process_raw_out, *job) for job in jobs_proc]
+        for fut in as_completed(futures):
+                fut.result()
+
+    plot_avg_across_runs(paths, out_path=os.path.join(PARENT_DIR, "testing/threading/avg_metrics.pdf"), dt=0.2)

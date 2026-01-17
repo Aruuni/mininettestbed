@@ -80,7 +80,7 @@ for mult in QMULTS:
             'goodput_ratio_total_std', 
             PROTOCOLS_MARKERS_EXTENSION[protocol], 
             COLORS_EXTENSION[protocol], 
-            PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol], 
+            PROTOCOLS_FRIENDLY_NAMES[protocol], 
             delay=False
         )
 

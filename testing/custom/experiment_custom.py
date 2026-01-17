@@ -12,6 +12,7 @@ from core.utils import *
 from core.emulation import *
 from core.config import *
 
+LOG_LEVEL = ALL
 
 def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=3, run=0, aqm='fifo', loss=None, n_flows=2):
     if topology == 'Dumbell':
@@ -21,15 +22,15 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
 
     bdp_in_bytes = int(bw * (2 ** 20) * delay * (10 ** -3) / 8)
     qsize_in_bytes = max(int(qmult * bdp_in_bytes), 1500)
-    duration = 20
+    duration = 75
     
     net = Mininet(topo=topo)
-    path = f"{HOME_DIR}/cctestbed/mininet/results_sage_test/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{protocol}protocol/run{run}" 
-    printC(path, "red", INFO)
-    gap = 4
+    path = f"{HOME_DIR}/cctestbed/mininet/results_sage_test/{aqm}/{topology}_{bw}mbit_{delay}ms_{int(qsize_in_bytes/1500)}pkts_{loss}loss_{n_flows}flows_{protocol}/run{run}" 
+    printC(path, "yellow", INFO)
+    gap = 23
     rmdirp(path)
     mkdirp(path)
-    printC(f"delay is {delay}, bw is {bw}, qmult is {qmult}, qsize is {qsize_in_bytes}, bdp is {bdp_in_bytes}, loss is {loss}", "green", INFO)
+    printC(f"delay is {delay}, bw is {bw}, qmult is {qmult}, qsize is {qsize_in_bytes}, bdp is {bdp_in_bytes}, loss is {loss}", "cyan", INFO)
     if protocol == "bbr1":
         protocol = "bbr"
     if (protocol == "bbr3"):
@@ -46,7 +47,7 @@ def run_emulation(topology, protocol, params, bw, delay, qmult, tcp_buffer_mult=
     
 
     traffic_config = [TrafficConf('c1', 'x1', 0, duration, protocol), 
-                        TrafficConf('c2', 'x2', gap, duration-gap, protocol)
+                    TrafficConf('c2', 'x2', gap, duration-gap, protocol)
                       
                       
                       ]

@@ -2,10 +2,13 @@ from core.utils import *
 from core.monitor import *
 from multiprocessing import Process
 from core.config import *
-
+import mininet
 import time
 import json
 import threading 
+def ifconfig_set_state(iface: str, state: str) -> None:
+    # state: "down" or "up"
+    subprocess.run(["ifconfig", iface, state], check=True)
 
 class Emulation:
     def __init__(self, network, network_config = None, traffic_config = None, path='.', interval=1, pcap=False, idx=0, data_generation={}):
@@ -54,10 +57,10 @@ class Emulation:
             links = self.network.linksBetween(self.network.get(config.node1), self.network.get(config.node2))
             for link in links:
                 self.configure_link(link, config.bw, config.delay, config.qsize, config.bidir, aqm=config.aqm, loss=config.loss)
-    
-    def configure_link(self, link, bw, delay, qsize, bidir, aqm='fifo', loss=None, command='add'):
+
+    def configure_link(self, link, bw: int, delay: int, qsize: int, bidir: bool, aqm: str='fifo', loss: int=None, command: str='add', cut_time: int=None, interface: str=None):
         interfaces = [link.intf1, link.intf2]
-        printC(f"intf 1: {link.intf1}, intf 2: {link.intf2}", "magenta_fill", ALL)
+        printC(f"intf 1: {link.intf1}, intf 2: {link.intf2}", "magenta_fill", DEBUG)
         if bidir:
             n = 2
         else:
@@ -73,7 +76,6 @@ class Emulation:
             elif bw and not delay:
                 burst = int(10*bw*(2**20)/250/8)
                 cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 tbf rate {bw}mbit burst {burst} limit {qsize * 22 if aqm != 'fifo' else qsize} "
-                printC(cmd, "magenta", ALL)
                 if aqm == 'fq_codel':
                     cmd += f"&& sudo tc qdisc {command} dev {intf_name} parent 1: handle 2: fq_codel limit {int(qsize/1500)} target 5ms interval 100ms flows 100"
                 elif aqm == 'codel':
@@ -93,30 +95,27 @@ class Emulation:
             elif delay and bw:
                 burst = int(10*bw*(2**20)/250/8)
                 cmd = f"sudo tc qdisc {command} dev {intf_name} root handle 1:0 netem delay {delay}ms limit {100000} && sudo tc qdisc {command} dev {intf_name} parent 1:1 handle 10:0 tbf rate {bw}mbit burst {burst} limit {qsize}"
-
-            else:
-                print("ERROR: either the delay or bandiwdth must be specified")
+            
 
             if 's' in intf_name:
-                printC(f"Running the following command in root terminal: {cmd}", "yellow", ALL)
-                # os.system("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
-                os.system(cmd)
+
+                if cut_time is not None and interface is not None:
+                    printC(f"Cutting link {interface} for {cut_time} ms", "red", ALL)
+                    ifconfig_set_state(interface, "down")
+                    time.sleep(cut_time / 1000.0)
+                
+                if delay is not None or bw is not None: 
+                    printC(f"Running the following command in root terminal: {cmd}" , "yellow", DEBUG)
+                    os.system(cmd)
+
+                if cut_time is not None and interface is not None:
+                    ifconfig_set_state(interface, "up")
+            
             else:
-                printC(f"Running the following command in {node.name}'s terminal: {cmd}", "yellow", ALL)
-                # node.cmd("sudo tc qdisc del dev %s  root 2> /dev/null" % intf_name)
+                printC(f"Running the following command in {node.name}'s terminal: {cmd}", "yellow", DEBUG)
                 node.cmd(cmd)
 
-    def cut_link(self, node_name: str, if_name: str, interrupt: int, duration: int, interval: int): 
-        node = self.network.get(node_name)
-        cmd = f"ifconfig {node_name}-{if_name}"
-        for i in range(interval, duration, interval):
-            time.sleep(interval)
-            printC(f"Running '{cmd} down'", "yellow", ALL)
-            node.cmd(f"{cmd} down")
-            printC(f"waiting for {interrupt / 1000.0 } s", "yellow", ALL)
-            time.sleep(interrupt / 1000.0)
-            printC(f"Running '{cmd} up'", "yellow", ALL)
-            node.cmd(f"{cmd} up")
+
 
 
     def configure_routing(self, num_pairs):
@@ -207,8 +206,8 @@ class Emulation:
     def configure_traffic(self, traffic_config=None):
         '''
         This function should return two iterables:
-        - One containing the list of set-up calls for each flow's server
-        - One containing the list of set-up calls for each flow client
+        - self.call_first: commands to be called at time 0 (e.g., receiver start commands)
+        - self.call_second: commands to be called at specific future times (e.g., sender start commands), also used for traffic changes
         '''
         if traffic_config:
             if not self.traffic_config:
@@ -252,41 +251,63 @@ class Emulation:
                 command = self.start_sage_receiver
                 self.call_second.append(Command(command, params, start_time, destination))
 
+            elif 'athena' in protocol:
+                params = (source_node,duration)
+                command = self.start_athena_sender
+                self.call_first.append(Command(command, params, None, source_node))
+
+                params = (destination,source_node)
+                command = self.start_sage_receiver
+                self.call_second.append(Command(command, params, start_time, destination))
+
+            elif 'genericcc' in protocol:
+                params = (source_node, destination, duration)
+                command = self.start_udt_copa_sender
+                self.call_first.append(Command(command, params, None, source_node))
+
+                params = (destination, 8888)
+                command = self.start_udt_copa_receiver
+                self.call_second.append(Command(command, params, start_time, destination))
+
             elif 'astraea' in protocol:
-                # Create server start up call
                 params = (destination,)
                 command = self.start_astraea_server
                 self.call_first.append(Command(command, params, None, destination))
 
-                # Create client start up call
                 params = (source_node, destination, duration, ('tcpdatagen' in protocol))
                 command = self.start_astraea_client
                 self.call_second.append(Command(command, params, start_time, source_node))
                 
             elif protocol == 'vivace-uspace':
-                # Create server start up call
                 params = (source_node, destination, duration)
                 command = self.start_vivace_sender
                 self.call_second.append(Command(command, params, start_time, source_node))
-                # Create client start up call
+ 
                 command = self.start_vivace_receiver
                 params = (destination, duration)
                 self.call_first.append(Command(command, params, None, destination))
-                
+
+            elif protocol == 'leocc':
+                params = (destination, 1)
+                command = self.start_iperf_server
+                self.call_first.append(Command(command, params, None, destination))
+
+                params = (source_node, destination, duration, protocol, self.interval)
+                command = self.start_iperf_leocc_client
+                self.call_second.append(Command(command, params, start_time, source_node))
+
             elif 'tcpdatagen' == protocol:
                 destination = flowconfig.source
                 source_node = flowconfig.dest
-                # Create server start up call
                 params = (destination, duration)
                 command = self.start_tcpdatagen_sender
                 self.call_first.append(Command(command, params, None, destination))
 
-                # Create client start up call
                 params = (source_node,destination)
                 command = self.start_tcpdatagen_receiver
                 self.call_second.append(Command(command, params, start_time, source_node))
+                
             elif protocol == 'tbf' or protocol == 'netem':
-                # Change the tbf rate to the value provided
                 params = list(flowconfig.params)
                 nodes_names = params[0]
                 params[0] = self.network.linksBetween(self.network.get(nodes_names[0]), self.network.get(nodes_names[1]))[0]
@@ -303,9 +324,10 @@ class Emulation:
                 params = (source_node, destination, duration, protocol, self.interval)
                 command = self.start_iperf_client
                 self.call_second.append(Command(command, params, start_time, source_node))
-    # if you are reading this and you are not me, then i am sorry for this run and how confusing it is. the way it works is that you send a command to a mininet host, and then you call waitOutput on it in a separate thread. this is because waitOutput is blocking, and will wait for a signal from the appliation its using to indicate successful termination.
-    # this way is cringe, because if the application crashes or something, then the whole emulation will hang forever. if it is successful, its terminal output is saved to a file. This standard again is a little cringe, but it works quite well, very hard to debug
-    # again, sorry, bla bla bla tech debt bla bla bla
+
+    # if you are reading this and you are not me, then i am sorry for this run and how confusing it is. the way it works is that you send a command to a mininet host, and then you call waitOutput on it in a separate thread. this is because waitOutput is blocking, and will wait for a signal from the appliation its using to indicate successful (or otherwise) termination.
+    # this way is cringe, because if the application hangs or does not conform to this, then the whole emulation might hang forever. if it is successful, its terminal output is saved to a file. This standard again is a little cringe, but it works quite well, very hard to debug 
+    # again, sorry, bla bla bla tech debt bla bla bla - Mihai
     def run(self):
         """
         The main function that runs the experiment. It works by starting the senders first, the monitors and then the receivers.
@@ -377,6 +399,7 @@ class Emulation:
             for node_name in self.sending_nodes:
                 start_sysstat(1,self.sysstat_length,self.path, self.network.get(node_name))
                 # Start tcpdump on all sender and receiver nodes
+
         if self.pcap:
             for node_name in self.sending_nodes:
                 start_tcpdump(node_name, f"{node_name}-eth0", 11111 )
@@ -426,6 +449,26 @@ class Emulation:
                 monitor = Process(target=monitor_qlen_on_router, args=(iface, mininode, interval_sec,f"{self.path}/queues"))
                 self.qmonitors.append(monitor)
 
+    def start_iperf_leocc_client(self, node_name: str, destination_name: str, duration: int, protocol: str, monitor_interval=0.1, port=5201):
+        """
+        Start a iperf3 client on the given node with the given destination and port at a default interval of 1 second. 
+        Additioanlly, the SS script is started on the client node with a default interval of 0.01 seconds (lowest possible). 
+        Later versions of iperf3 will have the rtt and cwnd in its json output.
+        """
+        node = self.network.get(node_name)
+
+        sscmd = f"{SS_PATH}/ss_script_iperf3.sh 0.01 {self.path}/{node.name}_ss.csv &"
+        printC(f'Sending command {sscmd} to host {node.name}', "red", ALL)
+        node.cmd(sscmd)
+
+        monitor_ping_cmd = f"{LEOCC_INSTALL_FOLDER}/leocc/live_network/monitor_ping {self.network.get(destination_name).IP()} > {self.path}/{node.name}_ping.txt &"
+        printC(f'Sending command {monitor_ping_cmd} to host {node.name}', "yellow", ALL)
+        node.cmd(monitor_ping_cmd)
+        
+        iperfCmd = f"iperf3 -p {port} --cport=11111 -i {monitor_interval} -C leocc --json -t {duration} -c {self.network.get(destination_name).IP()}"     
+        printC(f'Sending command {iperfCmd} to host {node.name}', "green", ALL)
+        node.sendCmd(iperfCmd)
+
     def start_iperf_server(self, node_name: str, monitor_interval=1, port=5201):
         """
         Start a one-off iperf3 server on the given node with the given port at a default interval of 1 second
@@ -443,14 +486,11 @@ class Emulation:
         """
         node = self.network.get(node_name)
 
-        sscmd = f"{SS_PATH}/ss_script_iperf3.sh 0.1 {self.path}/{node.name}_ss.csv &"
+        sscmd = f"{SS_PATH}/ss_script_iperf3.sh 0.01 {self.path}/{node.name}_ss.csv &"
         printC(f'Sending command {sscmd} to host {node.name}', "blue", ALL)
         node.cmd(sscmd)
 
-        iperfCmd = (
-            f"iperf3 -p {port} --cport=11111 " + 
-            f"-i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}"
-        ).replace("  ", " ").strip()       
+        iperfCmd = f"iperf3 -p {port} --cport=11111 -i {monitor_interval} -C {protocol} --json -t {duration} -c {self.network.get(destination_name).IP()}"     
         printC(f'Sending command {iperfCmd} to host {node.name}', "blue", ALL)
         node.sendCmd(iperfCmd)
 
@@ -528,8 +568,20 @@ class Emulation:
         printC(f"Sending command '{sscmd}' to host {node.name}", "magenta", ALL)
         node.cmd(sscmd)
 
-        sagecmd = f"sudo -u {USERNAME} EXPERIMENT_PATH={self.path} {SAGE_INSTALL_FOLDER}/sender.sh {port} {(self.idx if self.idx else '')}{self.sage_flows_counter} {duration} {SAGE_INSTALL_FOLDER} {HOME_DIR}/venvpy38" #  |& tee -a {self.path}/{node.name}_sage_sender_{(self.idx if self.idx else '')}{self.sage_flows_counter}.txt &"
+        sagecmd = f"sudo -u {USERNAME} {SAGE_INSTALL_FOLDER}/sender.sh {port} {(self.idx if self.idx else '')}{self.sage_flows_counter} {duration} {SAGE_INSTALL_FOLDER} {HOME_DIR}/venvpy38"#  |& tee -a {self.path}/{node.name}_sage_sender_{(self.idx if self.idx else '')}{self.sage_flows_counter}.txt &"
         printC(f"Sending command '{sagecmd}' to host {node.name}", "magenta", ALL)
+        node.sendCmd(sagecmd)
+        
+        self.sage_flows_counter+= 1 
+
+    def start_athena_sender(self, node_name, duration, port=5555):
+        node = self.network.get(node_name)
+        sscmd = f"{PARENT_DIR}/core/ss/ss_script.sh 0.1 {(self.path + '/' + node.name + '_ss.csv')} &"
+        printC(f"Sending command '{sscmd}' to host {node.name}", "cyan", ALL)
+        node.cmd(sscmd)
+
+        sagecmd = f"sudo -u {USERNAME} {SAGE_INSTALL_FOLDER}/sender_athena.sh {port} {(self.idx if self.idx else '')}{self.sage_flows_counter} {duration} {SAGE_INSTALL_FOLDER} {HOME_DIR}/venvpy38"# |& tee -a {self.path}/{node.name}_sage_sender_{(self.idx if self.idx else '')}{self.sage_flows_counter}.txt &"
+        printC(f"Sending command '{sagecmd}' to host {node.name}", "cyan", ALL)
         node.sendCmd(sagecmd)
         
         self.sage_flows_counter+= 1 
@@ -553,6 +605,52 @@ class Emulation:
         auroracmd = f"sudo -u {USERNAME} LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/receiver/src {PCC_USPACE_INSTALL_FOLDER}/pcc-gradient/receiver/app/appserver --one-off --duration {duration} {port}"
         printC(f"Sending command '{auroracmd}' to host {node.name}", "red_fill", ALL)
         node.sendCmd(auroracmd)
+
+    def start_udt_copa_receiver(self, node_name: str, port=8888):
+        """
+        genericCC receiver (UDP). Listens on 8888 by default.
+        """
+        node = self.network.get(node_name)
+
+        # Path to receiver binary (adjust if yours is elsewhere)
+        receiver_bin = f"{GENERICCC_INSTALL_FOLDER}/receiver"
+
+        # receiver has no args; it listens on 8888 by default in genericCC
+        cmd = f"{receiver_bin} --one-off --idle-ms 1000 --port 8888"
+        printC(f"Sending command '{cmd}' to host {node.name}", "blue_fill", ALL)
+        node.sendCmd(cmd)
+
+
+    def start_udt_copa_sender(self, node_name: str, destination_name: str, duration_s: int,
+                            port=8888,
+                            min_rtt_ms=10000,
+                            delta_conf="do_ss:auto:0.5"):
+        """
+        genericCC sender using Copa (cctype=markovian).
+        Runs a single deterministic 'on' period for duration_s.
+        """
+        node = self.network.get(node_name)
+        dst = self.network.get(destination_name)
+
+        sender_bin = f"{GENERICCC_INSTALL_FOLDER}/sender"
+
+        # genericCC uses ms for on/off durations in examples
+        onduration_ms = int(duration_s * 1000)
+
+        # MIN_RTT env var is expected; if unknown, set large (sender will track min it sees)
+        # delta_conf controls Copa variant; you can change it later.
+        cmd = (
+            f"export MIN_RTT=99999999; "
+            f"{sender_bin} "
+            f"serverip={dst.IP()} serverport={int(port)} "
+            f"sourceip={node.IP()} "
+            f"offduration=0 onduration={onduration_ms} "
+            f"traffic_params=deterministic,num_cycles=1 "
+            f"cctype=markovian delta_conf={delta_conf}"
+        )
+
+        printC(f"Sending command '{cmd}' to host {node.name}", "blue", ALL)
+        node.sendCmd(cmd)
 
     def dump_info(self):
         emulation_info = {}

@@ -1,6 +1,45 @@
-import re, csv, json, os, pandas as pd
+import re, csv, json, os, io, pandas as pd
 from core.utils import *
 from collections import defaultdict
+
+
+_NUM = re.compile(r"^\s*\d+(?:\.\d+)?\s*$")
+
+def parse_genericcc_output(file: str, offset: float = 0.0) -> pd.DataFrame:
+    with open(file, "r", encoding="utf-8", errors="ignore") as f:
+        lines = f.read().replace("\ufeff", "").splitlines()
+
+    # find header
+    start = next((i for i, ln in enumerate(lines) if ln.strip().startswith("time,")), None)
+    if start is None:
+        return pd.DataFrame()
+
+    header = lines[start].strip()
+    ncols = len(next(csv.reader([header])))
+
+    rows = [header]
+    for ln in lines[start + 1:]:
+        s = ln.strip()
+        if "," not in s:
+            continue
+        try:
+            r = next(csv.reader([s]))
+        except Exception:
+            continue
+        if len(r) != ncols or not _NUM.match(r[0].strip()):
+            continue
+        rows.append(s)
+
+    if len(rows) == 1:
+        return pd.DataFrame()
+
+    df = pd.read_csv(io.StringIO("\n".join(rows) + "\n"), engine="python", on_bad_lines="skip")
+    df.columns = [c.strip() for c in df.columns]
+    for c in df.columns:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+    df = df.dropna(subset=["time"]).sort_values("time").reset_index(drop=True)
+    df["time"] = df["time"] + (offset or 0.0)
+    return df
 
 def parse_tc_show_output(output: str) -> dict:
     '''
@@ -190,7 +229,8 @@ def parse_ss_to_csv(in_path: str, out_path: str, offset=0.0) -> bool:
 
         return True
 
-    except Exception:
+    except Exception as e:
+        print(e)
         return False
 
 def parse_iperf_json(file: str, offset: int) -> pd.DataFrame:

@@ -9,7 +9,7 @@ plt.rcParams['text.usetex'] = True
 from core.plotting import (
     COLORS_EXTENSION,
     PROTOCOLS_MARKERS_EXTENSION,
-    PROTOCOLS_FRIENDLY_NAME_EXTENSION,
+    PROTOCOLS_FRIENDLY_NAMES,
     PROTOCOLS_EXTENSION
 )
 PROTOCOLS_EXTENSION = ['orca', 'sage', 'astraea', 'vivace-uspace', 'bbr3' ]
@@ -21,7 +21,7 @@ handles = [
         [], [], color=COLORS_EXTENSION[p],
         marker=PROTOCOLS_MARKERS_EXTENSION[p],
         linestyle='None', linewidth=3.0,
-        markersize=180, label=PROTOCOLS_FRIENDLY_NAME_EXTENSION[p],
+        markersize=180, label=PROTOCOLS_FRIENDLY_NAMES[p],
         markeredgewidth=30,                          # make border thicker
     )
     for p in PROTOCOLS_EXTENSION

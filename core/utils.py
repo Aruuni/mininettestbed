@@ -1,8 +1,10 @@
 import sys,os, pwd, grp, re
 import subprocess
 from collections import namedtuple
-from core.config import USERNAME
-NetworkConf = namedtuple("NetworkConf", ['node1', 'node2', 'bw', 'delay', 'qsize', 'bidir', 'aqm', 'loss'])
+from core.config import *
+
+
+NetworkConf = namedtuple("NetworkConf", ['node1', 'node2', 'bw', 'delay', 'qsize', 'bidir', 'aqm', 'loss' ])
 TrafficConf = namedtuple("TrafficConf", ['source', 'dest', 'start', 'duration', 'protocol', 'params'])
 
 Command = namedtuple("Command", ['command', 'params', 'waiting_time', 'node'])
@@ -108,11 +110,23 @@ def disable_offload(net) -> None:
                 os.system(f'sudo ethtool -K {intf_name} lro off')
                 #os.system('sudo ethtool -K {intf_name} ufo off') no need as no udp traffic
 
+def load_cc():
+    subprocess.run("sudo fuser -k 6653/tcp", shell=True)
+    subprocess.run("sudo modprobe tcp_bbr 2> /dev/null", shell=True)
+    subprocess.run(f"sudo insmod {ASTRAEA_INSTALL_FOLDER}/kernel/tcp-astraea/tcp_astraea.ko 2> /dev/null", shell=True)
+    subprocess.run(f"sudo insmod {SAGE_INSTALL_FOLDER}/cc-module/tcp_sage.ko 2> /dev/null", shell=True)
+    subprocess.run(f"sudo insmod {COPA_INSTALL_FOLDER}/tcp_copa.ko 2> /dev/null", shell=True)
+    subprocess.run(f"sudo insmod {LEOCC_INSTALL_FOLDER}/leocc/live_network/leocc.ko 2> /dev/null", shell=True)
 
-ERROR = -3
-DEBUG=0
-INFO=1
-ALL=2
+    subprocess.run("sudo sysctl -w net.ipv4.tcp_low_latency=1 > /dev/null", shell=True)
+    subprocess.run("sudo sysctl -w net.ipv4.tcp_autocorking=0 > /dev/null", shell=True)
+    subprocess.run("sudo sysctl -w net.ipv4.tcp_no_metrics_save=1 > /dev/null", shell=True)
+
+
+ALL = -3
+INFO = 0
+DEBUG = 1
+ERRO = 2
 
 _COLORS = {
     "reset": "\033[0m",
@@ -138,8 +152,7 @@ _COLORS = {
     "white_fill":   "\033[47m",
 }
 
-LOG_LEVEL = 1
-
+LOG_LEVEL = INFO 
 
 RESET = "\033[0m"
 def printC(msg: str, color="white", log_level=2) -> None:

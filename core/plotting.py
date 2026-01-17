@@ -3,13 +3,13 @@ LINEWIDTH = 0.30
 ELINEWIDTH = 0.75
 CAPTHICK = ELINEWIDTH
 CAPSIZE= 2
-PROTOCOLS_FRIENDLY_NAME_EXTENSION = {'cubic': 'Cubic', 'orca': 'Orca', 'bbr3': 'BBRv3', 'sage': 'Sage', 'vivace': 'Vivace', 'astraea': 'Astraea', 'vivace-uspace': 'Vivace', 'bbr1': 'BBRv1', 'astraea_old': 'Astraea (old)', 'orca-100': 'Orca-100msMTP', 'sage-24h': 'Sage-24h'}
+PROTOCOLS_FRIENDLY_NAMES = {'cubic': 'Cubic', 'orca': 'Orca', 'bbr': 'BBRv3', 'sage': 'Sage', 'vivace': 'Vivace', 'astraea': 'Astraea', 'vivace-uspace': 'Vivace', 'bbr1': 'BBRv1', 'copa': 'Copa', 'satcp': 'SaTCP', 'leocc': 'LeoCC'}
 #PROTOCOLS_EXTENSION = ['orca', 'sage', 'astraea', 'vivace-uspace', 'cubic', 'bbr3' ]
-PROTOCOLS_EXTENSION = ['sage']
-PROTOCOLS_MARKERS_EXTENSION = {'cubic': 'x', 'orca': '+', 'bbr3': '.', 'sage': '*', 'astraea_old': '4', 'astraea': '2', 'vivace-uspace': '_', 'bbr1': '1', 'orca-100': '3', 'sage-24h': '_'}
-COLORS_EXTENSION = {'cubic': '#0C5DA5', 'orca': '#00B945', 'bbr3': '#FF9500', 'sage': '#FF2C01', 'astraea_old': '#845B97', 'astraea': '#686868', 'vivace-uspace': '#845B97', 'bbr1': '#964B00', 'orca-100': "#056428", 'sage-24h': "#EA00FF"}
+PROTOCOLS_EXTENSION = [ 'cubic', 'copa', 'bbr', 'leocc', 'bbr1']
+PROTOCOLS_MARKERS_EXTENSION = {'cubic': 'x', 'orca': '+', 'bbr': '.', 'sage': '*', 'astraea_old': '4', 'astraea': '2', 'vivace-uspace': '_', 'copa': '1', 'leocc': '3', 'bbr1': '_'}
+COLORS_EXTENSION = {'cubic': '#0C5DA5', 'orca': '#00B945', 'bbr': '#FF9500', 'sage': '#FF2C01', 'astraea_old': '#845B97', 'astraea': '#686868', 'vivace-uspace': '#845B97', 'copa': '#964B00', 'bbr1': "#056428", 'leocc': "#EA00FF"}
 
-PROTOCOLS_FRIENDLY_NAME_LEO = {'cubic': 'Cubic', 'orca': 'Orca', 'bbr3': 'BBRv3', 'sage': 'Sage', 'vivace': 'Vivace', 'astraea': 'Astraea', 'vivace-uspace': 'Vivace', 'bbr1': 'BBRv1', 'satcp': 'SaTCP'}
+
 PROTOCOLS_LEO = ['cubic', 'bbr3',  'vivace-uspace', 'sage', 'astraea']
 PROTOCOLS_LEOEM = ["cubic", "satcp", "bbr3", "vivace-uspace", "sage", "astraea"]
 PROTOCOLS_MARKERS_LEO = {'cubic': 'x', 'orca': '+', 'bbr3': '.', 'sage': '*', 'vivace': '4', 'astraea': '2', 'vivace-uspace': '_', 'bbr1': '1', }
@@ -33,7 +33,7 @@ AQM_FRIENDLY_NAME = {'fifo':'FIFO'}
 def plot_points(ax, df, data, error,  marker, color, label, delay=False):
     if not df.empty:
         if delay:
-            xvals = df.index * 2
+            xvals = df.index 
         else:
             xvals = df.index
         yvals = df[data]

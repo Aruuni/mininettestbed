@@ -22,3 +22,12 @@
 [submodule "CC/tcpdatagen"]
 	path = CC/tcpdatagen
 	url = https://github.com/Aruuni/tcpdatagen
+[submodule "CC/copa-kernel"]
+	path = CC/copa-kernel
+	url = https://github.com/Aruuni/copa-kernel
+[submodule "CC/genericCC"]
+	url = https://github.com/Aruuni/genericCC.git
+	path = CC/genericCC
+[submodule "CC/LeoCC"]
+	path = CC/LeoCC
+	url = https://github.com/Aruuni/LeoCC

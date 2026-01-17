@@ -166,7 +166,7 @@ def plot_one(QMULT, RUN):
         ax = axes[i]
         flow1, = ax.plot(PROTOCOL_DATA[protocol]['x1'], PROTOCOL_DATA[protocol]['y1'],
                          linewidth=LINEWIDTH, alpha=1, color=COLORS_EXTENSION[protocol],
-                         label=PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol])
+                         label=PROTOCOLS_FRIENDLY_NAMES[protocol])
         flow2, = ax.plot(PROTOCOL_DATA[protocol]['x2'], PROTOCOL_DATA[protocol]['y2'],
                          linewidth=LINEWIDTH, alpha=0.75, color=COLORS_EXTENSION[protocol], linestyle=LINESTYLE)
         ax.set(yscale=SCALE, xlim=XLIM)
@@ -188,7 +188,7 @@ def plot_one(QMULT, RUN):
         colors = [COLORS_EXTENSION[protocol], COLORS_EXTENSION[protocol]]
         lc = mcol.LineCollection(2 * line, linestyles=styles, colors=colors)
         linecollections.append(lc)
-    friendly_labels = [PROTOCOLS_FRIENDLY_NAME_EXTENSION[p] for p in PROTOCOLS_EXTENSION]
+    friendly_labels = [PROTOCOLS_FRIENDLY_NAMES[p] for p in PROTOCOLS_EXTENSION]
     optimal_handle = Line2D([0], [0],
                             color='magenta',
                             linestyle='dashed',

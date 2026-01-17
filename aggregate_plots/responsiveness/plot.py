@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import scienceplots
 plt.style.use('science')
-import json
+import json, glob
 import os, sys
 import matplotlib as mpl
 pd.set_option('display.max_rows', None)
@@ -26,24 +26,39 @@ def get_df(ROOT_PATH, PROTOCOLS, RUNS, BW, DELAY, QMULT):
     data = []
     for protocol in PROTOCOLS:
         for run in RUNS:
-            PATH = f"{ROOT_PATH}/Dumbell_{BW}mbit_{DELAY}ms_{int(QMULT * BDP_IN_PKTS)}pkts_0loss_1flows_22tcpbuf_{protocol}/run{run}"
+            PATH = f"{ROOT_PATH}/Dumbbell_fifoaqm_{BW}mbit_{DELAY}ms_{int(QMULT * BDP_IN_PKTS)}pkts_0loss_1flow_{protocol}/run{run}"
             with open(f"{PATH}/emulation_info.json", 'r') as fin:
                 emulation_info = json.load(fin)
             bw_capacities = list(filter(lambda elem: elem[6] == 'tbf', emulation_info['flows']))
             bw_capacities = [x[-1][1] for x in bw_capacities]
             optimal_mean = sum(bw_capacities) / len(bw_capacities)
 
-            if os.path.exists(PATH + '/csvs/x1.csv'):
-                receiver = pd.read_csv(PATH + '/csvs/x1.csv').reset_index(drop=True)
+            csv_dir = os.path.join(PATH, "csvs")
 
-                receiver['time'] = receiver['time'].apply(lambda x: int(float(x)))
+            # Match either the old style (x1.csv / x1<nums>.csv) or the new style (c1.csv / c1<nums>.csv)
+            candidates = []
+            for pat in ("x1*.csv", "c1*.csv"):
+                candidates.extend(glob.glob(os.path.join(csv_dir, pat)))
 
-                receiver = receiver[(receiver['time'] > start_time) & (receiver['time'] < end_time)]
+            if candidates:
+                # Prefer the exact canonical names if present, otherwise take the first sorted match
+                candidates = sorted(candidates)
+                preferred = [os.path.join(csv_dir, "x1.csv"), os.path.join(csv_dir, "c1.csv")]
+                for p in preferred:
+                    if p in candidates:
+                        csv_file = p
+                        break
+                else:
+                    csv_file = candidates[0]
 
-                receiver = receiver.drop_duplicates('time')
+                receiver = pd.read_csv(csv_file).reset_index(drop=True)
 
-                receiver = receiver.set_index('time')
-                protocol_mean = receiver.mean()['bandwidth']
+                receiver["time"] = receiver["time"].apply(lambda x: int(float(x)))
+                receiver = receiver[(receiver["time"] > start_time) & (receiver["time"] < end_time)]
+                receiver = receiver.drop_duplicates("time")
+                receiver = receiver.set_index("time")
+
+                protocol_mean = receiver.mean()["bandwidth"]
                 data.append([protocol, run, protocol_mean, optimal_mean])
 
     COLUMNS = ['protocol', 'run_number', 'average_goodput', 'optimal_goodput']
@@ -54,8 +69,8 @@ DELAY = 50
 QMULT = 1
 RUNS_L = list(range(1,51))
 
-bw_rtt_data = get_df(f"/{HOME_DIR}/cctestbed/mininet/results_responsiveness_bw_rtt/fifo" ,  PROTOCOLS_EXTENSION, RUNS_L, BW, DELAY, QMULT)
-loss_data =  get_df(f"/{HOME_DIR}/cctestbed/mininet/results_responsiveness_loss/fifo" ,  PROTOCOLS_EXTENSION, RUNS_L, BW, DELAY, QMULT)
+bw_rtt_data = get_df(f"{HOME_DIR}/cctestbed/mininet/results_leo" ,  PROTOCOLS_EXTENSION, RUNS_L, BW, DELAY, QMULT)
+loss_data =  get_df(f"{HOME_DIR}/cctestbed/mininet/results_leo" ,  PROTOCOLS_EXTENSION, RUNS_L, BW, DELAY, QMULT)
 
 BINS = 50
 fig, ax = plt.subplots(figsize=(3, 1.8)) 
@@ -111,13 +126,13 @@ ax.set(xlabel="Average Goodput (Mbps)", ylabel="\% of Trials")
 
 all_handles = protocol_handles
 all_labels = protocol_labels
-# fig.legend(
-#     all_handles, all_labels,
-#     loc='upper center', bbox_to_anchor=(0.5, 1),
-#     ncol=3, frameon=False,
-#     fontsize=7, columnspacing=1.0,
-#     handlelength=2.5, handletextpad=0.7
-# )
+fig.legend(
+    all_handles, all_labels,
+    loc='upper center', bbox_to_anchor=(0.5, 1),
+    ncol=3, frameon=False,
+    fontsize=7, columnspacing=1.0,
+    handlelength=2.5, handletextpad=0.7
+)
 ax.legend(
     [bw_rtt_loss, bw_rtt_loss_line],
     ['bw-rtt', 'bw-loss'],

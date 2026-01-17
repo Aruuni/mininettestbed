@@ -238,7 +238,7 @@ if __name__ == "__main__":
     proto_handles = [
         Line2D([], [], color=COLORS_EXTENSION[p], linewidth=1) for p in PROTOCOLS_EXTENSION
     ]
-    proto_labels = [PROTOCOLS_FRIENDLY_NAME_EXTENSION[p] for p in PROTOCOLS_EXTENSION]
+    proto_labels = [PROTOCOLS_FRIENDLY_NAMES[p] for p in PROTOCOLS_EXTENSION]
     #AQM_LIST = ['fifo', 'codel', 'fq']
     AQM_LIST = ['fifo']
     df1,df2 = data_to_df(EXPERIMENT_PATH, DELAYS, [100], QMULTS, AQM_LIST, PROTOCOLS_EXTENSION)

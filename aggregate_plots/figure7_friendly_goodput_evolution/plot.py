@@ -161,10 +161,10 @@ if __name__ == "__main__":
 
                for n in range(FLOWS):
                    if mode == 'inverse':
-                       LABEL = PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol] if n == 0 else 'Cubic'
+                       LABEL = PROTOCOLS_FRIENDLY_NAMES[protocol] if n == 0 else 'Cubic'
                        COLOR = '#0C5DA5' if n == 1 else COLORS_EXTENSION[protocol]
                    else:
-                       LABEL = PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol] if n == 1 else 'Cubic'
+                       LABEL = PROTOCOLS_FRIENDLY_NAMES[protocol] if n == 1 else 'Cubic'
                        COLOR = '#0C5DA5' if n == 0 else COLORS_EXTENSION[protocol]
 
                    ax.plot(data[protocol][n+1].index, data[protocol][n+1]['mean'], linewidth=LINEWIDTH, label=LABEL, color=COLOR)

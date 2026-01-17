@@ -8,6 +8,7 @@ else:
     USERNAME = os.path.basename(HOME_DIR)
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Go one level up
+
 ORCA_INSTALL_FOLDER = f"{PARENT_DIR}/CC/Orca" 
 SAGE_INSTALL_FOLDER = f"{PARENT_DIR}/CC/sage" 
 PCC_USPACE_INSTALL_FOLDER = f"{PARENT_DIR}/CC/PCC-Uspace"
@@ -15,6 +16,10 @@ PCC_RL_INSTALL_FOLDER = f"{PARENT_DIR}/CC/PCC-RL"
 ASTRAEA_INSTALL_FOLDER = f"{PARENT_DIR}/CC/astraea-open-source"
 LEOEM_INSTALL_FOLDER = f"{PARENT_DIR}/experiments_mininet/LeoEM"
 TCPDATAGEN_INSTALL_FOLDER = f"{PARENT_DIR}/CC/tcpdatagen"
-
+GENERICCC_INSTALL_FOLDER = f"{PARENT_DIR}/CC/genericCC"
+LEOCC_INSTALL_FOLDER = f"{PARENT_DIR}/CC/LeoCC"
+COPA_INSTALL_FOLDER = f"{PARENT_DIR}/CC/copa-kernel"
 
 SS_PATH = f"{PARENT_DIR}/core/ss"
+
+

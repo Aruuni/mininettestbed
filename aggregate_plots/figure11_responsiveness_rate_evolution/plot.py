@@ -53,7 +53,7 @@ for protocol in PROTOCOLS_EXTENSION:
         sender = sender[(sender['time'] > start_time) & (sender['time'] < end_time)]
         sender = sender.drop_duplicates('time')
         sender = sender.set_index('time')
-        ax.plot(sender.index + 1, sender['bandwidth'], color=COLORS_EXTENSION[protocol], linewidth=LINEWIDTH, label=PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol])
+        ax.plot(sender.index + 1, sender['bandwidth'], color=COLORS_EXTENSION[protocol], linewidth=LINEWIDTH, label=PROTOCOLS_FRIENDLY_NAMES[protocol])
 
 
 
@@ -96,7 +96,7 @@ for protocol in PROTOCOLS_EXTENSION:
         sender = sender[(sender['time'] > start_time) & (sender['time'] < end_time)]
         sender = sender.drop_duplicates('time')
         sender = sender.set_index('time')
-        ax.plot(sender.index + 1, sender['bandwidth'], color=COLORS_EXTENSION[protocol], linewidth=LINEWIDTH, label=PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol])
+        ax.plot(sender.index + 1, sender['bandwidth'], color=COLORS_EXTENSION[protocol], linewidth=LINEWIDTH, label=PROTOCOLS_FRIENDLY_NAMES[protocol])
 
 ax.step(list(range(start_time, end_time + 1, 10)), bw_capacities, where='post', color='black', linewidth=0.5, label='Bandwidth', alpha=0.5)
 ax.set_xlim(100, 201)

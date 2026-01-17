@@ -5,6 +5,13 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+def process_raw_out(path: str) -> None:
+    change_all_user_permissions(path)
+    process_raw_outputs(path)
+    change_all_user_permissions(path)
+    plot_all_mn(path)
+    # plot_all_cpu(path)
+
 def process_raw_outputs(path: str) -> None:
     with open(f"{path}/emulation_info.json", 'r') as fin:
         emulation_info = json.load(fin)
@@ -36,17 +43,28 @@ def process_raw_outputs(path: str) -> None:
             df = parse_orca_output(f"{path}/{receiver}_output.txt", start_time)
             df.to_csv(f"{csv_path}/{receiver}.csv", index=False)
             remove(f"{path}/{receiver}_output.txt")
-        elif 'sage' in flow[-2] or 'athena' in flow[-2]:
-            df = parse_orca_output(f"{path}/{sender}_output.txt", start_time-4 if first else start_time)
-            df.to_csv(f"{csv_path}/{sender}.csv", index=False)
-            remove(f"{path}/{sender}_output.txt")
 
-            if parse_ss_to_csv(f"{path}/{sender}_ss.csv", f"{csv_path}/{sender}_ss.csv", start_time-4 if first else start_time):
-                remove(f"{path}/{sender}_ss.csv")
+        if 'genericcc' in flow[-2]:
+            df = parse_genericcc_output(f"{path}/{sender}_output.txt", start_time)
+            df.to_csv(f"{csv_path}/{sender}_ss.csv", index=False)
+            #remove(f"{path}/{sender}_output.txt")
 
-            df = parse_orca_output(f"{path}/{receiver}_output.txt", start_time)
+            df = parse_genericcc_output(f"{path}/{receiver}_output.txt", start_time)
             df.to_csv(f"{csv_path}/{receiver}.csv", index=False)
-            remove(f"{path}/{receiver}_output.txt")
+            #remove(f"{path}/{receiver}_output.txt")
+
+        # elif 'sage' in flow[-2] or 'athena' in flow[-2]:
+        #     df = parse_orca_output(f"{path}/{sender}_output.txt", start_time-4 if first else start_time)
+        #     df.to_csv(f"{csv_path}/{sender}.csv", index=False)
+        #     #remove(f"{path}/{sender}_output.txt")
+
+        #     if parse_ss_to_csv(f"{path}/{sender}_ss.csv", f"{csv_path}/{sender}_ss.csv", start_time-4 if first else start_time):
+        #         remove(f"{path}/{sender}_ss.csv")
+
+        #     df = parse_orca_output(f"{path}/{receiver}_output.txt", start_time)
+        #     df.to_csv(f"{csv_path}/{receiver}.csv", index=False)
+        #     #remove(f"{path}/{receiver}_output.txt")
+
         elif 'aurora' in flow[-2]:
             df = parse_aurora_output(f"{path}/{sender}_output.txt", start_time)
             df.to_csv(f"{csv_path}/{sender}.csv", index=False)
@@ -74,6 +92,7 @@ def process_raw_outputs(path: str) -> None:
             remove(f"{path}/{receiver}_output.txt")
 
         first = True
+
 def plot_all_mn(path: str, aqm='fifo') -> None:
     def remove_outliers(df, column, threshold):
         """Remove outliers from a DataFrame column based on a threshold."""
@@ -162,8 +181,12 @@ def plot_all_mn(path: str, aqm='fifo') -> None:
             
             axs[1].set_ylabel("RTT (ms)")
 
-            # Throughput
-            axs[2].plot(df_client['time'], df_client['bandwidth'], label=f'{flow_client} CWND')
+
+            # Throughput (client) — use df_client if it has it, else fall back to df_ss_client (genericcc _ss)
+            src = df_client if {'time','bandwidth'}.issubset(df_client.columns) else df_ss_client
+            if {'time','bandwidth'}.issubset(src.columns):
+                axs[2].plot(src['time'], src['bandwidth'], label=f'{flow_client} Throughput')
+
             axs[2].set_title("Throughput (Mbps)")
             axs[2].set_ylabel("Throughput (Mbps)")
 
@@ -173,32 +196,36 @@ def plot_all_mn(path: str, aqm='fifo') -> None:
             # else:
             #     axs[3].plot(df_client['time'], df_client['bytes'], label=f'{flow_client} Bytes')
 
-            if not df_ss_client.empty:    
-                if 'cwnd' in df_ss_client.columns:
-                    axs[3].plot(df_ss_client['time'], df_ss_client['cwnd'], label=f'{flow_client} CWND')
-                    axs[3].set_title("Cwnd from SS (packets)")
-            else:
-                axs[3].plot(
-                    df_client['time'][df_client['cwnd'] != 100000],
-                    df_client['cwnd'][df_client['cwnd'] != 100000],
-                    label=f'{flow_client} CWND'
-                )
-                axs[3].set_title("Cwnd from Iperf (packets)")
+            # CWND — support cwnd from either file
+            if 'cwnd' in df_ss_client.columns:
+                axs[3].plot(df_ss_client['time'], df_ss_client['cwnd'], label=f'{flow_client} CWND')
+                axs[3].set_title("Cwnd (packets)")
+            elif 'cwnd' in df_client.columns:
+                axs[3].plot(df_client['time'], df_client['cwnd'], label=f'{flow_client} CWND')
+                axs[3].set_title("Cwnd (packets)")
 
 
             if 'retr' in df_client.columns:
                 axs[4].plot(df_client['time'], df_client['retr'], label=f'{flow_client} Retransmits')
-                axs[4].set_title("Retransmits from Iperf (packets)")
-            else:
+                axs[4].set_title("Retransmits (packets)")
+            elif 'lost' in df_ss_client.columns:
                 axs[4].plot(df_ss_client['time'], df_ss_client['lost'], label=f'{flow_client} Retransmits')
-                axs[4].set_title("Retransmits from SS (packets)")
+                axs[4].set_title("Retransmits (packets)")
+            elif 'loss_snd' in df_ss_client.columns:
+                axs[4].plot(df_ss_client['time'], df_ss_client['loss_snd'], label=f'{flow_client} Loss_snd (%)')
+                axs[4].set_title("Loss (%)")
+            elif 'loss_snd' in df_client.columns:
+                axs[4].plot(df_client['time'], df_client['loss_snd'], label=f'{flow_client} Loss_snd (%)')
+                axs[4].set_title("Loss (%)")
     except Exception as e:
         printC(f"Error in plotting data for flows {e}", "red", ERROR)
 
     
     queue_dir = os.path.join(path, 'queues')
-    queue_files = [f for f in os.listdir(queue_dir) if f.endswith('.txt')]
-
+    try:
+        queue_files = [f for f in os.listdir(queue_dir) if f.endswith('.txt')]
+    except FileNotFoundError:
+        queue_files = []
     m = re.search(r'_(\d+)pkts_', queue_dir)
     if m:
         queue_limit = int(m.group(1))

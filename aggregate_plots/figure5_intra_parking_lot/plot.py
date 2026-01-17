@@ -101,7 +101,7 @@ for mult in QMULTS:
     ax = axes
 
     for protocol in PROTOCOLS_EXTENSION:
-        plot_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol], delay=True)
+        plot_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('delay'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], PROTOCOLS_FRIENDLY_NAMES[protocol], delay=True)
 
     #                                                         this here is a heuristic, not how its really calcaulated 
     for y, label, offset, color in [(1, 'max-min', 0.02, "red"), ((1/FLOWS) / ((FLOWS-1)/FLOWS), 'proportional', 0.02, "black")]:

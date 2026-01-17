@@ -14,7 +14,7 @@ sys.path.append( mymodule_dir )
 from core.config import *
 from core.plotting import * 
 
-EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_bw/fifo" 
+EXPERIMENT_PATH = f"{HOME_DIR}/cctestbed/mininet/results_fairness_bw_async/fifo" 
 BWS = [10,20,30,40,50,60,70,80,90,100]
 BWS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 DELAYS = [20]
@@ -70,7 +70,7 @@ for mult in QMULTS:
    fig, axes = plt.subplots(nrows=1, ncols=1,figsize=(3,1.2))
    ax = axes
    for protocol in PROTOCOLS_EXTENSION:
-      plot_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], PROTOCOLS_FRIENDLY_NAME_EXTENSION[protocol])
+      plot_points(ax, summary_data[summary_data['protocol'] == protocol].set_index('bandwidth'), 'goodput_ratio_total_mean', 'goodput_ratio_total_std', PROTOCOLS_MARKERS_EXTENSION[protocol], COLORS_EXTENSION[protocol], PROTOCOLS_FRIENDLY_NAMES[protocol])
 
    ax.set(yscale='linear', xlabel='Bandwidth (Mbps)', ylabel='Goodput Ratio')
    for axis in [ax.xaxis, ax.yaxis]:
