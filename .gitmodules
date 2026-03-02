@@ -31,3 +31,6 @@
 [submodule "CC/LeoCC"]
 	path = CC/LeoCC
 	url = https://github.com/Aruuni/LeoCC
+[submodule "CC/mutant"]
+	path = CC/mutant
+	url = https://github.com/lorepap/mutant
